@@ -1,0 +1,62 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Unity\\Projets\\Magic Pixel\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{5077ED09-535A-1309-1DF9-1C6474C5C8F9}|Assembly-CSharp.csproj|d:\\unity\\projets\\magic pixel\\assets\\scripts\\launcher\\mplauncher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5077ED09-535A-1309-1DF9-1C6474C5C8F9}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\launcher\\mplauncher.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5077ED09-535A-1309-1DF9-1C6474C5C8F9}|Assembly-CSharp.csproj|D:\\Unity\\Projets\\Magic Pixel\\assets\\scripts\\launcher\\mplaunchyoo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5077ED09-535A-1309-1DF9-1C6474C5C8F9}|Assembly-CSharp.csproj|solutionrelative:assets\\scripts\\launcher\\mplaunchyoo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{93c5e7ad-af06-49e6-a756-b8f3eaca790d}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MPLauncher.cs",
+              "DocumentMoniker": "D:\\Unity\\Projets\\Magic Pixel\\Assets\\Scripts\\Launcher\\MPLauncher.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Launcher\\MPLauncher.cs",
+              "ToolTip": "D:\\Unity\\Projets\\Magic Pixel\\Assets\\Scripts\\Launcher\\MPLauncher.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Launcher\\MPLauncher.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-06-15T02:42:28.437Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MPLaunchYoo.cs",
+              "DocumentMoniker": "D:\\Unity\\Projets\\Magic Pixel\\Assets\\Scripts\\Launcher\\MPLaunchYoo.cs",
+              "RelativeDocumentMoniker": "Assets\\Scripts\\Launcher\\MPLaunchYoo.cs",
+              "ToolTip": "D:\\Unity\\Projets\\Magic Pixel\\Assets\\Scripts\\Launcher\\MPLaunchYoo.cs",
+              "RelativeToolTip": "Assets\\Scripts\\Launcher\\MPLaunchYoo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-06-12T09:28:28.555Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

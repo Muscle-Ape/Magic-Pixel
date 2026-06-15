@@ -1,0 +1,8 @@
+{
+	"name": "HQ.UIManager",
+	"references": [
+		"HQ.EventCenter",
+		"HQ.Logger",
+		"YooAsset"
+    ]
+}
