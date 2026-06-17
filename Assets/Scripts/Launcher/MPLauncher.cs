@@ -19,6 +19,6 @@ public class MPLauncher : MonoBehaviour
         // 初始化UI管理器
         UIManager.Inst.Init();
 
-        GameObject.DontDestroyOnLoad(this);
+        UIManager.Inst.ShowWindow<MPGameView>();
     }
 }

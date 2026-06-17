@@ -21,12 +21,12 @@ namespace HQ.UIManager
 #if UNITY_EDITOR
             //Editor下的判断
             // if (ILRuntimeHelper.IsRunning)
-            // {
-            //     if (!typeof(T).Namespace.Contains(".ILRuntimeType"))
-            //     {
-            //         Debug.Log("热更中获取 主工程Attribute，某些版本ILRuntime会出错![v1.6.6]");
-            //     }
-            // }
+            //{
+            //    if (!typeof(T).Namespace.Contains(".ILRuntimeType"))
+            //    {
+            //        Debug.Log("热更中获取 主工程Attribute，某些版本ILRuntime会出错![v1.6.6]");
+            //    }
+            //}
 
             try
             {
@@ -43,7 +43,7 @@ namespace HQ.UIManager
             }
             catch (Exception e)
             {
-                UIManagerUtils.LogError("获取[Attribute]失败:" + memberInfo.Name + "\n 请注意该Attribute构造过程中是否报错!");
+                UIManagerUtils.LogError("获取[Attribute]失败:" + memberInfo.Name + "\n 请注意该Attribute构造过程中是否报错! \n" + e);
             }
 #endif
             return null;
@@ -79,7 +79,7 @@ namespace HQ.UIManager
 
 #if UNITY_EDITOR
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 UIManagerUtils.LogError("获取[Attribute]失败:" + memberInfo.Name + "\n 请注意该Attribute构造过程中是否报错!");
             }

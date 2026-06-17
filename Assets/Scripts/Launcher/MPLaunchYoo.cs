@@ -4,25 +4,22 @@ using YooAsset;
 
 /// <summary>
 /// YooAsset 初始化组件。
-/// 
-/// 编辑器状态 → EditorSimulateMode（无需打包，直接加载 AssetDatabase 资源）
-/// 打包后运行 → OfflinePlayMode（从 StreamingAssets 加载）
-/// 
-/// 使用方式：挂载到启动场景的任意 GameObject 上即可，建议放在第一个加载的场景中。
 /// </summary>
 public class MPLaunchYoo
 {
+
+    private string m_packageName = "Main";
 
     public IEnumerator Initialize()
     {
         // 初始化资源系统
         YooAssets.Initialize();
 
-        var package = YooAssets.TryGetPackage("DefaultPackage");
+        var package = YooAssets.TryGetPackage(m_packageName);
         // 获取指定的资源包，如果没有找到不会报错
         if (package == null)
         {
-            package = YooAssets.CreatePackage("DefaultPackage");
+            package = YooAssets.CreatePackage(m_packageName);
         }
         YooAssets.SetDefaultPackage(package); // 设置默认的资源包
 
@@ -54,22 +51,59 @@ public class MPLaunchYoo
         yield return operation;
 
         if (operation.Status == EOperationStatus.Succeed)
-            Debug.Log("资源包初始化成功！");
+        {
+            Log("资源包初始化成功！");
+        }
         else
+        {
             Debug.LogError($"资源包初始化失败：{operation.Error}");
+            yield break;
+        }
+
+        var op = package.RequestPackageVersionAsync();
+        yield return op;
+
+        if (op.Status == EOperationStatus.Succeed)
+        {
+            Log("版本请求成功！");
+        }
+        else
+        {
+            Debug.LogError($"资源版本请求失败：{op.Error}");
+            yield break;
+        }
+
+        yield return package.UpdatePackageManifestAsync(op.PackageVersion);
+
+        yield return null;
     }
 
     private InitializationOperation EditorInitializeYooAsset(ResourcePackage package)
     {
-        var initParameters = new EditorSimulateModeParameters();
-        initParameters.SimulateManifestFilePath = EditorSimulateModeHelper.SimulateBuild("DefaultPackage");
+        var buildResult = EditorSimulateModeHelper.SimulateBuild(m_packageName);
+        var packageRoot = buildResult.PackageRootDirectory;
+        var fileSystemParams = FileSystemParameters.CreateDefaultEditorFileSystemParameters(packageRoot);
+        var initParameters = new EditorSimulateModeParameters()
+        {
+            EditorFileSystemParameters = fileSystemParams
+        };
         return package.InitializeAsync(initParameters);
     }
 
     private InitializationOperation SingleInitializeYooAsset(ResourcePackage package)
     {
-        var initParameters = new OfflinePlayModeParameters();
+        var fileSystemParams = FileSystemParameters.CreateDefaultBuildinFileSystemParameters();
+        var initParameters = new OfflinePlayModeParameters()
+        {
+            BuildinFileSystemParameters = fileSystemParams
+        };
         return package.InitializeAsync(initParameters);
     }
 
+    private void Log(string msg)
+    {
+#if UNITY_EDITOR
+        Debug.Log($"[YooLaunch]:{msg}");
+#endif
+    }
 }
