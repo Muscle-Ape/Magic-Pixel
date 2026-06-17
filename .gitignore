@@ -14,3 +14,6 @@
 *.unityproj
 *.sln
 *.userprefs
+Bundles/
+Assets/StreamingAssets/yoo/
+.vs/
