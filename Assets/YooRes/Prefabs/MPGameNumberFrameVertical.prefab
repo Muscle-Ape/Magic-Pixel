@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 3191647027315262117}
   - component: {fileID: 8010073917815043385}
   - component: {fileID: 852178356803857286}
+  - component: {fileID: 2327141819204321103}
   m_Layer: 5
   m_Name: MPGameNumberFrameVertical
   m_TagString: Untagged
@@ -76,6 +77,18 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &2327141819204321103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3070715327157451415}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7ff4d770a844b847bfc325d9c59e27f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8530381925908293538
 GameObject:
   m_ObjectHideFlags: 0
@@ -111,7 +124,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -40, y: 0}
+  m_SizeDelta: {x: -40, y: -20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4659396043182227331
 CanvasRenderer:
