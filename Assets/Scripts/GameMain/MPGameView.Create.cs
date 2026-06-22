@@ -1,6 +1,7 @@
 using HQ.UIManager;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 /// <summary>
@@ -64,6 +65,9 @@ public partial class MPGameView
                 }
             }
 
+            if (count != 0)
+                number.Add(count);
+
             if (number.Count == 0)
                 number.Add(0);
 
@@ -103,6 +107,9 @@ public partial class MPGameView
                     count = 0;
                 }
             }
+
+            if (count != 0)
+                number.Add(count);
 
             if (number.Count == 0)
                 number.Add(0);

@@ -62,6 +62,9 @@ public partial class MPGameView
 
     private bool BlockControl(MPGameBlock block)
     {
+        if (block.isDisable)
+            return true;
+
         // 判断是否正确
         bool correct = !(block.isFill ^ m_isFill);
 
@@ -144,7 +147,7 @@ public partial class MPGameView
             }
             else
             {
-                m_canDragContinue = false;
+                CannotContinueDragging();
             }
         }
     }
@@ -185,7 +188,10 @@ public partial class MPGameView
                     return;
                 }
 
-                DragDirControl(block);
+                if (block != m_dragFirstBlock)
+                {
+                    DragDirControl(block);
+                }
             }
         }
 
@@ -208,7 +214,11 @@ public partial class MPGameView
                 CannotContinueDragging();
                 return;
             }
-            DragDirControl(block);
+
+            if (block != m_dragFirstBlock)
+            {
+                DragDirControl(block);
+            }
         }
     }
 

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using HQ.UIManager;
 using System.Collections;
 using System.Collections.Generic;
@@ -45,6 +46,30 @@ public partial class MPGameView : AWindow
     /// </summary>
     [TransformPath("View/Content/Input")]
     private RectTransform m_input;
+
+    /// <summary>
+    /// 模式切换按钮
+    /// </summary>
+    [TransformPath("View/ModeSwitch")]
+    private Button m_modeSwitchFrame;
+
+    /// <summary>
+    /// 滑动的按钮
+    /// </summary>
+    [TransformPath("View/ModeSwitch/Btn")]
+    private RectTransform m_modeSwitchBtn;
+
+    /// <summary>
+    /// 填充模式图标
+    /// </summary>
+    [TransformPath("View/ModeSwitch/Btn/Fill")]
+    private Image m_modeSwitchFill;
+
+    /// <summary>
+    /// 空白模式图片
+    /// </summary>
+    [TransformPath("View/ModeSwitch/Btn/Blank")]
+    private Image m_modeSwitchBlank;
 
     /// <summary>
     /// 方块信息
@@ -123,6 +148,11 @@ public partial class MPGameView : AWindow
     /// </summary>
     private bool m_canDragContinue;
 
+    /// <summary>
+    /// 模式切换动画Tween
+    /// </summary>
+    private Tween m_modeSwitchTween;
+
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
@@ -154,6 +184,9 @@ public partial class MPGameView : AWindow
         CreateVerticalNumver();
 
 
+        RegisterUI();
+
         RegisterInput();
+
     }
 }

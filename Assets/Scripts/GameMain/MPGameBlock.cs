@@ -27,6 +27,12 @@ public class MPGameBlock : MonoBehaviour
     private bool m_isFill;
     public bool isFill => m_isFill;
 
+    /// <summary>
+    /// 是否已经禁用
+    /// </summary>
+    private bool m_isDisable;
+    public bool isDisable => m_isDisable;
+
 
     public void Init(bool isFill)
     {
@@ -41,22 +47,32 @@ public class MPGameBlock : MonoBehaviour
 
     public void Fill()
     {
+        if (m_isDisable)
+            return;
+
         m_fill.SetActive(true);
     }
 
     public void Blank()
     {
+        if (m_isDisable)
+            return;
+
         m_blank.SetActive(true);
     }
 
     public void Wrong()
     {
+        if (m_isDisable)
+            return;
+
         StartCoroutine(WrongAnimation());
     }
 
     public void Disable()
     {
-        GetComponent<Image>().raycastTarget = false;
+        //GetComponent<Image>().raycastTarget = false;
+        m_isDisable = true;
     }
 
     /// <summary>
