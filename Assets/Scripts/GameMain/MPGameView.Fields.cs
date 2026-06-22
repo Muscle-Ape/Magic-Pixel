@@ -2,6 +2,7 @@ using HQ.UIManager;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -40,6 +41,12 @@ public partial class MPGameView : AWindow
     private RectTransform m_lineNode;
 
     /// <summary>
+    /// 输入控制节点
+    /// </summary>
+    [TransformPath("View/Content/Input")]
+    private RectTransform m_input;
+
+    /// <summary>
     /// 方块信息
     /// </summary>
     private MPMainBlockInfo m_blockInfo;
@@ -74,6 +81,48 @@ public partial class MPGameView : AWindow
     /// </summary>
     private List<MPGameBlock> m_blocks;
 
+    /// <summary>
+    ///  存放射线检测的结果
+    /// </summary>
+    private List<RaycastResult> m_rayResults = new List<RaycastResult>();
+
+    /// <summary>
+    /// 是否是填充模式
+    /// </summary>
+    private bool m_isFill = true;
+
+    /// <summary>
+    /// 拖拽的最后一个坐标的位置
+    /// </summary>
+    private Vector2 m_pointerLastPosition;
+
+    /// <summary>
+    /// 检查间隔
+    /// </summary>
+    private float m_detectionInterval;
+
+    /// <summary>
+    /// 当前拖拽下第一个拖拽到的方块
+    /// PointerDown
+    /// </summary>
+    private MPGameBlock m_dragFirstBlock;
+
+    /// <summary>
+    /// 当前拖拽下第二个拖拽到的方块
+    /// 用来固定拖拽方向
+    /// </summary>
+    private MPGameBlock m_dragSecondBlock;
+
+    /// <summary>
+    /// 固定拖拽方向
+    /// </summary>
+    private Vector2 m_fixedDragDir = Vector2.zero;
+
+    /// <summary>
+    /// 是否可以继续拖拽
+    /// </summary>
+    private bool m_canDragContinue;
+
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
@@ -90,6 +139,8 @@ public partial class MPGameView : AWindow
 
         m_size = m_pixel.height;
 
+        m_detectionInterval = GRID_SIZE / m_size * (Screen.height / 2338f) * 0.9f;
+
 
         StartInitialization();
     }
@@ -101,5 +152,8 @@ public partial class MPGameView : AWindow
         CreateHorizontalNumber();
 
         CreateVerticalNumver();
+
+
+        RegisterInput();
     }
 }

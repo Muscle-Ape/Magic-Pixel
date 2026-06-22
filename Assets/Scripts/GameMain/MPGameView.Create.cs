@@ -82,7 +82,7 @@ public partial class MPGameView
     /// </summary>
     private void CreateVerticalNumver()
     {
-        // 计算列分布情况
+        // 计算行分布情况
         Dictionary<int, List<int>> numbers = new Dictionary<int, List<int>>();
 
         for (int i = 0; i < m_size; i++)

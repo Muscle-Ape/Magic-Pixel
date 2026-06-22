@@ -54,6 +54,11 @@ public class MPGameBlock : MonoBehaviour
         StartCoroutine(WrongAnimation());
     }
 
+    public void Disable()
+    {
+        GetComponent<Image>().raycastTarget = false;
+    }
+
     /// <summary>
     /// 错误动画
     /// </summary>
@@ -67,6 +72,6 @@ public class MPGameBlock : MonoBehaviour
         img.color = color;
         m_wrong.SetActive(true);
 
-        yield return img.DOFade(1, 0.1f).SetEase(Ease.Linear).SetLoops(2, LoopType.Yoyo);
+        yield return img.DOFade(1, 0.2f).SetEase(Ease.Linear).SetLoops(2, LoopType.Yoyo);
     }
 }
