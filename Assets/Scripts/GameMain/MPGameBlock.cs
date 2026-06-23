@@ -12,6 +12,11 @@ public class MPGameBlock : MonoBehaviour
     private GameObject m_fill;
 
     /// <summary>
+    /// 空白标记模式提示
+    /// </summary>
+    private GameObject m_blankHit;
+
+    /// <summary>
     /// 空白标记
     /// </summary>
     private GameObject m_blank;
@@ -64,6 +69,8 @@ public class MPGameBlock : MonoBehaviour
 
         m_wrong = transform.Find("Wrong").gameObject;
 
+        m_blankHit = transform.Find("BlankHit").gameObject;
+
         m_isFill = isFill;
         m_index = index;
     }
@@ -90,6 +97,14 @@ public class MPGameBlock : MonoBehaviour
             return;
 
         StartCoroutine(WrongAnimation());
+    }
+
+    public void SetBlankHit(bool active)
+    {
+        if (m_completed)
+            return;
+
+        m_blankHit.SetActive(active);
     }
 
     public void Disable()
