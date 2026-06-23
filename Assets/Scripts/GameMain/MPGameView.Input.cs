@@ -105,8 +105,8 @@ public partial class MPGameView
         else if (m_dragSecondBlock == null)
         {
             m_dragSecondBlock = block;
-
-            if (Math.Abs(m_dragFirstBlock.transform.position.x - m_dragSecondBlock.transform.position.x) > Math.Abs(m_dragFirstBlock.transform.position.y - m_dragSecondBlock.transform.position.y))
+            
+            if (Mathf.Abs(m_dragFirstBlock.transform.position.x - m_dragSecondBlock.transform.position.x) > Mathf.Abs(m_dragFirstBlock.transform.position.y - m_dragSecondBlock.transform.position.y))
             {
                 m_fixedDragDir = Vector2.right;
             }

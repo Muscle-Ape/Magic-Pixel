@@ -6,9 +6,11 @@ using UnityEngine;
 
 public class MPGameNumberFrameHorizontal : MonoBehaviour
 {
-    public void Init(List<int> number)
+    public void Init(List<int> number, float fontSize)
     {
         TMP_Text m_text = transform.Find("Number").GetComponent<TMP_Text>();
+
+        m_text.fontSize = fontSize;
 
         // 数字内容
         StringBuilder sb = new StringBuilder();
