@@ -1,14 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using TMPro;
-using UnityEngine;
 
-public class MPGameNumberFrameHorizontal : MonoBehaviour
+public class MPGameNumberFrameHorizontal : MPGameNumberFrameBase
 {
-    public void Init(List<int> number, float fontSize)
+    public override void Init(List<int> number, float fontSize)
     {
-        TMP_Text m_text = transform.Find("Number").GetComponent<TMP_Text>();
+        base.Init(number, fontSize);
 
         m_text.fontSize = fontSize;
 
@@ -20,5 +18,25 @@ public class MPGameNumberFrameHorizontal : MonoBehaviour
         }
 
         m_text.text = sb.ToString();
+    }
+
+
+    public override void CheckNumber(List<int> number)
+    {
+        //StringBuilder sb = new StringBuilder();
+
+        //for (int i = 0; i < m_number.Count; i++)
+        //{
+        //    if (number.Contains(m_number[i]))
+        //    {
+        //        sb.AppendLine($"</color={m_fillColor}>{m_number[i].ToString()}</color>");
+        //    }
+        //    else
+        //    {
+        //        sb.AppendLine($"</color={m_defaultColor}>{m_number[i].ToString()}</color>");
+        //    }
+        //}
+
+        //m_text.text = sb.ToString();
     }
 }

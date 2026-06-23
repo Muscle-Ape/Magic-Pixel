@@ -154,6 +154,26 @@ public partial class MPGameView : AWindow
     /// </summary>
     private Tween m_modeSwitchTween;
 
+    /// <summary>
+    /// 横着的数字框容器
+    /// </summary>
+    private List<MPGameNumberFrameHorizontal> m_numberHorizontalList;
+
+    /// <summary>
+    /// 竖着的数字框容器
+    /// </summary>
+    private List<MPGameNumberFrameVertical> m_numberVerticalList;
+
+    /// <summary>
+    /// 网格方块数据
+    /// </summary>
+    private MPGameBlock[][] m_blockGrid2Array;
+
+    /// <summary>
+    /// 操作的最后一个方块
+    /// </summary>
+    private MPGameBlock m_lastBlock;
+
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)

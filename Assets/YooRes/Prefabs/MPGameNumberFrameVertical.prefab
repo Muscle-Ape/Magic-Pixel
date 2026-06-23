@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 8010073917815043385}
   - component: {fileID: 852178356803857286}
   - component: {fileID: 2327141819204321103}
+  - component: {fileID: 7044447476708579283}
   m_Layer: 5
   m_Name: MPGameNumberFrameVertical
   m_TagString: Untagged
@@ -89,6 +90,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7ff4d770a844b847bfc325d9c59e27f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!225 &7044447476708579283
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3070715327157451415}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 0
+  m_BlocksRaycasts: 0
+  m_IgnoreParentGroups: 0
 --- !u!1 &8530381925908293538
 GameObject:
   m_ObjectHideFlags: 0

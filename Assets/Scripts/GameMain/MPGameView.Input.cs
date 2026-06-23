@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// 用户控制输入
@@ -62,7 +63,7 @@ public partial class MPGameView
 
     private bool BlockControl(MPGameBlock block)
     {
-        if (block.isDisable)
+        if (block.completed)
             return true;
 
         // 判断是否正确
@@ -105,7 +106,7 @@ public partial class MPGameView
         else if (m_dragSecondBlock == null)
         {
             m_dragSecondBlock = block;
-            
+
             if (Mathf.Abs(m_dragFirstBlock.transform.position.x - m_dragSecondBlock.transform.position.x) > Mathf.Abs(m_dragFirstBlock.transform.position.y - m_dragSecondBlock.transform.position.y))
             {
                 m_fixedDragDir = Vector2.right;
@@ -127,6 +128,41 @@ public partial class MPGameView
         m_canDragContinue = false;
     }
 
+
+    private void Check(MPGameBlock block)
+    {
+        // 1、转成V2
+        Vector2Int pos = new Vector2Int(block.index / m_size, block.index % m_size);
+
+        // 2、得到对应的行列Number
+        MPGameNumberFrameBase nv = m_numberVerticalList[pos.x];
+        MPGameNumberFrameBase nh = m_numberHorizontalList[pos.y];
+
+        // 3、计算对应行列的填充情况
+        bool horFinish = true;
+        bool verFinish = true;
+
+        for (int i = 0; i < m_size; i++)
+        {
+            if (horFinish && !m_blockGrid2Array[i][pos.y].completed)
+            {
+                horFinish = false;
+            }
+
+            if (verFinish && !m_blockGrid2Array[pos.x][i].completed)
+            {
+                verFinish = false;
+            }
+        }
+
+        // 5、判断行列是否完成，进行标记
+        if (horFinish && !nh.completed)
+            nh.Completed();
+        if (verFinish && !nv.completed)
+            nv.Completed();
+    }
+
+    #region EventSystem
     /// <summary>
     /// 按下
     /// </summary>
@@ -136,7 +172,11 @@ public partial class MPGameView
         MPGameBlock block = RayInspection(pointer);
         if (block != null)
         {
-            if (BlockControl(block))
+            bool correct = BlockControl(block);
+
+            Check(block);
+
+            if (correct)
             {
                 DragDirControl(block);
                 m_canDragContinue = true;
@@ -180,9 +220,23 @@ public partial class MPGameView
             pointer.position = pos;
 
             block = RayInspection(pointer);
+            if (block == m_lastBlock)
+            {
+                continue;
+            }
+
             if (block != null)
             {
-                if (!BlockControl(block))
+                m_lastBlock = block;
+                bool beforeCompleted = block.completed;
+                bool correct = BlockControl(block);
+
+                if (!beforeCompleted)
+                {
+                    Check(block);
+                }
+
+                if (!correct)
                 {
                     CannotContinueDragging();
                     return;
@@ -207,9 +261,23 @@ public partial class MPGameView
         pointer.position = currentPosinterPosition;
         m_pointerLastPosition = currentPosinterPosition;
         block = RayInspection(pointer);
+        if (block == m_lastBlock)
+        {
+            return;
+        }
+
         if (block != null)
         {
-            if (!BlockControl(block))
+            m_lastBlock = block;
+            bool beforeCompleted = block.completed;
+            bool correct = BlockControl(block);
+
+            if (!beforeCompleted)
+            {
+                Check(block);
+            }
+
+            if (!correct)
             {
                 CannotContinueDragging();
                 return;
@@ -230,4 +298,5 @@ public partial class MPGameView
     {
         CannotContinueDragging();
     }
+    #endregion
 }

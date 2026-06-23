@@ -1,6 +1,7 @@
 using HQ.UIManager;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -23,6 +24,7 @@ public partial class MPGameView
 
         // 创建网格格子
         m_blocks = new List<MPGameBlock>();
+        m_blockGrid2Array = Enumerable.Range(0, m_size).Select(i => new MPGameBlock[m_size]).ToArray();
         int index = 0;
         for (int i = 0; i < m_size; i++)
         {
@@ -32,9 +34,10 @@ public partial class MPGameView
 
                 // 是否需要填充
                 bool isFill = m_blockInfo.Block.Contains(index);
-                block.Init(isFill);
+                block.Init(isFill, index);
 
                 m_blocks.Add(block);
+                m_blockGrid2Array[i][j] = block;
                 index++;
             }
         }
@@ -79,10 +82,14 @@ public partial class MPGameView
         // 设置字体大小
         float fontSize = GetFontSize();
 
+        m_numberHorizontalList = new List<MPGameNumberFrameHorizontal>();
+
         for (int i = 0; i < m_size; i++)
         {
             MPGameNumberFrameHorizontal frame = Instantiate(m_numberHorizontalPrefab, m_numberHorizontal);
             frame.Init(numbers[i], fontSize);
+
+            m_numberHorizontalList.Add(frame);
         }
     }
 
@@ -125,10 +132,14 @@ public partial class MPGameView
         // 设置字体大小
         float fontSize = GetFontSize();
 
+        m_numberVerticalList = new List<MPGameNumberFrameVertical>();
+
         for (int i = 0; i < m_size; i++)
         {
             MPGameNumberFrameVertical frame = Instantiate(m_numberVerticalPrefab, m_numberVertical);
             frame.Init(numbers[i], fontSize);
+
+            m_numberVerticalList.Add(frame);
         }
     }
 

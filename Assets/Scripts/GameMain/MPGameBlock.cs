@@ -28,13 +28,35 @@ public class MPGameBlock : MonoBehaviour
     public bool isFill => m_isFill;
 
     /// <summary>
-    /// 是否已经禁用
+    /// 是否已经完成
     /// </summary>
-    private bool m_isDisable;
-    public bool isDisable => m_isDisable;
+    private bool m_completed;
+    public bool completed => m_completed;
 
+    /// <summary>
+    /// 下标位置
+    /// </summary>
+    private int m_index;
+    public int index => m_index;
 
-    public void Init(bool isFill)
+    /// <summary>
+    /// 二位下标位置
+    /// </summary>
+    private Vector2 m_index2;
+    public Vector2 index2 => m_index2;
+
+    /// <summary>
+    /// 完成并且是填充
+    /// </summary>
+    public bool fillCompleted
+    {
+        get
+        {
+            return m_isFill && m_completed;
+        }
+    }
+
+    public void Init(bool isFill, int index)
     {
         m_fill = transform.Find("Fill").gameObject;
 
@@ -43,11 +65,12 @@ public class MPGameBlock : MonoBehaviour
         m_wrong = transform.Find("Wrong").gameObject;
 
         m_isFill = isFill;
+        m_index = index;
     }
 
     public void Fill()
     {
-        if (m_isDisable)
+        if (m_completed)
             return;
 
         m_fill.SetActive(true);
@@ -55,7 +78,7 @@ public class MPGameBlock : MonoBehaviour
 
     public void Blank()
     {
-        if (m_isDisable)
+        if (m_completed)
             return;
 
         m_blank.SetActive(true);
@@ -63,7 +86,7 @@ public class MPGameBlock : MonoBehaviour
 
     public void Wrong()
     {
-        if (m_isDisable)
+        if (m_completed)
             return;
 
         StartCoroutine(WrongAnimation());
@@ -72,7 +95,7 @@ public class MPGameBlock : MonoBehaviour
     public void Disable()
     {
         //GetComponent<Image>().raycastTarget = false;
-        m_isDisable = true;
+        m_completed = true;
     }
 
     /// <summary>

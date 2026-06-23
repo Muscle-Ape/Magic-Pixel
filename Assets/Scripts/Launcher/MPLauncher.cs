@@ -23,7 +23,7 @@ public class MPLauncher : MonoBehaviour
         MPDataManager.Instance.Initialize();
 
 
-        MPMainBlockInfo blockInfo = MPDataManager.Instance.m_mainLevelModel.blockInfos[2];
+        MPMainBlockInfo blockInfo = MPDataManager.Instance.m_mainLevelModel.blockInfos[0];
         UIManager.Inst.ShowWindow<MPGameView>(new UIMsgDataGeneric(blockInfo));
     }
 }

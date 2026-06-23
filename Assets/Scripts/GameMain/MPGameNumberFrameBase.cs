@@ -1,0 +1,62 @@
+using DG.Tweening;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class MPGameNumberFrameBase : MonoBehaviour
+{
+    /// <summary>
+    /// 数字数据
+    /// </summary>
+    protected List<int> m_number;
+
+    /// <summary>
+    /// 文本组件
+    /// </summary>
+    protected TMP_Text m_text;
+
+    /// <summary>
+    /// 是否完成
+    /// </summary>
+    protected bool m_completed;
+    public bool completed => m_completed;
+
+    /// <summary>
+    /// 模式字体颜色
+    /// </summary>
+    protected string m_defaultColor = "#E0E0E0";
+
+    /// <summary>
+    /// 填充后的字体颜色
+    /// </summary>
+    protected string m_fillColor = "#334961";
+
+    /// <summary>
+    /// 初始化
+    /// </summary>
+    /// <param name="number"></param>
+    /// <param name="fontSize"></param>
+    public virtual void Init(List<int> number, float fontSize)
+    {
+        m_number = number;
+        m_text = transform.Find("Number").GetComponent<TMP_Text>();
+    }
+
+    /// <summary>
+    /// 检查Number显示
+    /// </summary>
+    /// <param name="number"></param>
+    /// <returns>是否全部完成</returns>
+    public virtual void CheckNumber(List<int> number) { }
+
+    /// <summary>
+    /// 标记已完成
+    /// </summary>
+    public void Completed()
+    {
+        m_completed = true;
+
+        GetComponent<CanvasGroup>().DOFade(0.5f, 0.3f);
+    }
+}
