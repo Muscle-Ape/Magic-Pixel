@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 public class MPGameNumberFrameVertical : MPGameNumberFrameBase
@@ -25,25 +26,28 @@ public class MPGameNumberFrameVertical : MPGameNumberFrameBase
 
     public override void CheckNumber(List<int> number)
     {
-        //StringBuilder sb = new StringBuilder();
-        //int fillCount = 0;
+        if (number.Count == 0)
+            return;
 
-        //for (int i = 0; i < m_number.Count; i++)
-        //{
-        //    if (number.Contains(m_number[i]))
-        //    {
-        //        sb.Append($"</color={m_fillColor}>{m_number[i].ToString()}</color>");
-        //        fillCount++;
-        //    }
-        //    else
-        //    {
-        //        sb.Append($"</color={m_defaultColor}>{m_number[i].ToString()}</color>");
-        //    }
+        StringBuilder sb = new StringBuilder();
+        int numIndex = 0;
+        
+        for (int i = 0; i < m_number.Count; i++)
+        {
+            if (numIndex < number.Count && m_number[i] == number[numIndex])
+            {
+                sb.Append($"<color={m_fillColor}>{m_number[i].ToString()}</color>");
+                numIndex++;
+            }
+            else
+            {
+                sb.Append($"<color={m_defaultColor}>{m_number[i].ToString()}</color>");
+            }
 
-        //    if (i < m_number.Count - 1)
-        //        sb.Append(" ");
-        //}
+            if (i < m_number.Count - 1)
+                sb.Append(" ");
+        }
 
-        //m_text.text = sb.ToString();
+        m_text.text = sb.ToString();
     }
 }

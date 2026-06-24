@@ -135,15 +135,45 @@ public partial class MPGameView
         Vector2Int pos = new Vector2Int(block.index / m_size, block.index % m_size);
 
         // 2、得到对应的行列Number
-        MPGameNumberFrameBase nv = m_numberVerticalList[pos.x];
         MPGameNumberFrameBase nh = m_numberHorizontalList[pos.y];
+        MPGameNumberFrameBase nv = m_numberVerticalList[pos.x];
 
         // 3、计算对应行列的填充情况
+        List<int> horNum = new List<int>();
+        List<int> verNum = new List<int>();
+        int horCount = 0;
+        int verCount = 0;
         bool horFinish = true;
         bool verFinish = true;
 
         for (int i = 0; i < m_size; i++)
         {
+            if (!nh.completed)
+            {
+                if (m_blockGrid2Array[i][pos.y].fillCompleted)
+                {
+                    horCount++;
+                }
+                else if (horCount != 0)
+                {
+                    horNum.Add(horCount);
+                    horCount = 0;
+                }
+            }
+
+            if (!nv.completed)
+            {
+                if (m_blockGrid2Array[pos.x][i].fillCompleted)
+                {
+                    verCount++;
+                }
+                else if (verCount != 0)
+                {
+                    verNum.Add(verCount);
+                    verCount = 0;
+                }
+            }
+
             if (horFinish && !m_blockGrid2Array[i][pos.y].completed)
             {
                 horFinish = false;
@@ -153,6 +183,24 @@ public partial class MPGameView
             {
                 verFinish = false;
             }
+        }
+
+        if (horCount != 0)
+        {
+            horNum.Add(horCount);
+        }
+        if (verCount != 0)
+        {
+            verNum.Add(verCount);
+        }
+
+        if (!nh.completed)
+        {
+            nh.CheckNumber(horNum);
+        }
+        if (!nv.completed)
+        {
+            nv.CheckNumber(verNum);
         }
 
         // 5、判断行列是否完成，进行标记
@@ -172,9 +220,13 @@ public partial class MPGameView
         MPGameBlock block = RayInspection(pointer);
         if (block != null)
         {
+            bool beforeCompleted = block.completed;
             bool correct = BlockControl(block);
 
-            Check(block);
+            if (!beforeCompleted)
+            {
+                Check(block);
+            }
 
             if (correct)
             {

@@ -23,20 +23,25 @@ public class MPGameNumberFrameHorizontal : MPGameNumberFrameBase
 
     public override void CheckNumber(List<int> number)
     {
-        //StringBuilder sb = new StringBuilder();
+        if (number.Count == 0)
+            return;
 
-        //for (int i = 0; i < m_number.Count; i++)
-        //{
-        //    if (number.Contains(m_number[i]))
-        //    {
-        //        sb.AppendLine($"</color={m_fillColor}>{m_number[i].ToString()}</color>");
-        //    }
-        //    else
-        //    {
-        //        sb.AppendLine($"</color={m_defaultColor}>{m_number[i].ToString()}</color>");
-        //    }
-        //}
+        StringBuilder sb = new StringBuilder();
+        int numIndex = 0;
 
-        //m_text.text = sb.ToString();
+        for (int i = 0; i < m_number.Count; i++)
+        {
+            if (numIndex < number.Count && m_number[i] == number[numIndex])
+            {
+                sb.AppendLine($"<color={m_fillColor}>{m_number[i].ToString()}</color>");
+                numIndex++;
+            }
+            else
+            {
+                sb.AppendLine($"<color={m_defaultColor}>{m_number[i].ToString()}</color>");
+            }
+        }
+
+        m_text.text = sb.ToString();
     }
 }

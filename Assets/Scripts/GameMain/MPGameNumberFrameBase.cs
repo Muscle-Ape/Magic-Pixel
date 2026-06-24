@@ -23,14 +23,14 @@ public class MPGameNumberFrameBase : MonoBehaviour
     public bool completed => m_completed;
 
     /// <summary>
-    /// 模式字体颜色
+    /// 默认字体颜色
     /// </summary>
-    protected string m_defaultColor = "#E0E0E0";
+    protected string m_defaultColor = "#334961";
 
     /// <summary>
     /// 填充后的字体颜色
     /// </summary>
-    protected string m_fillColor = "#334961";
+    protected string m_fillColor = "#A2A2A2";
 
     /// <summary>
     /// 初始化
