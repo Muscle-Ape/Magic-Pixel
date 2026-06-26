@@ -1,5 +1,6 @@
 using DG.Tweening;
 using HQ.UIManager;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
@@ -73,9 +74,31 @@ public partial class MPGameView : AWindow
     private Image m_modeSwitchBlank;
 
     /// <summary>
+    /// 返回按钮
+    /// </summary>
+    [TransformPath("View/Up/BackBtn")]
+    private Button m_backBtn;
+
+    /// <summary>
+    /// 设置按钮
+    /// </summary>
+    [TransformPath("View/Up/SettingBtn")]
+    private Button m_settingBtn;
+
+    /// <summary>
     /// 方块信息
     /// </summary>
     private MPMainBlockInfo m_blockInfo;
+
+    /// <summary>
+    /// 当前关卡所属的下标
+    /// </summary>
+    private int m_index;
+
+    /// <summary>
+    /// 刷新回调
+    /// </summary>
+    private Action m_refreshAction;
 
     /// <summary>
     /// 方块预制体
@@ -174,11 +197,19 @@ public partial class MPGameView : AWindow
     /// </summary>
     private MPGameBlock m_lastBlock;
 
+    /// <summary>
+    /// 行列完成数量
+    /// </summary>
+    private int m_hvCompleted;
+
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
-        m_blockInfo = (uiMsg as UIMsgDataGeneric).Arg1 as MPMainBlockInfo;
+        MPGameViewUIMsgData data = uiMsg as MPGameViewUIMsgData;
+        m_blockInfo = data.blockInfo;
+        m_index = data.index;
+        m_refreshAction = data.refresh;
 
         m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock").GetComponent<MPGameBlock>();
 
@@ -212,4 +243,13 @@ public partial class MPGameView : AWindow
         RegisterInput();
 
     }
+}
+
+public class MPGameViewUIMsgData : UIMsgData
+{
+    public MPMainBlockInfo blockInfo;
+
+    public int index;
+
+    public Action refresh;
 }

@@ -22,8 +22,12 @@ public class MPLauncher : MonoBehaviour
         // 数据管理器初始化
         MPDataManager.Instance.Initialize();
 
+        // 用户缓存数据初始化
+        MPUser.instance.Initialization();
+
 
         MPMainBlockInfo blockInfo = MPDataManager.Instance.m_mainLevelModel.blockInfos[0];
-        UIManager.Inst.ShowWindow<MPGameView>(new UIMsgDataGeneric(blockInfo));
+        //UIManager.Inst.ShowWindow<MPGameView>(new UIMsgDataGeneric(blockInfo));
+        UIManager.Inst.ShowWindow<MPHomeView>();
     }
 }

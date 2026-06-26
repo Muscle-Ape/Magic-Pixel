@@ -8,6 +8,8 @@ public partial class MPGameView
     private void RegisterUI()
     {
         m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
+
+        m_backBtn.onClick.AddListener(OnBackClick);
     }
 
 
@@ -17,7 +19,7 @@ public partial class MPGameView
     /// </summary>
     private void OnModeSwitchClick()
     {
-        m_isFill = !m_isFill;   
+        m_isFill = !m_isFill;
 
         m_modeSwitchTween?.Kill();
         m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFill ? 65 : -65, 0.1f).SetEase(Ease.Linear);
@@ -29,5 +31,11 @@ public partial class MPGameView
         {
             m_blocks[i].SetBlankHit(!m_isFill);
         }
+    }
+
+
+    private void OnBackClick()
+    {
+        DestroyWindow();
     }
 }

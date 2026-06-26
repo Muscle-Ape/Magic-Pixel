@@ -205,9 +205,21 @@ public partial class MPGameView
 
         // 5、判断行列是否完成，进行标记
         if (horFinish && !nh.completed)
+        {
             nh.Completed();
+            m_hvCompleted++;
+        }
         if (verFinish && !nv.completed)
+        {
             nv.Completed();
+            m_hvCompleted++;
+        }
+
+        // 6、判断是否全部完成
+        if (m_hvCompleted == m_size * 2)
+        {
+            UpdateData();
+        }
     }
 
     #region EventSystem
