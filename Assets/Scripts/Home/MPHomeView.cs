@@ -21,6 +21,24 @@ public class MPHomeView : AWindow
     private Button m_settingBtn;
 
     /// <summary>
+    /// 大图模式按钮
+    /// </summary>
+    [TransformPath("View/Down/Tab/Btns/LargeImage")]
+    private Button m_largeImageBtn;
+
+    /// <summary>
+    /// 自定义模式按钮
+    /// </summary>
+    [TransformPath("View/Down/Tab/Btns/Custom")]
+    private Button m_customBtn;
+
+    /// <summary>
+    /// 宠物功能按钮
+    /// </summary>
+    [TransformPath("View/Down/Tab/Btns/HousePet")]
+    private Button m_housePetBtn;
+
+    /// <summary>
     /// 主关卡数据
     /// </summary>
     private MPMainLevelModel m_levelModel;
@@ -32,6 +50,9 @@ public class MPHomeView : AWindow
         m_loopGrid.InitGridView(m_levelModel.blockInfos.Count, GetMainLevelByRowColumn);
 
         m_settingBtn.onClick.AddListener(OnSettingClick);
+        m_largeImageBtn.onClick.AddListener(OnLargeImageClick);
+        m_customBtn.onClick.AddListener(OnCustomClick);
+        m_housePetBtn.onClick.AddListener(OnHousePetClick);
     }
 
     private LoopGridViewItem GetMainLevelByRowColumn(LoopGridView view, int index, int row, int column)
@@ -70,6 +91,30 @@ public class MPHomeView : AWindow
     /// 设置按钮点击回调
     /// </summary>
     private void OnSettingClick()
+    {
+
+    }
+
+    /// <summary>
+    /// 大图模式点击回调
+    /// </summary>
+    private void OnLargeImageClick()
+    {
+        UIManager.Inst.ShowWindow<MPLargeImageLevelView>();
+    }
+
+    /// <summary>
+    /// 自定义模式点击回调
+    /// </summary>
+    private void OnCustomClick()
+    {
+
+    }
+
+    /// <summary>
+    /// 宠物功能点击回调
+    /// </summary>
+    private void OnHousePetClick()
     {
 
     }

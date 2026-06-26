@@ -1,11 +1,9 @@
-using HQ.UIManager;
 using System;
-using System.Collections;
-using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class MPMainLevelItem : MonoBehaviour
+public class MPLargeImageLevelItem : MonoBehaviour
 {
     /// <summary>
     /// 通关后的图片
@@ -33,9 +31,14 @@ public class MPMainLevelItem : MonoBehaviour
     private Button m_levelBtn;
 
     /// <summary>
+    /// 关卡名称文本
+    /// </summary>
+    private TMP_Text m_nameText;
+
+    /// <summary>
     /// MainLevel Data
     /// </summary>
-    private MPMainBlockInfo m_data;
+    private MPLargeImageBlockInfo m_data;
 
     /// <summary>
     /// 当前关卡下标
@@ -59,11 +62,12 @@ public class MPMainLevelItem : MonoBehaviour
     {
         m_refresh = refresh;
 
-        m_pixel = transform.Find("Completed/Pixel").GetComponent<Image>();
-        m_unlock = transform.Find("Unlock").gameObject;
-        m_lock = transform.Find("Lock").gameObject;
-        m_color = transform.Find("Color").gameObject;
+        m_pixel = transform.Find("Status/Completed/Pixel").GetComponent<Image>();
+        m_unlock = transform.Find("Status/Unlock").gameObject;
+        m_lock = transform.Find("Status/Lock").gameObject;
+        m_color = transform.Find("Status/Color").gameObject;
         m_levelBtn = transform.Find("Btn").GetComponent<Button>();
+        m_nameText = transform.Find("Name").GetComponent<TMP_Text>();
 
         m_levelBtn.onClick.AddListener(OnLevelClick);
     }
@@ -71,10 +75,13 @@ public class MPMainLevelItem : MonoBehaviour
     /// <summary>
     /// 刷新
     /// </summary>
-    public void Refresh(MPMainBlockInfo data, int index)
+    public void Refresh(MPLargeImageBlockInfo data, int index)
     {
         m_data = data;
         m_index = index;
+
+        // 更新关卡名称
+        m_nameText.text = m_data.Name;
 
         // 刷新显示状态
         // 1、是否解锁
@@ -113,13 +120,7 @@ public class MPMainLevelItem : MonoBehaviour
     {
         if (m_isUnlock)
         {
-            MPGameViewUIMsgData data = new MPGameViewUIMsgData()
-            {
-                blockInfo = m_data,
-                index = m_index,
-                refresh = m_refresh,
-            };
-            UIManager.Inst.ShowWindow<MPGameView>(data);
+
         }
     }
 }
