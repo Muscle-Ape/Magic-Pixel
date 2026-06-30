@@ -16,6 +16,8 @@ public class MPGameNumberFrameBase : MonoBehaviour
     /// </summary>
     protected TMP_Text m_text;
 
+    protected CanvasGroup m_cg;
+
     /// <summary>
     /// 是否完成
     /// </summary>
@@ -41,6 +43,7 @@ public class MPGameNumberFrameBase : MonoBehaviour
     {
         m_number = number;
         m_text = transform.Find("Number").GetComponent<TMP_Text>();
+        m_cg = transform.GetComponent<CanvasGroup>();
     }
 
     /// <summary>
@@ -57,6 +60,6 @@ public class MPGameNumberFrameBase : MonoBehaviour
     {
         m_completed = true;
 
-        GetComponent<CanvasGroup>().DOFade(0.5f, 0.3f);
+        m_cg.DOFade(0.5f, 0.3f);
     }
 }

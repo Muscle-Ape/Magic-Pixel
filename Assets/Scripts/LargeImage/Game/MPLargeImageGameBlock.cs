@@ -75,9 +75,11 @@ public class MPLargeImageGameBlock : MonoBehaviour
         m_index = index;
     }
 
-    public void Refresh(bool isFill, bool completed)
+    public void Refresh(bool isFill, bool completed, bool isFillMode = true)
     {
         m_isFill = isFill;
+
+        m_blankHit.SetActive(!isFillMode);
 
         if (completed)
         {

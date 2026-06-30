@@ -21,4 +21,9 @@ public class MPLargeImageGameNumberFrameVertical : MPGameNumberFrameVertical
 
         m_text.text = sb.ToString();
     }
+
+    public void DOCgFade(float value)
+    {
+        m_cg.alpha = value;
+    }
 }

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using static UnityEngine.EventSystems.EventTrigger;
 
 public partial class MPLargeImageGameView
@@ -29,6 +30,8 @@ public partial class MPLargeImageGameView
     /// <param name="pointerUp">抬起</param>
     private void RegisterMove(RectTransform target, Action<PointerEventData> pointerDown, Action<PointerEventData> pointerUp)
     {
+        target.GetComponent<Image>().alphaHitTestMinimumThreshold = 0.1f;
+
         EventTrigger et = target.AddComponent<EventTrigger>();
 
         Entry down = new Entry();
@@ -65,126 +68,7 @@ public partial class MPLargeImageGameView
         {
             m_blockStatueHead += dir;
 
-            // 更新中心区域
-            for (int i = 0; i < FIXED_SIZE; i++)
-            {
-                for (int j = 0; j < FIXED_SIZE; j++)
-                {
-                    Vector2Int pos = m_blockStatueHead + new Vector2Int(i, j);
-                    BlockStatue blockStatue = m_blockStatues[pos.x][pos.y];
-                    MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
-                    int index = pos.x * m_size + pos.y;
-                    bool isFill = m_blockInfo.Block.Contains(index);
-                    if (blockStatue == BlockStatue.Empty)
-                    {
-                        block.Refresh(isFill, false);
-                        block.Empty();
-
-                    }
-                    else if (blockStatue == BlockStatue.Fill)
-                    {
-                        block.Refresh(isFill, true);
-                        block.Fill();
-                    }
-                    else if (blockStatue == BlockStatue.Blank)
-                    {
-                        block.Refresh(isFill, true);
-                        block.Blank();
-                    }
-                }
-            }
-
-
-            List<int> numbers = new List<int>();
-            List<int> checkNumbers = new List<int>();
-            int count = 0;
-            int checkCount = 0;
-            for (int i = 0; i < FIXED_SIZE; i++)
-            {
-                // 更新左侧数字
-                MPLargeImageGameNumberFrameVertical nv = m_numberVerticalList[i];
-                numbers.Clear();
-                checkNumbers.Clear();
-                count = 0;
-                checkCount = 0;
-
-                for (int j = 0; j < FIXED_SIZE; j++)
-                {
-                    if (m_blockGrid2Array[i][j].isFill)
-                    {
-                        count++;
-                    }
-                    else if (count != 0)
-                    {
-                        numbers.Add(count);
-                        count = 0;
-                    }
-
-                    if (m_blockGrid2Array[i][j].fillCompleted)
-                    {
-                        checkCount++;
-                    }
-                    else if (checkCount != 0)
-                    {
-                        checkNumbers.Add(checkCount);
-                        checkCount = 0;
-                    }
-                }
-
-                if (count != 0)
-                {
-                    numbers.Add(count);
-                }
-                if (checkCount != 0)
-                {
-                    checkNumbers.Add(checkCount);
-                }
-
-                nv.Refresh(numbers);
-                nv.CheckNumber(checkNumbers);
-
-                // 更新上侧数字
-                MPLargeImageGameNumberFrameHorizontal nh = m_numberHorizontalList[i];
-                numbers.Clear();
-                checkNumbers.Clear();
-                count = 0;
-                checkCount = 0;
-
-                for (int j = 0; j < FIXED_SIZE; j++)
-                {
-                    if (m_blockGrid2Array[j][i].isFill)
-                    {
-                        count++;
-                    }
-                    else if (count != 0)
-                    {
-                        numbers.Add(count);
-                        count = 0;
-                    }
-
-                    if (m_blockGrid2Array[j][i].fillCompleted)
-                    {
-                        checkCount++;
-                    }
-                    else if (checkCount != 0)
-                    {
-                        checkNumbers.Add(checkCount);
-                        checkCount = 0;
-                    }
-                }
-
-                if (count != 0)
-                {
-                    numbers.Add(count);
-                }
-                if (checkCount != 0)
-                {
-                    checkNumbers.Add(checkCount);
-                }
-
-                nh.Refresh(numbers);
-                nh.CheckNumber(checkNumbers);
-            }
+            RefreshContent();
 
             // 3、判断是否还可以继续移动
             startPos = m_blockStatueHead + dir;
@@ -197,6 +81,166 @@ public partial class MPLargeImageGameView
             // 4、等待继续移动
             yield return new WaitForSeconds(delayTime);
             delayTime = 0.2f;
+        }
+    }
+
+    /// <summary>
+    /// 刷新游戏区域内容
+    /// </summary>
+    private void RefreshContent()
+    {
+        // 更新中心区域
+        for (int i = 0; i < FIXED_SIZE; i++)
+        {
+            for (int j = 0; j < FIXED_SIZE; j++)
+            {
+                Vector2Int pos = m_blockStatueHead + new Vector2Int(i, j);
+                BlockStatue blockStatue = m_blockStatues[pos.x][pos.y];
+                MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
+                int index = pos.x * m_size + pos.y;
+                bool isFill = m_blockInfo.Block.Contains(index);
+                if (blockStatue == BlockStatue.Empty)
+                {
+                    block.Refresh(isFill, false, m_isFill);
+                    block.Empty();
+
+                }
+                else if (blockStatue == BlockStatue.Fill)
+                {
+                    block.Refresh(isFill, true, m_isFill);
+                    block.Fill();
+                }
+                else if (blockStatue == BlockStatue.Blank)
+                {
+                    block.Refresh(isFill, true, m_isFill);
+                    block.Blank();
+                }
+            }
+        }
+
+        for (int i = 0; i < FIXED_SIZE; i++)
+        {
+            // 更新左侧数字
+            MPLargeImageGameNumberFrameVertical nv = m_numberVerticalList[i];
+            List<int> numbers = new List<int>();
+            List<int> checkNumbers = new List<int>();
+            int count = 0;
+            int checkCount = 0;
+            bool finish = true;
+
+            for (int j = 0; j < FIXED_SIZE; j++)
+            {
+                if (m_blockGrid2Array[i][j].isFill)
+                {
+                    count++;
+                }
+                else if (count != 0)
+                {
+                    numbers.Add(count);
+                    count = 0;
+                }
+
+                if (m_blockGrid2Array[i][j].fillCompleted)
+                {
+                    checkCount++;
+                }
+                else if (checkCount != 0)
+                {
+                    checkNumbers.Add(checkCount);
+                    checkCount = 0;
+                }
+
+                if (finish && !m_blockGrid2Array[i][j].completed)
+                {
+                    finish = false;
+                }
+            }
+
+            if (count != 0)
+            {
+                numbers.Add(count);
+            }
+            if (checkCount != 0)
+            {
+                checkNumbers.Add(checkCount);
+            }
+            if (numbers.Count == 0)
+                numbers.Add(0);
+            if (checkNumbers.Count == 0)
+                checkNumbers.Add(0);
+
+            nv.Refresh(numbers);
+            nv.CheckNumber(checkNumbers);
+
+            if (finish)
+            {
+                nv.DOCgFade(0.5f);
+            }
+            else
+            {
+                nv.DOCgFade(1f);
+            }
+
+            // 更新上侧数字
+            MPLargeImageGameNumberFrameHorizontal nh = m_numberHorizontalList[i];
+            List<int> numbers1 = new List<int>();
+            List<int> checkNumbers1 = new List<int>();
+            int count1 = 0;
+            int checkCount1 = 0;
+            bool finish1 = true;
+
+            for (int j = 0; j < FIXED_SIZE; j++)
+            {
+                if (m_blockGrid2Array[j][i].isFill)
+                {
+                    count1++;
+                }
+                else if (count1 != 0)
+                {
+                    numbers1.Add(count1);
+                    count1 = 0;
+                }
+
+                if (m_blockGrid2Array[j][i].fillCompleted)
+                {
+                    checkCount1++;
+                }
+                else if (checkCount1 != 0)
+                {
+                    checkNumbers1.Add(checkCount1);
+                    checkCount1 = 0;
+                }
+
+                if (finish1 && !m_blockGrid2Array[j][i].completed)
+                {
+                    finish1 = false;
+                }
+            }
+
+            if (count1 != 0)
+            {
+                numbers1.Add(count1);
+            }
+            if (checkCount1 != 0)
+            {
+                checkNumbers1.Add(checkCount1);
+            }
+            if (numbers1.Count == 0)
+                numbers1.Add(0);
+            if (checkNumbers1.Count == 0)
+                checkNumbers1.Add(0);
+
+            nh.Refresh(numbers1);
+            nh.CheckNumber(checkNumbers1);
+
+            if (finish1)
+            {
+                nh.DOCgFade(0.5f);
+            }
+            else
+            {
+                nh.DOCgFade(1f);
+            }
         }
     }
 
