@@ -233,7 +233,6 @@ public partial class MPLargeImageGameView
         {
             nv.Completed();
             m_hvCompleted++;
-            Debug.LogError(m_hvCompleted);
         }
 
         // 8、判断是否全部完成

@@ -210,14 +210,9 @@ public partial class MPLargeImageGameView
 
             nh.Refresh(numbers1);
             nh.CheckNumber(checkNumbers1);
-        }
 
-        // 修改数字框的透明度
-        for (int i = 0; i < FIXED_SIZE; i++)
-        {
-            MPLargeImageGameNumberFrameVertical nv = m_numberVerticalList[i];
+            // 修改数字框的透明度
             bool finish = true;
-            MPLargeImageGameNumberFrameHorizontal nh = m_numberHorizontalList[i];
             bool finish1 = true;
             for (int j = 0; j < m_size; j++)
             {
