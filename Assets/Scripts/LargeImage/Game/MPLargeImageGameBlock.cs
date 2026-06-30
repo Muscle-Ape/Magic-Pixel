@@ -81,43 +81,30 @@ public class MPLargeImageGameBlock : MonoBehaviour
 
         m_blankHit.SetActive(!isFillMode);
 
-        if (completed)
-        {
-            m_completed = false;
-            if (isFill)
-            {
-                Fill();
-            }
-            else
-            {
-                Blank();
-            }
-        }
-
         m_completed = completed;
     }
 
-    public void Fill()
+    public void Fill(bool fouce = false)
     {
-        if (m_completed)
+        if (m_completed && !fouce)
             return;
 
         m_blank.SetActive(false);
         m_fill.SetActive(true);
     }
 
-    public void Blank()
+    public void Blank(bool fouce = false)
     {
-        if (m_completed)
+        if (m_completed && !fouce)
             return;
 
         m_blank.SetActive(true);
         m_fill.SetActive(false);
     }
 
-    public void Empty()
+    public void Empty(bool fouce = false)
     {
-        if (m_completed)
+        if (m_completed && !fouce)
             return;
 
         m_blank.SetActive(false);

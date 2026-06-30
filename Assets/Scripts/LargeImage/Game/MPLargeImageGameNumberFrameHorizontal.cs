@@ -23,4 +23,12 @@ public class MPLargeImageGameNumberFrameHorizontal : MPGameNumberFrameHorizontal
     {
         m_cg.alpha = value;
     }
+
+    /// <summary>
+    /// 设置为未完成
+    /// </summary>
+    public void SetCompleted(bool completed)
+    {
+        m_completed = completed;
+    }
 }

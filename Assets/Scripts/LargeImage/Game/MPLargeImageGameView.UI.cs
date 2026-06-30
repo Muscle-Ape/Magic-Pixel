@@ -63,7 +63,7 @@ public partial class MPLargeImageGameView
         }
 
         // 2、进行移动，每一次移动都需要对游戏区域进行更新
-        float delayTime = 0.5f;
+        float delayTime = 0.3f;
         while (true)
         {
             m_blockStatueHead += dir;
@@ -80,7 +80,7 @@ public partial class MPLargeImageGameView
 
             // 4、等待继续移动
             yield return new WaitForSeconds(delayTime);
-            delayTime = 0.2f;
+            delayTime = 0.1f;
         }
     }
 
@@ -102,18 +102,17 @@ public partial class MPLargeImageGameView
                 if (blockStatue == BlockStatue.Empty)
                 {
                     block.Refresh(isFill, false, m_isFill);
-                    block.Empty();
-
+                    block.Empty(true);
                 }
                 else if (blockStatue == BlockStatue.Fill)
                 {
                     block.Refresh(isFill, true, m_isFill);
-                    block.Fill();
+                    block.Fill(true);
                 }
                 else if (blockStatue == BlockStatue.Blank)
                 {
                     block.Refresh(isFill, true, m_isFill);
-                    block.Blank();
+                    block.Blank(true);
                 }
             }
         }
@@ -126,7 +125,6 @@ public partial class MPLargeImageGameView
             List<int> checkNumbers = new List<int>();
             int count = 0;
             int checkCount = 0;
-            bool finish = true;
 
             for (int j = 0; j < FIXED_SIZE; j++)
             {
@@ -149,11 +147,6 @@ public partial class MPLargeImageGameView
                     checkNumbers.Add(checkCount);
                     checkCount = 0;
                 }
-
-                if (finish && !m_blockGrid2Array[i][j].completed)
-                {
-                    finish = false;
-                }
             }
 
             if (count != 0)
@@ -172,22 +165,12 @@ public partial class MPLargeImageGameView
             nv.Refresh(numbers);
             nv.CheckNumber(checkNumbers);
 
-            if (finish)
-            {
-                nv.DOCgFade(0.5f);
-            }
-            else
-            {
-                nv.DOCgFade(1f);
-            }
-
             // 更新上侧数字
             MPLargeImageGameNumberFrameHorizontal nh = m_numberHorizontalList[i];
             List<int> numbers1 = new List<int>();
             List<int> checkNumbers1 = new List<int>();
             int count1 = 0;
             int checkCount1 = 0;
-            bool finish1 = true;
 
             for (int j = 0; j < FIXED_SIZE; j++)
             {
@@ -210,11 +193,6 @@ public partial class MPLargeImageGameView
                     checkNumbers1.Add(checkCount1);
                     checkCount1 = 0;
                 }
-
-                if (finish1 && !m_blockGrid2Array[j][i].completed)
-                {
-                    finish1 = false;
-                }
             }
 
             if (count1 != 0)
@@ -232,14 +210,47 @@ public partial class MPLargeImageGameView
 
             nh.Refresh(numbers1);
             nh.CheckNumber(checkNumbers1);
+        }
+
+        // 修改数字框的透明度
+        for (int i = 0; i < FIXED_SIZE; i++)
+        {
+            MPLargeImageGameNumberFrameVertical nv = m_numberVerticalList[i];
+            bool finish = true;
+            MPLargeImageGameNumberFrameHorizontal nh = m_numberHorizontalList[i];
+            bool finish1 = true;
+            for (int j = 0; j < m_size; j++)
+            {
+                if (finish && m_blockStatues[i + m_blockStatueHead.x][j] == BlockStatue.Empty)
+                {
+                    finish = false;
+                }
+                if (finish1 && m_blockStatues[j][i + m_blockStatueHead.y] == BlockStatue.Empty)
+                {
+                    finish1 = false;
+                }
+            }
+
+            if (finish)
+            {
+                nv.DOCgFade(0.5f);
+                nv.SetCompleted(true);
+            }
+            else
+            {
+                nv.DOCgFade(1f);
+                nv.SetCompleted(false);
+            }
 
             if (finish1)
             {
                 nh.DOCgFade(0.5f);
+                nh.SetCompleted(true);
             }
             else
             {
                 nh.DOCgFade(1f);
+                nh.SetCompleted(false);
             }
         }
     }

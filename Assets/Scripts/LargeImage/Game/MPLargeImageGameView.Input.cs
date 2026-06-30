@@ -212,12 +212,12 @@ public partial class MPLargeImageGameView
         bool verFinish = !nv.completed;
         for (int i = 0; i < m_size; i++)
         {
-            if (horFinish && m_blockStatues[i][pos.y] == BlockStatue.Empty)
+            if (horFinish && m_blockStatues[i][statuePos.y] == BlockStatue.Empty)
             {
                 horFinish = false;
             }
 
-            if (verFinish && m_blockStatues[pos.x][i] == BlockStatue.Empty)
+            if (verFinish && m_blockStatues[statuePos.x][i] == BlockStatue.Empty)
             {
                 verFinish = false;
             }
@@ -233,12 +233,14 @@ public partial class MPLargeImageGameView
         {
             nv.Completed();
             m_hvCompleted++;
+            Debug.LogError(m_hvCompleted);
         }
 
         // 8、判断是否全部完成
         if (m_hvCompleted == m_size * 2)
         {
             UpdateData();
+            Debug.LogError("LargeImageCompleted");
         }
     }
 
