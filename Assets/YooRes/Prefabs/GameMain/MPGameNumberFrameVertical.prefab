@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 3191647027315262117}
   - component: {fileID: 8010073917815043385}
   - component: {fileID: 852178356803857286}
-  - component: {fileID: 2327141819204321103}
   - component: {fileID: 7044447476708579283}
   m_Layer: 5
   m_Name: MPGameNumberFrameVertical
@@ -78,18 +77,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &2327141819204321103
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3070715327157451415}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d7ff4d770a844b847bfc325d9c59e27f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!225 &7044447476708579283
 CanvasGroup:
   m_ObjectHideFlags: 0

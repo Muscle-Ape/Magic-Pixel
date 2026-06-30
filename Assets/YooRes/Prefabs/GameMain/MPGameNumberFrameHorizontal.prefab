@@ -145,7 +145,6 @@ GameObject:
   - component: {fileID: 6613727458023091167}
   - component: {fileID: 2073285564047440031}
   - component: {fileID: 4960870928830770884}
-  - component: {fileID: 6245179410034202102}
   - component: {fileID: 4295387320995847347}
   m_Layer: 5
   m_Name: MPGameNumberFrameHorizontal
@@ -212,18 +211,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &6245179410034202102
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9105247633586005031}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3b1248886029e7448969e1faf4b258f9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!225 &4295387320995847347
 CanvasGroup:
   m_ObjectHideFlags: 0

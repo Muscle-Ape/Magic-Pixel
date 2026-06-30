@@ -2,6 +2,7 @@ using DG.Tweening;
 using HQ.UIManager;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,13 +10,37 @@ using UnityEngine.UI;
 /// <summary>
 /// 字段管理
 /// </summary>
-[Component("MPGameView")]
-public partial class MPGameView : AWindow
+[Component("MPLargeImageGameView")]
+public partial class MPLargeImageGameView : AWindow
 {
+    /// <summary>
+    /// 方块状态
+    /// </summary>
+    private enum BlockStatue
+    {
+        /// <summary>
+        /// 未填充
+        /// </summary>
+        Empty,
+        /// <summary>
+        /// 已填充（颜色）
+        /// </summary>
+        Fill,
+        /// <summary>
+        /// 已填充（X）
+        /// </summary>
+        Blank,
+    }
+
     /// <summary>
     /// 网格区域固定大小
     /// </summary>
     private const int GRID_SIZE = 800;
+
+    /// <summary>
+    /// 固定行列数量
+    /// </summary>
+    private const int FIXED_SIZE = 10;
 
     /// <summary>
     /// 竖着的数字提示父节点
@@ -72,6 +97,30 @@ public partial class MPGameView : AWindow
     private Image m_modeSwitchBlank;
 
     /// <summary>
+    /// 移动方向按钮（上）
+    /// </summary>
+    [TransformPath("View/Move/Up")]
+    private RectTransform m_moveUp;
+
+    /// <summary>
+    /// 移动方向按钮（下）
+    /// </summary>
+    [TransformPath("View/Move/Down")]
+    private RectTransform m_moveDown;
+
+    /// <summary>
+    /// 移动方向按钮（左）
+    /// </summary>
+    [TransformPath("View/Move/Left")]
+    private RectTransform m_moveLeft;
+
+    /// <summary>
+    /// 移动方向按钮（右）
+    /// </summary>
+    [TransformPath("View/Move/Right")]
+    private RectTransform m_moveRight;
+
+    /// <summary>
     /// 返回按钮
     /// </summary>
     [TransformPath("View/Up/BackBtn")]
@@ -86,7 +135,7 @@ public partial class MPGameView : AWindow
     /// <summary>
     /// 方块信息
     /// </summary>
-    private MPMainBlockInfo m_blockInfo;
+    private MPLargeImageBlockInfo m_blockInfo;
 
     /// <summary>
     /// 当前关卡所属的下标
@@ -101,7 +150,7 @@ public partial class MPGameView : AWindow
     /// <summary>
     /// 方块预制体
     /// </summary>
-    private MPGameBlock m_blockPrefab;
+    private MPLargeImageGameBlock m_blockPrefab;
 
     /// <summary>
     /// 顶部的数字提示预制体
@@ -126,7 +175,7 @@ public partial class MPGameView : AWindow
     /// <summary>
     /// 所有的方块
     /// </summary>
-    private List<MPGameBlock> m_blocks;
+    private List<MPLargeImageGameBlock> m_blocks;
 
     /// <summary>
     ///  存放射线检测的结果
@@ -152,13 +201,13 @@ public partial class MPGameView : AWindow
     /// 当前拖拽下第一个拖拽到的方块
     /// PointerDown
     /// </summary>
-    private MPGameBlock m_dragFirstBlock;
+    private MPLargeImageGameBlock m_dragFirstBlock;
 
     /// <summary>
     /// 当前拖拽下第二个拖拽到的方块
     /// 用来固定拖拽方向
     /// </summary>
-    private MPGameBlock m_dragSecondBlock;
+    private MPLargeImageGameBlock m_dragSecondBlock;
 
     /// <summary>
     /// 固定拖拽方向
@@ -178,38 +227,51 @@ public partial class MPGameView : AWindow
     /// <summary>
     /// 横着的数字框容器
     /// </summary>
-    private List<MPGameNumberFrameHorizontal> m_numberHorizontalList;
+    private List<MPLargeImageGameNumberFrameHorizontal> m_numberHorizontalList;
 
     /// <summary>
     /// 竖着的数字框容器
     /// </summary>
-    private List<MPGameNumberFrameVertical> m_numberVerticalList;
+    private List<MPLargeImageGameNumberFrameVertical> m_numberVerticalList;
 
     /// <summary>
     /// 网格方块数据
     /// </summary>
-    private MPGameBlock[][] m_blockGrid2Array;
+    private MPLargeImageGameBlock[][] m_blockGrid2Array;
 
     /// <summary>
     /// 操作的最后一个方块
     /// </summary>
-    private MPGameBlock m_lastBlock;
+    private MPLargeImageGameBlock m_lastBlock;
 
     /// <summary>
     /// 行列完成数量
     /// </summary>
     private int m_hvCompleted;
 
+    /// <summary>
+    /// 所有方块的状态信息
+    /// </summary>
+    private BlockStatue[][] m_blockStatues;
 
+    /// <summary>
+    /// 标记方块信息数组当前的头的下标位置
+    /// </summary>
+    private Vector2Int m_blockStatueHead;
+
+    /// <summary>
+    /// 格子移动携程
+    /// </summary>
+    private Coroutine m_moveCoroutine;
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
-        MPGameViewUIMsgData data = uiMsg as MPGameViewUIMsgData;
+        MPLargeImageGameViewUIMsgData data = uiMsg as MPLargeImageGameViewUIMsgData;
         m_blockInfo = data.blockInfo;
         m_index = data.index;
         m_refreshAction = data.refresh;
 
-        m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock").GetComponent<MPGameBlock>();
+        m_blockPrefab = MPLoad.Load<GameObject>("MPLargeImageGameBlock").GetComponent<MPLargeImageGameBlock>();
 
         m_numberHorizontalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameHorizontal");
 
@@ -218,6 +280,10 @@ public partial class MPGameView : AWindow
         m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID);
 
         m_size = m_pixel.height;
+
+        m_blockStatues = Enumerable.Range(0, m_size).Select(i => new BlockStatue[m_size]).ToArray();
+
+        m_blockStatueHead = Vector2Int.zero;
 
         m_detectionInterval = GRID_SIZE / m_size * (Screen.height / 2338f) * 0.9f;
 
@@ -243,9 +309,9 @@ public partial class MPGameView : AWindow
     }
 }
 
-public class MPGameViewUIMsgData : UIMsgData
+public class MPLargeImageGameViewUIMsgData : UIMsgData
 {
-    public MPMainBlockInfo blockInfo;
+    public MPLargeImageBlockInfo blockInfo;
 
     public int index;
 

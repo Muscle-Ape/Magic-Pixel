@@ -9,7 +9,7 @@ using static UnityEditor.PlayerSettings;
 /// <summary>
 /// 用户控制输入
 /// </summary>
-public partial class MPGameView
+public partial class MPLargeImageGameView
 {
     /// <summary>
     /// 注册控制输入的节点
@@ -46,7 +46,7 @@ public partial class MPGameView
     /// 射线检测
     /// 获取当前pointer下的方块
     /// </summary>
-    private MPGameBlock RayInspection(PointerEventData eventData)
+    private MPLargeImageGameBlock RayInspection(PointerEventData eventData)
     {
         EventSystem.current.RaycastAll(eventData, m_rayResults);
 
@@ -54,14 +54,14 @@ public partial class MPGameView
         {
             if (item.gameObject.tag.Equals("Block"))
             {
-                return item.gameObject.GetComponent<MPGameBlock>();
+                return item.gameObject.GetComponent<MPLargeImageGameBlock>();
             }
         }
 
         return null;
     }
 
-    private bool BlockControl(MPGameBlock block)
+    private bool BlockControl(MPLargeImageGameBlock block)
     {
         if (block.completed)
             return true;
@@ -94,7 +94,7 @@ public partial class MPGameView
     /// 固定拖拽方向
     /// </summary>
     /// <param name="block"></param>
-    private void DragDirControl(MPGameBlock block)
+    private void DragDirControl(MPLargeImageGameBlock block)
     {
         if (m_fixedDragDir != Vector2.zero)
             return;
@@ -129,10 +129,10 @@ public partial class MPGameView
     }
 
 
-    private void Check(MPGameBlock block)
+    private void Check(MPLargeImageGameBlock block)
     {
         // 1、转成V2
-        Vector2Int pos = new Vector2Int(block.index / m_size, block.index % m_size);
+        Vector2Int pos = new Vector2Int(block.index / FIXED_SIZE, block.index % FIXED_SIZE);
 
         // 2、得到对应的行列Number
         MPGameNumberFrameBase nh = m_numberHorizontalList[pos.y];
@@ -143,10 +143,8 @@ public partial class MPGameView
         List<int> verNum = new List<int>();
         int horCount = 0;
         int verCount = 0;
-        bool horFinish = !nh.completed;
-        bool verFinish = !nv.completed;
 
-        for (int i = 0; i < m_size; i++)
+        for (int i = 0; i < FIXED_SIZE; i++)
         {
             if (!nh.completed)
             {
@@ -173,16 +171,6 @@ public partial class MPGameView
                     verCount = 0;
                 }
             }
-
-            if (horFinish && !m_blockGrid2Array[i][pos.y].completed)
-            {
-                horFinish = false;
-            }
-
-            if (verFinish && !m_blockGrid2Array[pos.x][i].completed)
-            {
-                verFinish = false;
-            }
         }
 
         if (horCount != 0)
@@ -194,6 +182,22 @@ public partial class MPGameView
             verNum.Add(verCount);
         }
 
+        // 4、对方块状态进行填充
+        int statueIndex = (pos.x + m_blockStatueHead.x) * m_size + pos.y + m_blockStatueHead.y;
+        Vector2Int statuePos = new Vector2Int(statueIndex / m_size, statueIndex % m_size);
+        if (m_blockStatues[statuePos.x][statuePos.y] == BlockStatue.Empty)
+        {
+            if (block.isFill)
+            {
+                m_blockStatues[statuePos.x][statuePos.y] = BlockStatue.Fill;
+            }
+            else
+            {
+                m_blockStatues[statuePos.x][statuePos.y] = BlockStatue.Blank;
+            }
+        }
+
+        // 5、检查当前面板中数字完成情况
         if (!nh.completed)
         {
             nh.CheckNumber(horNum);
@@ -203,7 +207,23 @@ public partial class MPGameView
             nv.CheckNumber(verNum);
         }
 
-        // 5、判断行列是否完成，进行标记
+        // 6、检查所有填充情况
+        bool horFinish = !nh.completed;
+        bool verFinish = !nv.completed;
+        for (int i = 0; i < m_size; i++)
+        {
+            if (horFinish && m_blockStatues[i][pos.y] == BlockStatue.Empty)
+            {
+                horFinish = false;
+            }
+
+            if (verFinish && m_blockStatues[pos.x][i] == BlockStatue.Empty)
+            {
+                verFinish = false;
+            }
+        }
+
+        // 7、判断行列是否完成，进行标记
         if (horFinish && !nh.completed)
         {
             nh.Completed();
@@ -215,7 +235,7 @@ public partial class MPGameView
             m_hvCompleted++;
         }
 
-        // 6、判断是否全部完成
+        // 8、判断是否全部完成
         if (m_hvCompleted == m_size * 2)
         {
             UpdateData();
@@ -229,7 +249,7 @@ public partial class MPGameView
     /// <param name="pointer"></param>
     private void PointerDown(PointerEventData pointer)
     {
-        MPGameBlock block = RayInspection(pointer);
+        MPLargeImageGameBlock block = RayInspection(pointer);
         if (block != null)
         {
             bool beforeCompleted = block.completed;
@@ -276,7 +296,7 @@ public partial class MPGameView
         int count = Mathf.FloorToInt(distance.magnitude / m_detectionInterval);
         Vector2 dir = distance.normalized * m_detectionInterval;
 
-        MPGameBlock block = null;
+        MPLargeImageGameBlock block = null;
         // 2、遍历检查
         for (int i = 1; i <= count; i++)
         {

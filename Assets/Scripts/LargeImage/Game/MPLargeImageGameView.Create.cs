@@ -6,11 +6,12 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// 创建游戏中的对象
 /// </summary>
-public partial class MPGameView
+public partial class MPLargeImageGameView
 {
 
     /// <summary>
@@ -19,22 +20,24 @@ public partial class MPGameView
     private void CreateGrid()
     {
         // 计算Grid单个格子大小
-        float singleSize = GRID_SIZE / (float)m_size;
+        float singleSize = GRID_SIZE / (float)FIXED_SIZE;
         m_blockGrid.cellSize = Vector2.one * singleSize;
 
         // 创建网格格子
-        m_blocks = new List<MPGameBlock>();
-        m_blockGrid2Array = Enumerable.Range(0, m_size).Select(i => new MPGameBlock[m_size]).ToArray();
+        m_blocks = new List<MPLargeImageGameBlock>();
+        m_blockGrid2Array = Enumerable.Range(0, FIXED_SIZE).Select(i => new MPLargeImageGameBlock[FIXED_SIZE]).ToArray();
         int index = 0;
-        for (int i = 0; i < m_size; i++)
+        for (int i = 0; i < FIXED_SIZE; i++)
         {
-            for (int j = 0; j < m_size; j++)
+            for (int j = 0; j < FIXED_SIZE; j++)
             {
-                MPGameBlock block = Instantiate(m_blockPrefab, m_blockGrid.transform);
+                MPLargeImageGameBlock block = Instantiate(m_blockPrefab, m_blockGrid.transform);
 
                 // 是否需要填充
-                bool isFill = m_blockInfo.Block.Contains(index);
-                block.Init(isFill, index);
+                int convertIndex = i * m_size + j;
+                bool isFill = m_blockInfo.Block.Contains(convertIndex);
+                block.Init(index);
+                block.Refresh(isFill, false);
 
                 m_blocks.Add(block);
                 m_blockGrid2Array[i][j] = block;
@@ -51,14 +54,14 @@ public partial class MPGameView
         // 计算列分布情况
         Dictionary<int, List<int>> numbers = new Dictionary<int, List<int>>();
 
-        for (int i = 0; i < m_size; i++)
+        for (int i = 0; i < FIXED_SIZE; i++)
         {
             List<int> number = new List<int>();
             int count = 0;
 
-            for (int j = 0; j < m_size; j++)
+            for (int j = 0; j < FIXED_SIZE; j++)
             {
-                int index = i + j * m_size;
+                int index = i + j * FIXED_SIZE;
                 if (m_blocks[index].isFill)
                 {
                     count++;
@@ -82,12 +85,12 @@ public partial class MPGameView
         // 设置字体大小
         float fontSize = GetFontSize();
 
-        m_numberHorizontalList = new List<MPGameNumberFrameHorizontal>();
+        m_numberHorizontalList = new List<MPLargeImageGameNumberFrameHorizontal>();
 
-        for (int i = 0; i < m_size; i++)
+        for (int i = 0; i < FIXED_SIZE; i++)
         {
             GameObject frame = Instantiate(m_numberHorizontalPrefab, m_numberHorizontal);
-            MPGameNumberFrameHorizontal sprite = frame.AddComponent<MPGameNumberFrameHorizontal>();
+            MPLargeImageGameNumberFrameHorizontal sprite = frame.AddComponent<MPLargeImageGameNumberFrameHorizontal>();
             sprite.Init(numbers[i], fontSize);
 
             m_numberHorizontalList.Add(sprite);
@@ -102,14 +105,14 @@ public partial class MPGameView
         // 计算行分布情况
         Dictionary<int, List<int>> numbers = new Dictionary<int, List<int>>();
 
-        for (int i = 0; i < m_size; i++)
+        for (int i = 0; i < FIXED_SIZE; i++)
         {
             List<int> number = new List<int>();
             int count = 0;
 
-            for (int j = 0; j < m_size; j++)
+            for (int j = 0; j < FIXED_SIZE; j++)
             {
-                int index = i * m_size + j;
+                int index = i * FIXED_SIZE + j;
                 if (m_blocks[index].isFill)
                 {
                     count++;
@@ -133,12 +136,12 @@ public partial class MPGameView
         // 设置字体大小
         float fontSize = GetFontSize();
 
-        m_numberVerticalList = new List<MPGameNumberFrameVertical>();
+        m_numberVerticalList = new List<MPLargeImageGameNumberFrameVertical>();
 
-        for (int i = 0; i < m_size; i++)
+        for (int i = 0; i < FIXED_SIZE; i++)
         {
             GameObject frame = Instantiate(m_numberVerticalPrefab, m_numberVertical);
-            MPGameNumberFrameVertical sprite = frame.AddComponent<MPGameNumberFrameVertical>();
+            MPLargeImageGameNumberFrameVertical sprite = frame.AddComponent<MPLargeImageGameNumberFrameVertical>();
             sprite.Init(numbers[i], fontSize);
 
             m_numberVerticalList.Add(sprite);
@@ -150,10 +153,10 @@ public partial class MPGameView
     /// </summary>
     private void CreateLine()
     {
-        if (m_size == 5)
+        if (FIXED_SIZE == 5)
             return;
 
-        if (m_size == 10)
+        if (FIXED_SIZE == 10)
         {
             RectTransform h = NewLineImage(true);
             RectTransform v = NewLineImage(false);
@@ -161,24 +164,11 @@ public partial class MPGameView
             h.anchoredPosition = Vector2.zero;
             v.anchoredPosition = Vector2.zero;
         }
-        else if (m_size == 15)
+        else if (FIXED_SIZE == 15)
         {
             float unit = GRID_SIZE / 6f;
 
             for (int i = -1; i < 2; i += 2)
-            {
-                RectTransform h = NewLineImage(true);
-                RectTransform v = NewLineImage(false);
-
-                h.anchoredPosition = new Vector2(unit * i, 0);
-                v.anchoredPosition = new Vector2(0, unit * i);
-            }
-        }
-        else if (m_size == 20)
-        {
-            float unit = GRID_SIZE / 4f;
-
-            for (int i = -1; i < 2; i++)
             {
                 RectTransform h = NewLineImage(true);
                 RectTransform v = NewLineImage(false);
@@ -196,7 +186,7 @@ public partial class MPGameView
     {
         float fontSize = 0;
 
-        switch (m_size)
+        switch (FIXED_SIZE)
         {
             case 5:
                 fontSize = 80;
@@ -206,9 +196,6 @@ public partial class MPGameView
                 break;
             case 15:
                 fontSize = 32;
-                break;
-            case 20:
-                fontSize = 25;
                 break;
         }
 

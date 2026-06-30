@@ -1,3 +1,4 @@
+using HQ.UIManager;
 using System;
 using TMPro;
 using UnityEngine;
@@ -85,7 +86,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
 
         // 刷新显示状态
         // 1、是否解锁
-        m_isUnlock = MPUser.instance.MainLevelIsUnlock(m_data.ID);
+        m_isUnlock = MPUser.instance.LargeImageLevelIsUnlock(m_data.ID);
         if (!m_isUnlock)
         {
             m_pixel.gameObject.SetActive(false);
@@ -96,7 +97,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
         else
         {
             // 2、如果解锁了是否已经通关
-            bool isPass = MPUser.instance.MainLevelIsPass(m_data.ID);
+            bool isPass = MPUser.instance.LargeImageLevelIsPass(m_data.ID);
             if (isPass)
             {
                 m_pixel.gameObject.SetActive(true);
@@ -120,7 +121,13 @@ public class MPLargeImageLevelItem : MonoBehaviour
     {
         if (m_isUnlock)
         {
-
+            MPLargeImageGameViewUIMsgData data = new MPLargeImageGameViewUIMsgData()
+            {
+                blockInfo = m_data,
+                index = m_index,
+                refresh = m_refresh,
+            };
+            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data);
         }
     }
 }
