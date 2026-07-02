@@ -19,17 +19,17 @@ public partial class MPGameView
     /// </summary>
     private void OnModeSwitchClick()
     {
-        m_isFill = !m_isFill;
+        m_isFillMode = !m_isFillMode;
 
         m_modeSwitchTween?.Kill();
-        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFill ? 65 : -65, 0.1f).SetEase(Ease.Linear);
+        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFillMode ? 65 : -65, 0.1f).SetEase(Ease.Linear);
 
-        m_modeSwitchFill.gameObject.SetActive(m_isFill);
-        m_modeSwitchBlank.gameObject.SetActive(!m_isFill);
+        m_modeSwitchFill.gameObject.SetActive(m_isFillMode);
+        m_modeSwitchBlank.gameObject.SetActive(!m_isFillMode);
 
         for (int i = 0; i < m_blocks.Count; i++)
         {
-            m_blocks[i].SetBlankHit(!m_isFill);
+            m_blocks[i].SetBlankHit(!m_isFillMode);
         }
     }
 

@@ -108,7 +108,7 @@ public class MPHomeView : AWindow
     /// </summary>
     private void OnCustomClick()
     {
-
+        UIManager.Inst.ShowWindow<MPCustomView>();
     }
 
     /// <summary>

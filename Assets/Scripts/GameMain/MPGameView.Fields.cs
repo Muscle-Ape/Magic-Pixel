@@ -136,7 +136,7 @@ public partial class MPGameView : AWindow
     /// <summary>
     /// 是否是填充模式
     /// </summary>
-    private bool m_isFill = true;
+    private bool m_isFillMode = true;
 
     /// <summary>
     /// 拖拽的最后一个坐标的位置

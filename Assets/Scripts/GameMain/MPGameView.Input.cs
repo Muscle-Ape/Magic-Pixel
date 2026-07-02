@@ -1,10 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// 用户控制输入
@@ -67,7 +65,7 @@ public partial class MPGameView
             return true;
 
         // 判断是否正确
-        bool correct = !(block.isFill ^ m_isFill);
+        bool correct = !(block.isFill ^ m_isFillMode);
 
         // 修改方块
         if (block.isFill)
