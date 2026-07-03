@@ -59,6 +59,35 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
 
         Color.RGBToHSV(currentHue, out m_currentHueHsv.x, out m_currentHueHsv.y, out m_currentHueHsv.z);
 
+        GenerateSaturationTexture();
+
+        SetColor(m_tag.anchoredPosition);
+    }
+
+    /// <summary>
+    /// 更新饱和度并指定目标SV位置（取色器对齐用）
+    /// </summary>
+    /// <param name="currentHue">当前色相颜色</param>
+    /// <param name="s">目标饱和度值(0~1)</param>
+    /// <param name="v">目标明度值(0~1)</param>
+    public void UpdateStauration(Color currentHue, float s, float v)
+    {
+        m_color = currentHue;
+
+        Color.RGBToHSV(currentHue, out m_currentHueHsv.x, out m_currentHueHsv.y, out m_currentHueHsv.z);
+
+        GenerateSaturationTexture();
+
+        m_tag.anchoredPosition = new Vector2(s * m_width - m_width / 2f, v * m_height - m_height / 2f);
+
+        SetColor(m_tag.anchoredPosition);
+    }
+
+    /// <summary>
+    /// 生成饱和度面板的纹理
+    /// </summary>
+    private void GenerateSaturationTexture()
+    {
         for (int y = 0; y < m_height; y++)
         {
             for (int x = 0; x < m_width; x++)
@@ -70,8 +99,6 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
         m_saturationSprite.texture.Apply();
 
         m_saturationImg.sprite = m_saturationSprite;
-
-        SetColor(m_tag.anchoredPosition);
     }
 
     private void SetColor(Vector2 localPoint)

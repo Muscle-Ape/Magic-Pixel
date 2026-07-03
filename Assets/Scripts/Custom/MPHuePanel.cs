@@ -64,6 +64,23 @@ public class MPHuePanel : MonoBehaviour, IPointerDownHandler, IDragHandler
         m_color = m_hueSprite.texture.GetPixel(0, 0);
     }
 
+    /// <summary>
+    /// 根据HSV值设置色相条位置
+    /// </summary>
+    /// <param name="hue">色相值(0~1)</param>
+    /// <param name="s">饱和度值(0~1) — 透传给饱和度面板</param>
+    /// <param name="v">明度值(0~1) — 透传给饱和度面板</param>
+    public void SetHueByHSV(float hue, float s, float v)
+    {
+        float h = m_rectTransform.rect.height;
+        Vector2 tagPos = new Vector2(0, hue * h - h / 2f);
+        m_tag.anchoredPosition = tagPos;
+
+        m_color = Color.HSVToRGB(hue, 1, 1);
+
+        m_staurationPanel.UpdateStauration(m_color, s, v);
+    }
+
     private void SetColor(Vector2 localPoint)
     {
         localPoint.x = 0;

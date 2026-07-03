@@ -29,6 +29,15 @@ public class MPPalette : MonoBehaviour
 
     private Action<Color> m_setColor;
 
+    /// <summary>
+    /// 色相面板
+    /// </summary>
+    private MPHuePanel m_huePanel;
+
+    /// <summary>
+    /// 饱和度面板
+    /// </summary>
+    private MPStaurationPanel m_staurationPanel;
 
     public void Initialization(Action<Color> setColor)
     {
@@ -39,11 +48,12 @@ public class MPPalette : MonoBehaviour
         m_G = transform.Find("ColorPanel/G/Value").GetComponent<TMP_Text>();
         m_B = transform.Find("ColorPanel/B/Value").GetComponent<TMP_Text>();
 
-        MPStaurationPanel staurationPanel = transform.Find("ColorPanel/Stauration").GetComponent<MPStaurationPanel>();
-        MPHuePanel huePanel = transform.Find("ColorPanel/Hue").GetComponent<MPHuePanel>();
+        m_staurationPanel = transform.Find("ColorPanel/Stauration").GetComponent<MPStaurationPanel>();
+        m_huePanel = transform.Find("ColorPanel/Hue").GetComponent<MPHuePanel>();
+        transform.Find("ColorPanel/PickColorFrame").GetComponent<MPPickColor>().Initialization(SetPaletteColor);
 
-        staurationPanel.Initialization(SetColor);
-        huePanel.Initialization(staurationPanel);
+        m_staurationPanel.Initialization(SetColor);
+        m_huePanel.Initialization(m_staurationPanel);
     }
 
     private void SetColor(Color color)
@@ -55,5 +65,17 @@ public class MPPalette : MonoBehaviour
         m_B.text = ((byte)(Mathf.Clamp01(color.b) * 255f)).ToString();
 
         m_setColor?.Invoke(color);
+    }
+
+    /// <summary>
+    /// 根据颜色设置调色板各点的位置（取色器功能）
+    /// </summary>
+    /// <param name="color">目标颜色</param>
+    private void SetPaletteColor(Color color)
+    {
+        SetColor(color);
+
+        Color.RGBToHSV(color, out float h, out float s, out float v);
+        m_huePanel.SetHueByHSV(h, s, v);
     }
 }

@@ -26,11 +26,13 @@ public class MPCustomBlock : MonoBehaviour
     /// 是否已经上色
     /// </summary>
     private bool m_isColor;
+    public bool isColor => m_isColor;
 
     /// <summary>
     /// 当前的颜色
     /// </summary>
     private Color m_color;
+    public Color color => m_color;
 
     /// <summary>
     /// 颜色渐变动画
