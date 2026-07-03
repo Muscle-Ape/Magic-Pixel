@@ -87,6 +87,18 @@ public partial class MPCustomView : AWindow
     private RectTransform m_input;
 
     /// <summary>
+    /// 色块选择按钮
+    /// </summary>
+    [TransformPath("View/ColorNode/ColorFrame")]
+    private Button m_colorFrame;
+
+    /// <summary>
+    /// 色块面板
+    /// </summary>
+    [TransformPath("View/ColorNode/ColorPanel")]
+    private CanvasGroup m_colorPanel;
+
+    /// <summary>
     /// 模式切换动画
     /// </summary>
     private Tween m_modeSwitchTween;
@@ -140,6 +152,21 @@ public partial class MPCustomView : AWindow
     /// 是否是清除状态
     /// </summary>
     private bool m_isClear;
+
+    /// <summary>
+    /// 调色版是否打开
+    /// </summary>
+    private bool m_colorPanelIsOpen;
+
+    /// <summary>
+    /// 调色板动画
+    /// </summary>
+    private Sequence m_colorPanelSequence;
+
+    /// <summary>
+    /// 色块缩放动画
+    /// </summary>
+    private Tween m_colorFrameTween;
 
 
 
