@@ -30,6 +30,11 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
     /// </summary>
     private Image m_saturationImg;
 
+    private int m_width;
+    private int m_height;
+
+    private Color m_color;
+
     private Action<Color> m_setColor;
 
     public void Initialization(Action<Color> setColor)
@@ -40,8 +45,9 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
 
         m_setColor = setColor;
 
-        int sWidth = (int)m_rectTransform.rect.width, sHeight = (int)m_rectTransform.rect.height;
-        m_saturationSprite = Sprite.Create(new Texture2D(sWidth, sHeight), new Rect(0, 0, sWidth, sHeight), new Vector2(0, 0));
+        m_width = (int)m_rectTransform.rect.width;
+        m_height = (int)m_rectTransform.rect.height;
+        m_saturationSprite = Sprite.Create(new Texture2D(m_width, m_height), new Rect(0, 0, m_width, m_height), new Vector2(0, 0));
     }
 
     /// <summary>
@@ -49,15 +55,15 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
     /// </summary>
     public void UpdateStauration(Color currentHue)
     {
-        int sWidth = (int)m_rectTransform.rect.width, sHeight = (int)m_rectTransform.rect.height;
+        m_color = currentHue;
 
         Color.RGBToHSV(currentHue, out m_currentHueHsv.x, out m_currentHueHsv.y, out m_currentHueHsv.z);
 
-        for (int y = 0; y < sHeight; y++)
+        for (int y = 0; y < m_height; y++)
         {
-            for (int x = 0; x < sWidth; x++)
+            for (int x = 0; x < m_width; x++)
             {
-                var pixColor = Color.HSVToRGB(m_currentHueHsv.x, (float)x / sWidth, (float)y / sHeight);
+                var pixColor = Color.HSVToRGB(m_currentHueHsv.x, (float)x / m_width, (float)y / m_height);
                 m_saturationSprite.texture.SetPixel(x, y, pixColor);
             }
         }
@@ -75,13 +81,14 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
         m_tag.anchoredPosition = localPoint;
 
         // 越界判断
-        localPoint.x += m_rectTransform.rect.width / 2;
-        localPoint.y += m_rectTransform.rect.height / 2;
-        int x = Mathf.Clamp((int)localPoint.x, 1, (int)(m_rectTransform.rect.width) - 1);
-        int y = Mathf.Clamp((int)localPoint.y, 1, (int)(m_rectTransform.rect.height) - 1);
+        localPoint.x += m_width / 2;
+        localPoint.y += m_height / 2;
+        int x = Mathf.Clamp((int)localPoint.x, 0, m_width);
+        int y = Mathf.Clamp((int)localPoint.y, 0, m_height);
 
         // 取色
-        Color color = m_saturationSprite.texture.GetPixel(x, y);
+        Color.RGBToHSV(m_color, out m_currentHueHsv.x, out m_currentHueHsv.y, out m_currentHueHsv.z);
+        Color color = Color.HSVToRGB(m_currentHueHsv.x, (float)x / m_width, (float)y / m_height);
 
         m_setColor?.Invoke(color);
     }
