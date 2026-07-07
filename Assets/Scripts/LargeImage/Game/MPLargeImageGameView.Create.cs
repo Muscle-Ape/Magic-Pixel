@@ -78,7 +78,7 @@ public partial class MPLargeImageGameView
         }
 
         // 设置字体大小
-        float fontSize = GetFontSize();
+        Vector2 fontSize = GetFontSize();
 
         m_numberHorizontalList = new List<MPLargeImageGameNumberFrameHorizontal>();
 
@@ -129,7 +129,7 @@ public partial class MPLargeImageGameView
         }
 
         // 设置字体大小
-        float fontSize = GetFontSize();
+        Vector2 fontSize = GetFontSize();
 
         m_numberVerticalList = new List<MPLargeImageGameNumberFrameVertical>();
 
@@ -177,22 +177,9 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 统一字体大小
     /// </summary>
-    private float GetFontSize()
+    private Vector2 GetFontSize()
     {
-        float fontSize = 0;
-
-        switch (FIXED_SIZE)
-        {
-            case 5:
-                fontSize = 80;
-                break;
-            case 10:
-                fontSize = 40;
-                break;
-            case 15:
-                fontSize = 32;
-                break;
-        }
+        Vector2 fontSize = new Vector2(40, 40);
 
         return fontSize;
     }

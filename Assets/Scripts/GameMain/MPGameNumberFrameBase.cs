@@ -39,7 +39,7 @@ public class MPGameNumberFrameBase : MonoBehaviour
     /// </summary>
     /// <param name="number"></param>
     /// <param name="fontSize"></param>
-    public virtual void Init(List<int> number, float fontSize)
+    public virtual void Init(List<int> number, Vector2 fontSize)
     {
         m_number = number;
         m_text = transform.Find("Number").GetComponent<TMP_Text>();

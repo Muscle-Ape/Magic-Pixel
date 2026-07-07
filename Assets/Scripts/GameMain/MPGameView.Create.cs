@@ -80,7 +80,7 @@ public partial class MPGameView
         }
 
         // 设置字体大小
-        float fontSize = GetFontSize();
+        Vector2 fontSize = GetFontSize();
 
         m_numberHorizontalList = new List<MPGameNumberFrameHorizontal>();
 
@@ -131,7 +131,7 @@ public partial class MPGameView
         }
 
         // 设置字体大小
-        float fontSize = GetFontSize();
+        Vector2 fontSize = GetFontSize();
 
         m_numberVerticalList = new List<MPGameNumberFrameVertical>();
 
@@ -192,23 +192,20 @@ public partial class MPGameView
     /// <summary>
     /// 统一字体大小
     /// </summary>
-    private float GetFontSize()
+    private Vector2 GetFontSize()
     {
-        float fontSize = 0;
+        Vector2 fontSize = new Vector2(32, 32);
 
         switch (m_size)
         {
             case 5:
-                fontSize = 80;
+                fontSize = new Vector2(55, 70);
                 break;
             case 10:
-                fontSize = 40;
+                fontSize = new Vector2(40, 40);
                 break;
             case 15:
-                fontSize = 32;
-                break;
-            case 20:
-                fontSize = 25;
+                fontSize = new Vector2(32, 32);
                 break;
         }
 

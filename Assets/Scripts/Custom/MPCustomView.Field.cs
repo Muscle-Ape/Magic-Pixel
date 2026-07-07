@@ -1,6 +1,8 @@
-using DG.Tweening;
+﻿using DG.Tweening;
 using HQ.UIManager;
+using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Pool;
@@ -10,12 +12,12 @@ using UnityEngine.UI;
 public partial class MPCustomView : AWindow
 {
     /// <summary>
-    /// 网格区域固定大小
+    /// 固定格子大小
     /// </summary>
     private const int GRID_SIZE = 800;
 
     /// <summary>
-    /// 像素网格
+    /// 网格节点
     /// </summary>
     [TransformPath("View/Content/Grid")]
     private GridLayoutGroup m_blockGrid;
@@ -33,37 +35,37 @@ public partial class MPCustomView : AWindow
     private Button m_settingBtn;
 
     /// <summary>
-    /// 模式切换（上色模式/填充模式）
+    /// 模式切换按钮
     /// </summary>
     [TransformPath("View/ModeSwitch")]
     private Button m_modeSwitchFrame;
 
     // <summary>
-    /// 滑动的按钮
+    /// 模式切换移动节点
     /// </summary>
     [TransformPath("View/ModeSwitch/Btn")]
     private RectTransform m_modeSwitchBtn;
 
     /// <summary>
-    /// 填充模式图标
+    /// 填充模式图片
     /// </summary>
     [TransformPath("View/ModeSwitch/Btn/Fill")]
     private Image m_modeSwitchFill;
 
     /// <summary>
-    /// 空白模式图片
+    /// 上色模式图片
     /// </summary>
     [TransformPath("View/ModeSwitch/Btn/Blank")]
     private Image m_modeSwitchBlank;
 
     /// </summary>
-    /// 大小切换（5/10）
+    /// 大小切换模式按钮
     /// </summary>
     [TransformPath("View/SizeSwitch")]
     private Button m_sizeSwitchFrame;
 
     // <summary>
-    /// 大小切换滑动的按钮
+    /// 大小切换移动节点
     /// </summary>
     [TransformPath("View/SizeSwitch/Btn")]
     private RectTransform m_sizeSwitchBtn;
@@ -81,22 +83,40 @@ public partial class MPCustomView : AWindow
     private RectTransform m_sizeSwitchFive;
 
     /// <summary>
-    /// 输入控制节点
+    /// 用户手指输入节点
     /// </summary>
     [TransformPath("View/Content/Input")]
     private RectTransform m_input;
 
     /// <summary>
-    /// 色块选择按钮
+    /// 色块按钮
     /// </summary>
     [TransformPath("View/ColorNode/ColorFrame")]
     private Button m_colorFrame;
 
     /// <summary>
-    /// 色块面板
+    /// 调色板
     /// </summary>
     [TransformPath("View/ColorNode/ColorPanel")]
     private CanvasGroup m_colorPanel;
+
+    /// <summary>
+    /// 保存自定义关卡按钮。
+    /// </summary>
+    [TransformPath("View/SaveBtn")]
+    private Button m_saveBtn;
+
+    /// <summary>
+    /// 自定义关卡标题输入框。
+    /// </summary>
+    [TransformPath("View/Title")]
+    private TMP_InputField m_titleInput;
+
+    /// <summary>
+    /// 关卡仓库按钮
+    /// </summary>
+    [TransformPath("View/WarehouseBtn")]
+    private Button m_warehouseBtn;
 
     /// <summary>
     /// 模式切换动画
@@ -104,7 +124,7 @@ public partial class MPCustomView : AWindow
     private Tween m_modeSwitchTween;
 
     /// <summary>
-    /// 大小切换动画
+    /// 方格数量按钮切换动画
     /// </summary>
     private Tween m_sizeSwithcTween;
 
@@ -119,7 +139,7 @@ public partial class MPCustomView : AWindow
     private ObjectPool<MPCustomBlock> m_blockPool;
 
     /// <summary>
-    /// 存放已经创建了的方块
+    /// 创建出来的所有方块
     /// </summary>
     private List<MPCustomBlock> m_blocks;
 
@@ -129,22 +149,22 @@ public partial class MPCustomView : AWindow
     private bool m_isFillMode = false;
 
     /// <summary>
-    /// 大小是否是十
+    /// 网格大小是否是10
     /// </summary>
     private bool m_isTenSize = false;
 
     /// <summary>
-    ///  存放射线检测的结果
+    ///  射线检测结果
     /// </summary>
     private List<RaycastResult> m_rayResults = new List<RaycastResult>();
 
     /// <summary>
-    /// 当前使用的颜色
+    /// 当前颜色
     /// </summary>
-    private Color m_currentColor = Color.red;
+    private Color m_currentColor = Color.white;
 
     /// <summary>
-    /// 当前这一轮拖拽所经过的方块
+    /// 当前拖拽过的格子
     /// </summary>
     private List<MPCustomBlock> m_currentDragBlocks;
 
@@ -154,7 +174,7 @@ public partial class MPCustomView : AWindow
     private bool m_isClear;
 
     /// <summary>
-    /// 调色版是否打开
+    /// 调色板是否打开
     /// </summary>
     private bool m_colorPanelIsOpen;
 
@@ -164,14 +184,27 @@ public partial class MPCustomView : AWindow
     private Sequence m_colorPanelSequence;
 
     /// <summary>
-    /// 色块缩放动画
+    /// 色块动画
     /// </summary>
     private Tween m_colorFrameTween;
+
+    /// <summary>
+    /// 保存后刷新关卡列表的回调。
+    /// </summary>
+    private Action m_refreshAction;
+
+    /// <summary>
+    /// 当前自定义关卡网格尺寸。
+    /// </summary>
+    private int m_currentSize = 5;
 
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPCustomViewUIMsgData data = uiMsg as MPCustomViewUIMsgData;
+        m_refreshAction = data?.refresh;
+
         m_blockPrefab = MPLoad.Load<GameObject>("MPCustomBlock").GetComponent<MPCustomBlock>();
 
         m_blockPool = new ObjectPool<MPCustomBlock>(PoolCreate, PoolGet, PoolRelease, defaultCapacity: 25, maxSize: 100);
@@ -193,3 +226,12 @@ public partial class MPCustomView : AWindow
         RegisterInput();
     }
 }
+
+public class MPCustomViewUIMsgData : UIMsgData
+{
+    /// <summary>
+    /// 自定义关卡保存后的刷新回调。
+    /// </summary>
+    public Action refresh;
+}
+

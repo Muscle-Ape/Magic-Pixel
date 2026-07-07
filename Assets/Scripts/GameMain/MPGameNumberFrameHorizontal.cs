@@ -1,14 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using UnityEngine;
 
 public class MPGameNumberFrameHorizontal : MPGameNumberFrameBase
 {
-    public override void Init(List<int> number, float fontSize)
+    public override void Init(List<int> number, Vector2 fontSize)
     {
         base.Init(number, fontSize);
 
-        m_text.fontSize = fontSize;
+        m_text.fontSizeMin = fontSize.x;
+        m_text.fontSizeMax = fontSize.y;
 
         // 数字内容
         StringBuilder sb = new StringBuilder();

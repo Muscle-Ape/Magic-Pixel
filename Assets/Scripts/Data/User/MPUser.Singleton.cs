@@ -19,6 +19,7 @@ public partial class MPUser
     {
         InitAssets();
         InitMainLevel();
+        InitCustomLevel();
     }
 
     #region Key

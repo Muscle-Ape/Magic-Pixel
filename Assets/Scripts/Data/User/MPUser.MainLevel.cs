@@ -56,9 +56,9 @@ public partial class MPUser
         m_mainlevel_pass_index = ES3.Load<int>(m_key_mainlevel_pass_index, 0);
         m_mainlevel_unlocklist = ES3.Load<List<string>>(m_key_mainlevel_unlocklist, new List<string>());
         m_mainlevel_passlist = ES3.Load<List<string>>(m_key_mainlevel_passlist, new List<string>());
-        m_largeimagelevel_pass_index = ES3.Load<int>(m_key_mainlevel_pass_index, 0);
-        m_largeimagelevel_unlocklist = ES3.Load<List<string>>(m_key_mainlevel_unlocklist, new List<string>());
-        m_largeimagelevel_passlist = ES3.Load<List<string>>(m_key_mainlevel_passlist, new List<string>());
+        m_largeimagelevel_pass_index = ES3.Load<int>(m_key_largeimagelevel_pass_index, 0);
+        m_largeimagelevel_unlocklist = ES3.Load<List<string>>(m_key_largeimagelevel_unlocklist, new List<string>());
+        m_largeimagelevel_passlist = ES3.Load<List<string>>(m_key_largeimagelevel_passlist, new List<string>());
 
         // 默认解锁第一关
         MainLevelUnlock(MPDataManager.Instance.m_mainLevelModel.blockInfos[0].ID);

@@ -10,6 +10,7 @@ public partial class MPCustomView
     private void CreateGrid(int size)
     {
         ClearGrid();
+        m_currentSize = size;
 
         // 计算Grid单个格子大小
         float singleSize = GRID_SIZE / (float)size;

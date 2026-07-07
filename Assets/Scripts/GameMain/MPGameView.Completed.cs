@@ -12,6 +12,13 @@ public partial class MPGameView
     /// </summary>
     private void UpdateData()
     {
+        if (m_isCustomLevel)
+        {
+            MPUser.instance.CustomLevelPass(m_blockInfo.ID);
+            m_refreshAction?.Invoke();
+            return;
+        }
+
         // 1、记录当前已通关关卡
         MPUser.instance.MainLevelPass(m_blockInfo.ID);
 

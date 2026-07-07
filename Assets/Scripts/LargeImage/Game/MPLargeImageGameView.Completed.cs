@@ -20,7 +20,7 @@ public partial class MPLargeImageGameView
         {
             // 向后遍历，检查是否有通关关卡
             int newIndex = m_index;
-            var blockList = MPDataManager.Instance.m_mainLevelModel.blockInfos;
+            var blockList = MPDataManager.Instance.m_largeImageModel.blockInfos;
             for (int i = newIndex + 1; i < blockList.Count; i++)
             {
                 newIndex++;
