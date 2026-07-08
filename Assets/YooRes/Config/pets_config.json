@@ -1,0 +1,219 @@
+[
+  {
+    "id": "pet_shiba",
+    "name": "Shiba",
+    "icon": "pet_shiba",
+    "defaultLevel": 3,
+    "defaultUnlocked": true,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked",
+    "rewardIntervalSeconds": 5025,
+    "healthDecayPerHour": 4,
+    "moodDecayPerHour": 5,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 120
+      },
+      {
+        "type": "light",
+        "icon": "pet_reward_light",
+        "count": 1
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pet_tuxedo_cat",
+    "name": "Tuxedo Cat",
+    "icon": "pet_tuxedo_cat",
+    "defaultLevel": 2,
+    "defaultUnlocked": true,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked",
+    "rewardIntervalSeconds": 8140,
+    "healthDecayPerHour": 3,
+    "moodDecayPerHour": 4,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 90
+      },
+      {
+        "type": "light",
+        "icon": "pet_reward_light",
+        "count": 1
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pet_poodle",
+    "name": "Poodle",
+    "icon": "pet_poodle",
+    "defaultLevel": 1,
+    "defaultUnlocked": true,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked",
+    "rewardIntervalSeconds": 19810,
+    "healthDecayPerHour": 3,
+    "moodDecayPerHour": 3,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 80
+      },
+      {
+        "type": "light",
+        "icon": "pet_reward_light",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pet_rabbit",
+    "name": "Rabbit",
+    "icon": "pet_rabbit",
+    "defaultLevel": 2,
+    "defaultUnlocked": true,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked",
+    "rewardIntervalSeconds": 6322,
+    "healthDecayPerHour": 5,
+    "moodDecayPerHour": 4,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 100
+      },
+      {
+        "type": "leaf",
+        "icon": "pet_reward_leaf",
+        "count": 1
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pet_spaniel",
+    "name": "Spaniel",
+    "icon": "pet_spaniel",
+    "defaultLevel": 1,
+    "defaultUnlocked": true,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked",
+    "rewardIntervalSeconds": 15605,
+    "healthDecayPerHour": 3,
+    "moodDecayPerHour": 5,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 75
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pet_tabby",
+    "name": "Tabby",
+    "icon": "pet_tabby",
+    "defaultLevel": 2,
+    "defaultUnlocked": true,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked",
+    "rewardIntervalSeconds": 11418,
+    "healthDecayPerHour": 4,
+    "moodDecayPerHour": 3,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 95
+      },
+      {
+        "type": "light",
+        "icon": "pet_reward_light",
+        "count": 1
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "pet_black_cat",
+    "name": "Black Cat",
+    "icon": "pet_black_cat",
+    "defaultLevel": 1,
+    "defaultUnlocked": false,
+    "unlockLevel": 5,
+    "unlockText": "Unlock at Lv.5",
+    "rewardIntervalSeconds": 14400,
+    "healthDecayPerHour": 4,
+    "moodDecayPerHour": 4,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 150
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "id": "pet_shadow_bunny",
+    "name": "Shadow Bunny",
+    "icon": "pet_shadow_bunny",
+    "defaultLevel": 1,
+    "defaultUnlocked": false,
+    "unlockLevel": 10,
+    "unlockText": "Unlock at Lv.10",
+    "rewardIntervalSeconds": 18000,
+    "healthDecayPerHour": 4,
+    "moodDecayPerHour": 4,
+    "rewards": [
+      {
+        "type": "coin",
+        "icon": "pet_reward_coin",
+        "count": 220
+      },
+      {
+        "type": "light",
+        "icon": "pet_reward_light",
+        "count": 2
+      },
+      {
+        "type": "paw",
+        "icon": "pet_reward_paw",
+        "count": 2
+      }
+    ]
+  }
+]

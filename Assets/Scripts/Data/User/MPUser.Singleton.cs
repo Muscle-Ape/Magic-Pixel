@@ -20,6 +20,8 @@ public partial class MPUser
         InitAssets();
         InitMainLevel();
         InitCustomLevel();
+        // 初始化宠物存档数据，并和当前 pets_config 配置做一次同步。
+        InitPets();
     }
 
     #region Key

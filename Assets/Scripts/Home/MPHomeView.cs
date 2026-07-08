@@ -116,6 +116,6 @@ public class MPHomeView : AWindow
     /// </summary>
     private void OnPetsClick()
     {
-
+        UIManager.Inst.ShowWindow<MPPetsView>();
     }
 }
