@@ -216,7 +216,10 @@ public partial class MPGameView
         // 6、判断是否全部完成
         if (m_hvCompleted == m_size * 2)
         {
-            UpdateData();
+            if (!m_isRestoringProgress)
+            {
+                UpdateData();
+            }
         }
     }
 

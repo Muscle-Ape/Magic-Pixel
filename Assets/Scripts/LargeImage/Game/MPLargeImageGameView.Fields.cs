@@ -325,6 +325,7 @@ public partial class MPLargeImageGameView : AWindow
 
         RegisterInput();
 
+        RestoreProgressCache();
     }
 }
 

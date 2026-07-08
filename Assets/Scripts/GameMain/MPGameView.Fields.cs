@@ -241,6 +241,7 @@ public partial class MPGameView : AWindow
         if (m_isCustomLevel)
         {
             m_size = data.customLevelInfo.Size;
+            lovesNode.gameObject.SetActive(false);
         }
         else
         {
@@ -269,6 +270,7 @@ public partial class MPGameView : AWindow
 
         RegisterInput();
 
+        RestoreProgressCache();
     }
 }
 

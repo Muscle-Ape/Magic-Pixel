@@ -60,6 +60,8 @@ public partial class MPLargeImageGameView
         m_lovesCount = Mathf.Max(0, m_lovesCount - 1);
 
         m_loves[m_lovesCount].SetActive(false);
+
+        SaveProgressCache();
     }
 
     /// <summary>
@@ -338,6 +340,7 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void OnBackClick()
     {
+        SaveProgressCache();
         DestroyWindow();
     }
 }

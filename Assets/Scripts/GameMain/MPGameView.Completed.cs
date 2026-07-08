@@ -12,6 +12,9 @@ public partial class MPGameView
     /// </summary>
     private void UpdateData()
     {
+        m_hasCompleted = true;
+        ClearProgressCache();
+
         if (m_isCustomLevel)
         {
             MPUser.instance.CustomLevelPass(m_blockInfo.ID);

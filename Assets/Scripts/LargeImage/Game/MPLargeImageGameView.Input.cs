@@ -237,8 +237,11 @@ public partial class MPLargeImageGameView
         // 8、判断是否全部完成
         if (m_hvCompleted == m_size * 2)
         {
-            UpdateData();
-            Debug.LogError("LargeImageCompleted");
+            if (!m_isRestoringProgress)
+            {
+                UpdateData();
+                Debug.LogError("LargeImageCompleted");
+            }
         }
     }
 
@@ -272,6 +275,7 @@ public partial class MPLargeImageGameView
             else
             {
                 CannotContinueDragging();
+                SubLoves();
             }
         }
     }
@@ -323,6 +327,7 @@ public partial class MPLargeImageGameView
                 if (!correct)
                 {
                     CannotContinueDragging();
+                    SubLoves();
                     return;
                 }
 
@@ -364,6 +369,7 @@ public partial class MPLargeImageGameView
             if (!correct)
             {
                 CannotContinueDragging();
+                SubLoves();
                 return;
             }
 
