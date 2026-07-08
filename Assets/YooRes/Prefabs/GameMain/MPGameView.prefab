@@ -434,7 +434,7 @@ GameObject:
   - component: {fileID: 3140146601638737177}
   - component: {fileID: 7793803312036525119}
   - component: {fileID: 3204728888566675482}
-  - component: {fileID: 462729216365471362}
+  - component: {fileID: 963346027449413893}
   m_Layer: 5
   m_Name: SettingBtn
   m_TagString: Untagged
@@ -499,7 +499,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &462729216365471362
+--- !u!114 &963346027449413893
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -508,7 +508,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4582374721737516709}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Script: {fileID: 11500000, guid: 7e2d88c6726c4a74a93b9e8d0c5e1f31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Navigation:
@@ -543,6 +543,14 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+  m_enableScaleAnimation: 1
+  m_pressedScale: 0.92
+  m_pressDuration: 0.08
+  m_releaseDuration: 0.1
+  m_pressEase: 6
+  m_releaseEase: 27
+  m_clickInterval: 0.5
+  m_useUnscaledTime: 1
 --- !u!1 &4741006527918904071
 GameObject:
   m_ObjectHideFlags: 0
@@ -670,7 +678,7 @@ GameObject:
   - component: {fileID: 4496599351224041571}
   - component: {fileID: 5281828785886438747}
   - component: {fileID: 7231581560639343853}
-  - component: {fileID: 1666386286949996298}
+  - component: {fileID: 3148024204100746848}
   m_Layer: 5
   m_Name: BackBtn
   m_TagString: Untagged
@@ -735,7 +743,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &1666386286949996298
+--- !u!114 &3148024204100746848
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -744,7 +752,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 5721406485298622465}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Script: {fileID: 11500000, guid: 7e2d88c6726c4a74a93b9e8d0c5e1f31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Navigation:
@@ -779,6 +787,14 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+  m_enableScaleAnimation: 1
+  m_pressedScale: 0.92
+  m_pressDuration: 0.08
+  m_releaseDuration: 0.1
+  m_pressEase: 6
+  m_releaseEase: 27
+  m_clickInterval: 0.5
+  m_useUnscaledTime: 1
 --- !u!1 &5872666938045851718
 GameObject:
   m_ObjectHideFlags: 0
