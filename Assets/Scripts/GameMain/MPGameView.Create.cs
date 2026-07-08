@@ -1,4 +1,4 @@
-using HQ.UIManager;
+﻿using HQ.UIManager;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;

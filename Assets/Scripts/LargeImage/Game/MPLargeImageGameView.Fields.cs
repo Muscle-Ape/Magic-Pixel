@@ -133,6 +133,16 @@ public partial class MPLargeImageGameView : AWindow
     private Button m_settingBtn;
 
     /// <summary>
+    /// 生命值
+    /// </summary>
+    private List<GameObject> m_loves;
+
+    /// <summary>
+    /// 剩余生命值
+    /// </summary>
+    private int m_lovesCount;
+
+    /// <summary>
     /// 方块信息
     /// </summary>
     private MPLargeImageBlockInfo m_blockInfo;
@@ -276,6 +286,15 @@ public partial class MPLargeImageGameView : AWindow
         m_numberHorizontalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameHorizontal");
 
         m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical");
+
+        // 初始化生命值
+        Transform lovesNode = transform.Find("View/Loves");
+        m_loves = new List<GameObject>();
+        for (int i = 0; i < lovesNode.childCount; i++)
+        {
+            m_loves.Add(lovesNode.GetChild(i).GetChild(0).gameObject);
+        }
+        m_lovesCount = m_loves.Count;
 
         m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID);
 

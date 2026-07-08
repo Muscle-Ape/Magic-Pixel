@@ -1205,7 +1205,7 @@ GameObject:
   - component: {fileID: 7713569852257813020}
   - component: {fileID: 8517332804937360026}
   m_Layer: 5
-  m_Name: HousePet
+  m_Name: Pets
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

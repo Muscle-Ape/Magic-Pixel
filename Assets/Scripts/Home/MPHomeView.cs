@@ -35,8 +35,8 @@ public class MPHomeView : AWindow
     /// <summary>
     /// 宠物功能按钮
     /// </summary>
-    [TransformPath("View/Down/Tab/Btns/HousePet")]
-    private Button m_housePetBtn;
+    [TransformPath("View/Down/Tab/Btns/Pets")]
+    private Button m_PetsBtn;
 
     /// <summary>
     /// 主关卡数据
@@ -52,7 +52,7 @@ public class MPHomeView : AWindow
         m_settingBtn.onClick.AddListener(OnSettingClick);
         m_largeImageBtn.onClick.AddListener(OnLargeImageClick);
         m_customBtn.onClick.AddListener(OnCustomClick);
-        m_housePetBtn.onClick.AddListener(OnHousePetClick);
+        m_PetsBtn.onClick.AddListener(OnPetsClick);
     }
 
     private LoopGridViewItem GetMainLevelByRowColumn(LoopGridView view, int index, int row, int column)
@@ -114,7 +114,7 @@ public class MPHomeView : AWindow
     /// <summary>
     /// 宠物功能点击回调
     /// </summary>
-    private void OnHousePetClick()
+    private void OnPetsClick()
     {
 
     }

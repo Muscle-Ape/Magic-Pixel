@@ -6,85 +6,92 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// 瀛楁绠＄悊
-    /// </summary>
 [Component("MPGameView")]
 public partial class MPGameView : AWindow
 {
     /// <summary>
-    /// 缃戞牸鍖哄煙鍥哄畾澶у皬
+    /// 网格区域固定大小
     /// </summary>
     private const int GRID_SIZE = 800;
 
     /// <summary>
-    /// 绔栫潃鐨勬暟瀛楁彁绀虹埗鑺傜偣
+    /// 竖着的数字提示父节点
     /// </summary>
     [TransformPath("View/Content/Vertical")]
     private RectTransform m_numberVertical;
 
     /// <summary>
-    /// 妯潃鐨勬暟瀛楁彁绀虹埗鑺傜偣
+    /// 横着的数字提示父节点
     /// </summary>
     [TransformPath("View/Content/Horizontal")]
     private RectTransform m_numberHorizontal;
 
     /// <summary>
-    /// 鍍忕礌缃戞牸
+    /// 像素网格
     /// </summary>
     [TransformPath("View/Content/Grid")]
     private GridLayoutGroup m_blockGrid;
 
     /// <summary>
-    /// 鍒嗛殧绾挎鑺傜偣
+    /// 分隔线段节点
     /// </summary>
     [TransformPath("View/Content/Line")]
     private RectTransform m_lineNode;
 
     /// <summary>
-    /// 杈撳叆鎺у埗鑺傜偣
+    /// 输入控制节点
     /// </summary>
     [TransformPath("View/Content/Input")]
     private RectTransform m_input;
 
     /// <summary>
-    /// 妯″紡鍒囨崲鎸夐挳
+    /// 模式切换按钮
     /// </summary>
     [TransformPath("View/ModeSwitch")]
     private Button m_modeSwitchFrame;
 
     /// <summary>
-    /// 婊戝姩鐨勬寜閽?
+    /// 滑动的按钮
     /// </summary>
     [TransformPath("View/ModeSwitch/Btn")]
     private RectTransform m_modeSwitchBtn;
 
     /// <summary>
-    /// 濉厖妯″紡鍥炬爣
+    /// 填充模式图标
     /// </summary>
     [TransformPath("View/ModeSwitch/Btn/Fill")]
     private Image m_modeSwitchFill;
 
     /// <summary>
-    /// 绌虹櫧妯″紡鍥剧墖
+    /// 空白模式图片
     /// </summary>
     [TransformPath("View/ModeSwitch/Btn/Blank")]
     private Image m_modeSwitchBlank;
 
     /// <summary>
-    /// 杩斿洖鎸夐挳
+    /// 返回按钮
     /// </summary>
     [TransformPath("View/Up/BackBtn")]
     private Button m_backBtn;
 
     /// <summary>
-    /// 璁剧疆鎸夐挳
+    /// 设置按钮
     /// </summary>
     [TransformPath("View/Up/SettingBtn")]
     private Button m_settingBtn;
 
     /// <summary>
-    /// 鏂瑰潡淇℃伅
+    /// 生命值
+    /// </summary>
+    private List<GameObject> m_loves;
+
+    /// <summary>
+    /// 剩余生命值
+    /// </summary>
+    private int m_lovesCount;
+
+    /// <summary>
+    /// 方块信息
     /// </summary>
     private MPMainBlockInfo m_blockInfo;
 
@@ -94,114 +101,114 @@ public partial class MPGameView : AWindow
     private bool m_isCustomLevel;
 
     /// <summary>
-    /// 褰撳墠鍏冲崱鎵€灞炵殑涓嬫爣
+    /// 当前关卡所属的下标
     /// </summary>
     private int m_index;
 
     /// <summary>
-    /// 鍒锋柊鍥炶皟
+    /// 刷新回调
     /// </summary>
     private Action m_refreshAction;
 
     /// <summary>
-    /// 鏂瑰潡棰勫埗浣?
+    /// 方块预制体
     /// </summary>
     private MPGameBlock m_blockPrefab;
 
     /// <summary>
-    /// 椤堕儴鐨勬暟瀛楁彁绀洪鍒朵綋
+    /// 顶部的数字提示预制体
     /// </summary>
     private GameObject m_numberHorizontalPrefab;
 
     /// <summary>
-    /// 宸︿晶鐨勬暟瀛楁彁绀洪鍒朵綋
+    /// 左侧的数字提示预制体
     /// </summary>
     private GameObject m_numberVerticalPrefab;
 
     /// <summary>
-    /// 鍍忕礌淇℃伅
+    /// 像素信息
     /// </summary>
     private Texture2D m_pixel;
 
     /// <summary>
-    /// 澶у皬
+    /// 大小
     /// </summary>
     private int m_size;
 
     /// <summary>
-    /// 鎵€鏈夌殑鏂瑰潡
+    /// 所有的方块
     /// </summary>
     private List<MPGameBlock> m_blocks;
 
     /// <summary>
-    ///  瀛樻斁灏勭嚎妫€娴嬬殑缁撴灉
+    ///  存放射线检测的结果
     /// </summary>
     private List<RaycastResult> m_rayResults = new List<RaycastResult>();
 
     /// <summary>
-    /// 鏄惁鏄～鍏呮ā寮?
+    /// 是否是填充模式
     /// </summary>
     private bool m_isFillMode = true;
 
     /// <summary>
-    /// 鎷栨嫿鐨勬渶鍚庝竴涓潗鏍囩殑浣嶇疆
+    /// 拖拽的最后一个坐标的位置
     /// </summary>
     private Vector2 m_pointerLastPosition;
 
     /// <summary>
-    /// 妫€鏌ラ棿闅?
+    /// 检查间隔
     /// </summary>
     private float m_detectionInterval;
 
     /// <summary>
-    /// 褰撳墠鎷栨嫿涓嬬涓€涓嫋鎷藉埌鐨勬柟鍧?
+    /// 当前拖拽下第一个拖拽到的方块
     /// PointerDown
     /// </summary>
     private MPGameBlock m_dragFirstBlock;
 
     /// <summary>
-    /// 褰撳墠鎷栨嫿涓嬬浜屼釜鎷栨嫿鍒扮殑鏂瑰潡
-    /// 鐢ㄦ潵鍥哄畾鎷栨嫿鏂瑰悜
+    /// 当前拖拽下第二个拖拽到的方块
+    /// 用来固定拖拽方向
     /// </summary>
     private MPGameBlock m_dragSecondBlock;
 
     /// <summary>
-    /// 鍥哄畾鎷栨嫿鏂瑰悜
+    /// 固定拖拽方向
     /// </summary>
     private Vector2 m_fixedDragDir = Vector2.zero;
 
     /// <summary>
-    /// 鏄惁鍙互缁х画鎷栨嫿
+    /// 是否可以继续拖拽
     /// </summary>
     private bool m_canDragContinue;
 
     /// <summary>
-    /// 妯″紡鍒囨崲鍔ㄧ敾Tween
+    /// 模式切换动画Tween
     /// </summary>
     private Tween m_modeSwitchTween;
 
     /// <summary>
-    /// 妯潃鐨勬暟瀛楁瀹瑰櫒
+    /// 横着的数字框容器
     /// </summary>
     private List<MPGameNumberFrameHorizontal> m_numberHorizontalList;
 
     /// <summary>
-    /// 绔栫潃鐨勬暟瀛楁瀹瑰櫒
+    /// 竖着的数字框容器
     /// </summary>
     private List<MPGameNumberFrameVertical> m_numberVerticalList;
 
     /// <summary>
-    /// 缃戞牸鏂瑰潡鏁版嵁
+    /// 网格方块数据
     /// </summary>
     private MPGameBlock[][] m_blockGrid2Array;
 
     /// <summary>
-    /// 鎿嶄綔鐨勬渶鍚庝竴涓柟鍧?
+    /// 操作的最后一个方块
     /// </summary>
     private MPGameBlock m_lastBlock;
 
     /// <summary>
-    /// 琛屽垪瀹屾垚鏁伴噺
+    /// 行列完成数量
     /// </summary>
     private int m_hvCompleted;
 
@@ -221,6 +228,16 @@ public partial class MPGameView : AWindow
 
         m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical");
 
+        // 初始化生命值
+        Transform lovesNode = transform.Find("View/Loves");
+        m_loves = new List<GameObject>();
+        for (int i = 0; i < lovesNode.childCount; i++)
+        {
+            m_loves.Add(lovesNode.GetChild(i).GetChild(0).gameObject);
+        }
+        m_lovesCount = m_loves.Count;
+
+        // 获取网格大小
         if (m_isCustomLevel)
         {
             m_size = data.customLevelInfo.Size;

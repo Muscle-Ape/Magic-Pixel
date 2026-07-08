@@ -13,6 +13,31 @@ public partial class MPGameView
     }
 
 
+    /// <summary>
+    /// 扣除生命值
+    /// </summary>
+    private void SubLoves()
+    {
+        if (m_isCustomLevel)
+            return;
+
+        m_lovesCount = Mathf.Max(0, m_lovesCount - 1);
+
+        m_loves[m_lovesCount].SetActive(false);
+    }
+
+    /// <summary>
+    /// 恢复生命值
+    /// </summary>
+    private void AddLoves()
+    {
+        if (m_lovesCount == m_loves.Count)
+            return;
+
+        m_loves[m_lovesCount].SetActive(true);
+
+        m_lovesCount++;
+    }
 
     /// <summary>
     /// 切换模式

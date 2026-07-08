@@ -250,6 +250,7 @@ public partial class MPGameView
             else
             {
                 CannotContinueDragging();
+                SubLoves();
             }
         }
     }
@@ -301,6 +302,7 @@ public partial class MPGameView
                 if (!correct)
                 {
                     CannotContinueDragging();
+                    SubLoves();
                     return;
                 }
 
