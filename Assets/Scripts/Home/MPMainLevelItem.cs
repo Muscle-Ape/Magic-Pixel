@@ -2,6 +2,7 @@ using HQ.UIManager;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,6 +12,21 @@ public class MPMainLevelItem : MonoBehaviour
     /// 通关后的图片
     /// </summary>
     private Image m_pixel;
+
+    /// <summary>
+    /// 当前关卡从1开始显示的下标文本。
+    /// </summary>
+    private TMP_Text m_levelIndexText;
+
+    /// <summary>
+    /// 通关星星显示节点。
+    /// </summary>
+    private GameObject m_stars;
+
+    /// <summary>
+    /// 通关星星文本数组，数量根据剩余生命显示。
+    /// </summary>
+    private GameObject[] m_starObj;
 
     /// <summary>
     /// 解锁未通关状态
@@ -60,6 +76,23 @@ public class MPMainLevelItem : MonoBehaviour
         m_refresh = refresh;
 
         m_pixel = transform.Find("Completed/Pixel").GetComponent<Image>();
+        Transform levelIndexTransform = transform.Find("IndexFrame/IndexText");
+        if (levelIndexTransform != null)
+        {
+            m_levelIndexText = levelIndexTransform.GetComponent<TMP_Text>();
+        }
+
+        Transform starsTransform = transform.Find("Stars");
+        if (starsTransform != null)
+        {
+            m_stars = starsTransform.gameObject;
+            m_starObj = new GameObject[starsTransform.childCount];
+            for (int i = 0; i < starsTransform.childCount; i++)
+            {
+                m_starObj[i] = starsTransform.GetChild(i).GetChild(0).gameObject;
+            }
+        }
+
         m_unlock = transform.Find("Unlock").gameObject;
         m_lock = transform.Find("Lock").gameObject;
         m_color = transform.Find("Color").gameObject;
@@ -76,12 +109,18 @@ public class MPMainLevelItem : MonoBehaviour
         m_data = data;
         m_index = index;
 
+        if (m_levelIndexText != null)
+        {
+            m_levelIndexText.text = (m_index + 1).ToString();
+        }
+
         // 刷新显示状态
         // 1、是否解锁
         m_isUnlock = MPUser.instance.MainLevelIsUnlock(m_data.ID);
         if (!m_isUnlock)
         {
             m_pixel.gameObject.SetActive(false);
+            RefreshStars(false, 0);
             m_color.SetActive(true);
             m_unlock.SetActive(false);
             m_lock.SetActive(true);
@@ -98,13 +137,36 @@ public class MPMainLevelItem : MonoBehaviour
                 m_lock.SetActive(false);
 
                 m_pixel.sprite = MPLoad.Load<Sprite>("icon_" + m_data.ID);
+                RefreshStars(true, MPUser.instance.GetMainLevelStars(m_data.ID));
             }
             else
             {
                 m_pixel.gameObject.SetActive(false);
+                RefreshStars(false, 0);
                 m_color.SetActive(true);
                 m_unlock.SetActive(true);
                 m_lock.SetActive(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 刷新通关星星显示，未通关时隐藏整个星星节点。
+    /// </summary>
+    /// <param name="isPass">当前关卡是否已经通关。</param>
+    /// <param name="stars">通关时剩余生命对应的星数。</param>
+    private void RefreshStars(bool isPass, int stars)
+    {
+        if (m_stars == null || m_starObj == null)
+            return;
+
+        m_stars.SetActive(isPass);
+        stars = Mathf.Clamp(stars, 0, m_starObj.Length);
+        for (int i = 0; i < m_starObj.Length; i++)
+        {
+            if (m_starObj[i] != null)
+            {
+                m_starObj[i].SetActive(i < stars);
             }
         }
     }

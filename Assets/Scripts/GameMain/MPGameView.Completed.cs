@@ -24,7 +24,7 @@ public partial class MPGameView
         }
 
         // 1、记录当前已通关关卡
-        MPUser.instance.MainLevelPass(m_blockInfo.ID);
+        MPUser.instance.MainLevelPass(m_blockInfo.ID, m_lovesCount);
 
         // 2、更新解锁到的关卡位置，解锁新关卡
         if (m_index == MPUser.instance.GetMainLevlPassIndex())
