@@ -20,6 +20,30 @@ public partial class MPLargeImageGameView
         RegisterMove(m_moveRight, OnMoveRightPointerDown, OnMovePointerUp);
 
         m_backBtn.onClick.AddListener(OnBackClick);
+
+        if (m_hintPropBtn != null)
+        {
+            m_hintPropBtn.onClick.AddListener(OnHintPropClick);
+        }
+
+        if (m_loveRecoverPropBtn != null)
+        {
+            m_loveRecoverPropBtn.onClick.AddListener(OnLoveRecoverPropClick);
+        }
+
+        RefreshPropButtons();
+    }
+
+    /// <summary>
+    /// 刷新提示道具和生命恢复道具的数量显示。
+    /// </summary>
+    private void RefreshPropButtons()
+    {
+        if (m_hintPropBtn == null || m_hintPropCountText == null || m_loveRecoverPropBtn == null || m_loveRecoverPropCountText == null)
+            return;
+
+        m_hintPropCountText.text = MPUser.instance.GetHintProps().ToString();
+        m_loveRecoverPropCountText.text = MPUser.instance.GetLoveRecoverProps().ToString();
     }
 
     /// <summary>
@@ -62,6 +86,7 @@ public partial class MPLargeImageGameView
         m_loves[m_lovesCount].SetActive(false);
 
         SaveProgressCache();
+        RefreshPropButtons();
     }
 
     /// <summary>
@@ -75,6 +100,119 @@ public partial class MPLargeImageGameView
         m_loves[m_lovesCount].SetActive(true);
 
         m_lovesCount++;
+
+        SaveProgressCache();
+        RefreshPropButtons();
+    }
+
+
+    /// <summary>
+    /// 判断当前展示范围内是否还有未完成的格子。
+    /// </summary>
+    /// <returns>当前展示范围内存在未完成格子返回true，否则返回false。</returns>
+    private bool HasVisibleUncompletedBlock()
+    {
+        return GetVisibleHintBlock() != null;
+    }
+
+    /// <summary>
+    /// 在当前展示范围内自动完成一个格子，并同步触发行列完成检查。
+    /// </summary>
+    private void AutoCompleteOneVisibleBlock()
+    {
+        MPLargeImageGameBlock block = GetVisibleHintBlock();
+        if (block == null)
+            return;
+
+        if (block.isFill)
+        {
+            block.Fill();
+        }
+        else
+        {
+            block.Blank();
+        }
+
+        block.Disable();
+        Check(block);
+    }
+
+    /// <summary>
+    /// 获取当前展示范围内提示道具本次要自动完成的格子，优先选择需要填充的未完成格子。
+    /// </summary>
+    /// <returns>当前展示范围内可自动完成的格子，没有可用格子时返回null。</returns>
+    private MPLargeImageGameBlock GetVisibleHintBlock()
+    {
+        if (m_blockGrid2Array == null)
+            return null;
+
+        for (int i = 0; i < FIXED_SIZE; i++)
+        {
+            for (int j = 0; j < FIXED_SIZE; j++)
+            {
+                MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
+                if (!block.completed && block.isFill)
+                {
+                    return block;
+                }
+            }
+        }
+
+        for (int i = 0; i < FIXED_SIZE; i++)
+        {
+            for (int j = 0; j < FIXED_SIZE; j++)
+            {
+                MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
+                if (!block.completed)
+                {
+                    return block;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 点击提示道具按钮，在当前展示范围内自动完成一个格子。
+    /// </summary>
+    private void OnHintPropClick()
+    {
+        if (!HasVisibleUncompletedBlock())
+        {
+            RefreshPropButtons();
+            return;
+        }
+
+        if (!MPUser.instance.UseHintProp())
+        {
+            RefreshPropButtons();
+            return;
+        }
+
+        AutoCompleteOneVisibleBlock();
+        SaveProgressCache();
+        RefreshPropButtons();
+    }
+
+    /// <summary>
+    /// 点击生命恢复道具按钮，消耗一个恢复道具并恢复一颗生命。
+    /// </summary>
+    private void OnLoveRecoverPropClick()
+    {
+        if (m_lovesCount >= m_loves.Count)
+        {
+            RefreshPropButtons();
+            return;
+        }
+
+        if (!MPUser.instance.UseLoveRecoverProp())
+        {
+            RefreshPropButtons();
+            return;
+        }
+
+        AddLoves();
     }
 
     private IEnumerator StartMove(Vector2Int dir)

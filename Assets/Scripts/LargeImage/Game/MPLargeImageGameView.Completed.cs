@@ -14,6 +14,7 @@ public partial class MPLargeImageGameView
     {
         m_hasCompleted = true;
         ClearProgressCache();
+        RefreshPropButtons();
 
         // 1、记录当前已通关关卡
         MPUser.instance.LargeImageLevelPass(m_blockInfo.ID);

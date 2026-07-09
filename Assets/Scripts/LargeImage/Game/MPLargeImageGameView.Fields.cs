@@ -3,6 +3,7 @@ using HQ.UIManager;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -131,6 +132,36 @@ public partial class MPLargeImageGameView : AWindow
     /// </summary>
     [TransformPath("View/Up/SettingBtn")]
     private Button m_settingBtn;
+
+    /// <summary>
+    /// 道具按钮节点
+    /// </summary>
+    [TransformPath("View/Props")]
+    private RectTransform m_props;
+
+    /// <summary>
+    /// 提示道具按钮
+    /// </summary>
+    [TransformPath("View/Props/HintBtn")]
+    private Button m_hintPropBtn;
+
+    /// <summary>
+    /// 提示道具数量
+    /// </summary>
+    [TransformPath("View/Props/HintBtn/CountFrame/Count")]
+    private TMP_Text m_hintPropCountText;
+
+    /// <summary>
+    /// 生命恢复道具按钮
+    /// </summary>
+    [TransformPath("View/Props/RecoverBtn")]
+    private Button m_loveRecoverPropBtn;
+
+    /// <summary>
+    /// 生命恢复道具数量
+    /// </summary>
+    [TransformPath("View/Props/RecoverBtn/CountFrame/Count")]
+    private TMP_Text m_loveRecoverPropCountText;
 
     /// <summary>
     /// 生命值
@@ -295,6 +326,10 @@ public partial class MPLargeImageGameView : AWindow
             m_loves.Add(lovesNode.GetChild(i).GetChild(0).gameObject);
         }
         m_lovesCount = m_loves.Count;
+        if (m_props != null)
+        {
+            m_props.gameObject.SetActive(true);
+        }
 
         m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID);
 
