@@ -62,4 +62,17 @@ public class MPGameNumberFrameBase : MonoBehaviour
 
         m_cg.DOFade(0.5f, 0.3f);
     }
+
+    /// <summary>
+    /// 播放结算时数字提示框渐隐动画。
+    /// </summary>
+    /// <param name="duration">渐隐时长。</param>
+    public Tween FadeOut(float duration)
+    {
+        if (m_cg == null)
+            return null;
+
+        m_cg.DOKill();
+        return m_cg.DOFade(0, duration).SetEase(Ease.Linear).SetLink(gameObject);
+    }
 }

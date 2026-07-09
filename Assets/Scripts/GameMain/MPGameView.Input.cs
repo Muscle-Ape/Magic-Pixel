@@ -216,9 +216,13 @@ public partial class MPGameView
         // 6、判断是否全部完成
         if (m_hvCompleted == m_size * 2)
         {
-            if (!m_isRestoringProgress)
+            if (!m_isRestoringProgress && !m_hasCompleted)
             {
                 UpdateData();
+                if (!m_isCustomLevel)
+                {
+                    StartCoroutine(PlayCompletedAnimation());
+                }
             }
         }
     }
