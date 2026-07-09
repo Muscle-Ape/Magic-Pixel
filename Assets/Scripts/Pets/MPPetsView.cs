@@ -45,13 +45,13 @@ public class MPPetsView : AWindow
     private Button m_petTabBtn;
 
     /// <summary>
-    /// 食物页签按钮，当前暂无数据。
+    /// 食物页签按钮。
     /// </summary>
     [TransformPath("View/TabPanel/Tab/FoodTab")]
     private Button m_foodTabBtn;
 
     /// <summary>
-    /// 玩具页签按钮，当前暂无数据。
+    /// 玩具页签按钮。
     /// </summary>
     [TransformPath("View/TabPanel/Tab/ToysTab")]
     private Button m_toysTabBtn;
@@ -128,6 +128,16 @@ public class MPPetsView : AWindow
     private List<MPPetConfig> m_petConfigs;
 
     /// <summary>
+    /// 食物配置列表，用于恢复健康度。
+    /// </summary>
+    private List<MPPetCareItemConfig> m_foodConfigs;
+
+    /// <summary>
+    /// 玩具配置列表，用于恢复心情度。
+    /// </summary>
+    private List<MPPetCareItemConfig> m_toyConfigs;
+
+    /// <summary>
     /// 当前页签类型。
     /// </summary>
     private PetsTabType m_currentTab;
@@ -136,6 +146,16 @@ public class MPPetsView : AWindow
     /// 当前详情区展示的宠物配置。
     /// </summary>
     private MPPetConfig m_selectedPetConfig;
+
+    /// <summary>
+    /// 当前选中的食物或玩具 ID。点击 Use 按钮后才会真正使用。
+    /// </summary>
+    private string m_selectedCareItemId;
+
+    /// <summary>
+    /// 当前选中的食物或玩具所属页签。
+    /// </summary>
+    private PetsTabType m_selectedCareItemTab;
 
     /// <summary>
     /// 详情区奖励节点缓存，最多三个。
@@ -154,12 +174,19 @@ public class MPPetsView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
-        m_petConfigs = MPDataManager.Instance.m_petsModel?.petConfigs ?? new List<MPPetConfig>();
+        MPPetsModel petsModel = MPDataManager.Instance.m_petsModel;
+        m_petConfigs = petsModel?.petConfigs ?? new List<MPPetConfig>();
+        m_foodConfigs = petsModel?.foodConfigs ?? new List<MPPetCareItemConfig>();
+        m_toyConfigs = petsModel?.toyConfigs ?? new List<MPPetCareItemConfig>();
+
         MPUser.instance.SyncPetRuntimeConfigs(m_petConfigs);
+        MPUser.instance.SyncPetCareRuntimeConfigs(m_foodConfigs);
+        MPUser.instance.SyncPetCareRuntimeConfigs(m_toyConfigs);
 
         CachePetInfoRewardNodes();
         RegisterUI();
         SelectDefaultPet();
+        MPUser.instance.ApplyPetStatusDecay(m_petConfigs);
         SwitchTab(PetsTabType.Pets);
         RefreshPetInfo();
     }
@@ -239,6 +266,11 @@ public class MPPetsView : AWindow
     /// </summary>
     private void SwitchTab(PetsTabType tab)
     {
+        if (m_currentTab != tab)
+        {
+            ClearCareItemSelection();
+        }
+
         m_currentTab = tab;
         RefreshTabState();
 
@@ -253,6 +285,10 @@ public class MPPetsView : AWindow
         {
             m_contentGrid.SetListItemCount(count);
             m_contentGrid.RefreshAllShownItem();
+            if (count > 0)
+            {
+                m_contentGrid.MovePanelToItemByRowColumn(0, 0);
+            }
         }
     }
 
@@ -266,9 +302,9 @@ public class MPPetsView : AWindow
             case PetsTabType.Pets:
                 return m_petConfigs.Count;
             case PetsTabType.Food:
+                return m_foodConfigs.Count;
             case PetsTabType.Toys:
-                // 食物和玩具功能暂未接入，先返回 0 保持页签可切换。
-                return 0;
+                return m_toyConfigs.Count;
             default:
                 return 0;
         }
@@ -279,7 +315,22 @@ public class MPPetsView : AWindow
     /// </summary>
     private LoopGridViewItem GetItemByRowColumn(LoopGridView view, int index, int row, int column)
     {
-        if (m_currentTab != PetsTabType.Pets || index < 0 || index >= m_petConfigs.Count)
+        switch (m_currentTab)
+        {
+            case PetsTabType.Pets:
+                return GetPetItem(index);
+            case PetsTabType.Food:
+                return GetCareItem(index, m_foodConfigs, "MPFoodItem");
+            case PetsTabType.Toys:
+                return GetCareItem(index, m_toyConfigs, "MPToyItem");
+            default:
+                return null;
+        }
+    }
+
+    private LoopGridViewItem GetPetItem(int index)
+    {
+        if (index < 0 || index >= m_petConfigs.Count)
             return null;
 
         MPPetConfig config = m_petConfigs[index];
@@ -299,6 +350,33 @@ public class MPPetsView : AWindow
 
         MPPetRuntimeData runtimeData = MPUser.instance.GetPetRuntimeData(config.ID);
         petItem.Refresh(config, runtimeData, m_selectedPetConfig != null && m_selectedPetConfig.ID == config.ID);
+        return item;
+    }
+
+    private LoopGridViewItem GetCareItem(int index, List<MPPetCareItemConfig> configs, string prefabName)
+    {
+        if (configs == null || index < 0 || index >= configs.Count)
+            return null;
+
+        MPPetCareItemConfig config = configs[index];
+        LoopGridViewItem item = m_contentGrid.NewListViewItem(prefabName);
+        MPPetCareItem careItem = item.GetComponent<MPPetCareItem>();
+        if (careItem == null)
+        {
+            careItem = item.gameObject.AddComponent<MPPetCareItem>();
+        }
+
+        if (!item.IsInitHandlerCalled)
+        {
+            item.IsInitHandlerCalled = true;
+            careItem.Initialize(OnCareItemClick, OnCareItemUseClick);
+        }
+
+        MPPetCareRuntimeData runtimeData = MPUser.instance.GetPetCareRuntimeData(config.ID);
+        bool selected = m_selectedCareItemTab == m_currentTab && m_selectedCareItemId == config.ID;
+        // 使用按钮的可点击状态由数据层统一判断，包含解锁、数量、宠物有效性以及目标值是否已满。
+        bool canUse = m_selectedPetConfig != null && MPUser.instance.PetCareItemCanUse(m_selectedPetConfig.ID, config);
+        careItem.Refresh(config, runtimeData, selected, canUse);
         return item;
     }
 
@@ -322,12 +400,70 @@ public class MPPetsView : AWindow
         m_contentGrid.RefreshAllShownItem();
     }
 
+    private void OnCareItemClick(MPPetCareItemConfig config)
+    {
+        if (config == null)
+            return;
+
+        if (!MPUser.instance.PetCareItemIsUnlock(config.ID))
+        {
+            ClearCareItemSelection();
+            m_contentGrid.RefreshAllShownItem();
+            OnLockedCareItemClick(config);
+            return;
+        }
+
+        if (m_selectedPetConfig == null)
+            return;
+
+        m_selectedCareItemId = config.ID;
+        m_selectedCareItemTab = m_currentTab;
+        m_contentGrid.RefreshAllShownItem();
+    }
+
+    private void OnCareItemUseClick(MPPetCareItemConfig config)
+    {
+        if (config == null)
+            return;
+
+        if (!MPUser.instance.PetCareItemIsUnlock(config.ID))
+            return;
+
+        if (m_selectedPetConfig == null)
+            return;
+
+        if (m_selectedCareItemTab != m_currentTab || m_selectedCareItemId != config.ID)
+            return;
+
+        // 先把当前宠物状态按时间补扣，再执行恢复，避免恢复值被旧时间差抵消。
+        MPUser.instance.ApplyPetStatusDecay(m_petConfigs);
+        if (MPUser.instance.UsePetCareItem(m_selectedPetConfig.ID, config))
+        {
+            RefreshPetInfo();
+            m_contentGrid.RefreshAllShownItem();
+        }
+    }
+
+    private void ClearCareItemSelection()
+    {
+        m_selectedCareItemId = null;
+        m_selectedCareItemTab = PetsTabType.Pets;
+    }
+
     /// <summary>
     /// 未解锁宠物点击入口，后续在这里接入解锁确认弹窗。
     /// </summary>
     private void OnLockedPetItemClick(MPPetConfig config)
     {
-        // TODO: 后续接入解锁确认弹窗。
+        // TODO: 后续接入宠物解锁确认弹窗。
+    }
+
+    /// <summary>
+    /// 未解锁食物/玩具点击入口，后续在这里接入解锁确认弹窗。
+    /// </summary>
+    private void OnLockedCareItemClick(MPPetCareItemConfig config)
+    {
+        // TODO: 后续接入食物/玩具解锁确认弹窗。
     }
 
     /// <summary>
@@ -586,6 +722,5 @@ public class MPPetsView : AWindow
             default:
                 return rewardType;
         }
-
     }
 }

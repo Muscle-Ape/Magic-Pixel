@@ -14,6 +14,7 @@ public partial class MPGameView
     {
         m_hasCompleted = true;
         ClearProgressCache();
+        RefreshPropButtons();
 
         if (m_isCustomLevel)
         {

@@ -3636,6 +3636,10 @@ MonoBehaviour:
   mItemPrefabDataList:
   - mItemPrefab: {fileID: 6518622603848616198, guid: e8d33a970aecffa41ab6bd1be3edb011, type: 3}
     mInitCreateCount: 0
+  - mItemPrefab: {fileID: 6518622603848616198, guid: 3d7a4ef41db14ce99513772416f39f19, type: 3}
+    mInitCreateCount: 0
+  - mItemPrefab: {fileID: 6518622603848616198, guid: 70b2c6d8576247df9cfc715a11d3a811, type: 3}
+    mInitCreateCount: 0
   mArrangeType: 0
   mFixedRowOrColumnCount: 4
   mPadding:

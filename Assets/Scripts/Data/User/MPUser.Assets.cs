@@ -10,6 +10,16 @@ public partial class MPUser
     #region Key
     private string m_key_coins = "key_coins";
 
+    /// <summary>
+    /// 提示道具数量存档Key。
+    /// </summary>
+    private string m_key_hint_props = "key_hint_props";
+
+    /// <summary>
+    /// 生命恢复道具数量存档Key。
+    /// </summary>
+    private string m_key_love_recover_props = "key_love_recover_props";
+
 
     #endregion
 
@@ -20,6 +30,16 @@ public partial class MPUser
     /// </summary>
     private int m_coins;
 
+    /// <summary>
+    /// 当前拥有的提示道具数量。
+    /// </summary>
+    private int m_hintProps;
+
+    /// <summary>
+    /// 当前拥有的生命恢复道具数量。
+    /// </summary>
+    private int m_loveRecoverProps;
+
 
     #endregion
 
@@ -27,6 +47,8 @@ public partial class MPUser
     private void InitAssets()
     {
         m_coins = ES3.Load<int>(m_key_coins, 0);
+        m_hintProps = ES3.Load<int>(m_key_hint_props, 0);
+        m_loveRecoverProps = ES3.Load<int>(m_key_love_recover_props, 0);
     }
 
 
@@ -48,6 +70,84 @@ public partial class MPUser
     public int GetCoins()
     {
         return m_coins;
+    }
+
+    /// <summary>
+    /// 增加提示道具数量。
+    /// </summary>
+    /// <param name="count">增加数量。</param>
+    public void AddHintProps(int count)
+    {
+        if (count <= 0)
+            return;
+
+        m_hintProps += count;
+
+        ES3.Save(m_key_hint_props, m_hintProps);
+    }
+
+    /// <summary>
+    /// 尝试消耗一个提示道具。
+    /// </summary>
+    /// <returns>消耗成功返回true，数量不足返回false。</returns>
+    public bool UseHintProp()
+    {
+        if (m_hintProps <= 0)
+            return false;
+
+        m_hintProps--;
+
+        ES3.Save(m_key_hint_props, m_hintProps);
+
+        return true;
+    }
+
+    /// <summary>
+    /// 获取当前提示道具数量。
+    /// </summary>
+    /// <returns>提示道具数量。</returns>
+    public int GetHintProps()
+    {
+        return m_hintProps;
+    }
+
+    /// <summary>
+    /// 增加生命恢复道具数量。
+    /// </summary>
+    /// <param name="count">增加数量。</param>
+    public void AddLoveRecoverProps(int count)
+    {
+        if (count <= 0)
+            return;
+
+        m_loveRecoverProps += count;
+
+        ES3.Save(m_key_love_recover_props, m_loveRecoverProps);
+    }
+
+    /// <summary>
+    /// 尝试消耗一个生命恢复道具。
+    /// </summary>
+    /// <returns>消耗成功返回true，数量不足返回false。</returns>
+    public bool UseLoveRecoverProp()
+    {
+        if (m_loveRecoverProps <= 0)
+            return false;
+
+        m_loveRecoverProps--;
+
+        ES3.Save(m_key_love_recover_props, m_loveRecoverProps);
+
+        return true;
+    }
+
+    /// <summary>
+    /// 获取当前生命恢复道具数量。
+    /// </summary>
+    /// <returns>生命恢复道具数量。</returns>
+    public int GetLoveRecoverProps()
+    {
+        return m_loveRecoverProps;
     }
     #endregion
 }

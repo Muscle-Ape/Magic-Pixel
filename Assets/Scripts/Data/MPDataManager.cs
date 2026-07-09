@@ -33,7 +33,7 @@ public class MPDataManager
     public MPLargeImageLevelModel m_largeImageModel;
 
     /// <summary>
-    /// 宠物配置数据。
+    /// 宠物系统配置数据。
     /// </summary>
     public MPPetsModel m_petsModel;
 
@@ -72,19 +72,24 @@ public class MPDataManager
     }
 
     /// <summary>
-    /// 加载宠物静态配置。资源名需要和 YooRes/Config/pets_config.json 保持一致。
+    /// 加载宠物、食物和玩具静态配置。
     /// </summary>
     private void Pets()
     {
-        TextAsset json = YooAssets.LoadAssetSync<TextAsset>("pets_config").AssetObject as TextAsset;
-        List<MPPetConfig> petConfigs = new List<MPPetConfig>();
+        m_petsModel = new MPPetsModel();
+        m_petsModel.petConfigs = LoadConfigList<MPPetConfig>("pets_config");
+        m_petsModel.foodConfigs = LoadConfigList<MPPetCareItemConfig>("pet_foods_config");
+        m_petsModel.toyConfigs = LoadConfigList<MPPetCareItemConfig>("pet_toys_config");
+    }
 
-        if (json != null && !string.IsNullOrEmpty(json.text))
+    private List<T> LoadConfigList<T>(string location)
+    {
+        TextAsset json = YooAssets.LoadAssetSync<TextAsset>(location).AssetObject as TextAsset;
+        if (json == null || string.IsNullOrEmpty(json.text))
         {
-            petConfigs = JsonConvert.DeserializeObject<List<MPPetConfig>>(json.text) ?? new List<MPPetConfig>();
+            return new List<T>();
         }
 
-        m_petsModel = new MPPetsModel();
-        m_petsModel.petConfigs = petConfigs;
+        return JsonConvert.DeserializeObject<List<T>>(json.text) ?? new List<T>();
     }
 }

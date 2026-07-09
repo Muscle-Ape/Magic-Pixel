@@ -41,6 +41,29 @@ public class MPPetRuntimeData
     public long lastStatusTicks;
 }
 
+public class MPPetCareRuntimeData
+{
+    /// <summary>
+    /// 食物或玩具 ID，对应 MPPetCareItemConfig.ID。
+    /// </summary>
+    public string id;
+
+    /// <summary>
+    /// 当前道具是否已经解锁。
+    /// </summary>
+    public bool unlocked;
+
+    /// <summary>
+    /// 当前剩余数量。
+    /// </summary>
+    public int count;
+
+    /// <summary>
+    /// 数量是否已经用配置默认值初始化过，用于兼容旧存档。
+    /// </summary>
+    public bool quantityInitialized;
+}
+
 public partial class MPUser
 {
     /// <summary>
@@ -64,9 +87,19 @@ public partial class MPUser
     private string m_key_pet_reward_inventory = "key_pet_reward_inventory";
 
     /// <summary>
+    /// 食物和玩具解锁状态存档 Key。
+    /// </summary>
+    private string m_key_pet_care_items_json = "key_pet_care_items_json";
+
+    /// <summary>
     /// 宠物运行时数据列表，和静态配置分离，便于热更配置和兼容旧存档。
     /// </summary>
     private List<MPPetRuntimeData> m_pet_runtime_list;
+
+    /// <summary>
+    /// 食物和玩具运行时数据列表，目前只保存解锁状态。
+    /// </summary>
+    private List<MPPetCareRuntimeData> m_pet_care_runtime_list;
 
     /// <summary>
     /// 非金币奖励累计数量，后续接入具体道具系统时可替换为正式背包。
@@ -80,12 +113,18 @@ public partial class MPUser
 
     private void InitPets()
     {
-        string json = ES3.Load<string>(m_key_pets_json, defaultValue: null);
-        m_pet_runtime_list = DeserializePetRuntimeList(json);
+        string petJson = ES3.Load<string>(m_key_pets_json, defaultValue: null);
+        string careJson = ES3.Load<string>(m_key_pet_care_items_json, defaultValue: null);
+
+        m_pet_runtime_list = DeserializePetRuntimeList(petJson);
+        m_pet_care_runtime_list = DeserializePetCareRuntimeList(careJson);
         m_pet_reward_inventory = ES3.Load<Dictionary<string, int>>(m_key_pet_reward_inventory, new Dictionary<string, int>());
         m_selected_pet_id = ES3.Load<string>(m_key_selected_pet_id, defaultValue: null);
 
-        SyncPetRuntimeConfigs(MPDataManager.Instance.m_petsModel?.petConfigs);
+        MPPetsModel petsModel = MPDataManager.Instance.m_petsModel;
+        SyncPetRuntimeConfigs(petsModel?.petConfigs);
+        SyncPetCareRuntimeConfigs(petsModel?.foodConfigs);
+        SyncPetCareRuntimeConfigs(petsModel?.toyConfigs);
     }
 
     public void SyncPetRuntimeConfigs(List<MPPetConfig> configs)
@@ -143,6 +182,51 @@ public partial class MPUser
         }
     }
 
+    public void SyncPetCareRuntimeConfigs(List<MPPetCareItemConfig> configs)
+    {
+        if (configs == null)
+            return;
+
+        if (m_pet_care_runtime_list == null)
+        {
+            m_pet_care_runtime_list = new List<MPPetCareRuntimeData>();
+        }
+
+        bool changed = false;
+        for (int i = 0; i < configs.Count; i++)
+        {
+            MPPetCareItemConfig config = configs[i];
+            if (config == null || string.IsNullOrEmpty(config.ID))
+                continue;
+
+            MPPetCareRuntimeData data = GetPetCareRuntimeData(config.ID);
+            if (data != null)
+            {
+                if (!data.quantityInitialized)
+                {
+                    data.count = config.DefaultCount;
+                    data.quantityInitialized = true;
+                    changed = true;
+                }
+                continue;
+            }
+
+            m_pet_care_runtime_list.Add(new MPPetCareRuntimeData()
+            {
+                id = config.ID,
+                unlocked = config.DefaultUnlocked,
+                count = config.DefaultCount,
+                quantityInitialized = true,
+            });
+            changed = true;
+        }
+
+        if (changed)
+        {
+            SavePetCareRuntime();
+        }
+    }
+
     public List<MPPetRuntimeData> GetPetRuntimeList()
     {
         if (m_pet_runtime_list == null)
@@ -162,10 +246,35 @@ public partial class MPUser
         return list.Find(item => item != null && item.id == id);
     }
 
+    public MPPetCareRuntimeData GetPetCareRuntimeData(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return null;
+
+        if (m_pet_care_runtime_list == null)
+        {
+            InitPets();
+        }
+
+        return m_pet_care_runtime_list.Find(item => item != null && item.id == id);
+    }
+
     public bool PetIsUnlock(string id)
     {
         MPPetRuntimeData data = GetPetRuntimeData(id);
         return data != null && data.unlocked;
+    }
+
+    public bool PetCareItemIsUnlock(string id)
+    {
+        MPPetCareRuntimeData data = GetPetCareRuntimeData(id);
+        return data != null && data.unlocked;
+    }
+
+    public int GetPetCareItemCount(string id)
+    {
+        MPPetCareRuntimeData data = GetPetCareRuntimeData(id);
+        return data == null ? 0 : Mathf.Max(0, data.count);
     }
 
     public void PetUnlock(string id)
@@ -179,6 +288,55 @@ public partial class MPUser
         data.lastStatusTicks = DateTime.UtcNow.Ticks;
         data.rewardStartTicks = data.lastStatusTicks;
         SavePetsRuntime();
+    }
+
+    public void PetCareItemUnlock(string id)
+    {
+        MPPetCareRuntimeData data = GetPetCareRuntimeData(id);
+        if (data == null || data.unlocked)
+            return;
+
+        data.unlocked = true;
+        SavePetCareRuntime();
+    }
+
+    public void AddPetCareItemCount(string id, int count)
+    {
+        if (string.IsNullOrEmpty(id) || count <= 0)
+            return;
+
+        MPPetCareRuntimeData data = GetPetCareRuntimeData(id);
+        if (data == null)
+            return;
+
+        data.count = Mathf.Max(0, data.count) + count;
+        data.quantityInitialized = true;
+        SavePetCareRuntime();
+    }
+
+    public bool PetCareItemCanUse(string petId, MPPetCareItemConfig itemConfig)
+    {
+        if (itemConfig == null || !PetCareItemIsUnlock(itemConfig.ID))
+            return false;
+
+        MPPetCareRuntimeData careData = GetPetCareRuntimeData(itemConfig.ID);
+        if (careData == null || careData.count <= 0)
+            return false;
+
+        MPPetRuntimeData petData = GetPetRuntimeData(petId);
+        if (petData == null || !petData.unlocked)
+            return false;
+
+        // 对应状态已经满值时，不允许继续使用道具，避免无效消耗数量。
+        switch (itemConfig.RestoreType)
+        {
+            case MPPetRestoreType.Health:
+                return petData.health < 100f;
+            case MPPetRestoreType.Mood:
+                return petData.mood < 100f;
+            default:
+                return false;
+        }
     }
 
     public string GetSelectedPetId()
@@ -261,6 +419,32 @@ public partial class MPUser
         return true;
     }
 
+    public bool UsePetCareItem(string petId, MPPetCareItemConfig itemConfig)
+    {
+        if (!PetCareItemCanUse(petId, itemConfig))
+            return false;
+
+        MPPetCareRuntimeData careData = GetPetCareRuntimeData(itemConfig.ID);
+        MPPetRuntimeData petData = GetPetRuntimeData(petId);
+        switch (itemConfig.RestoreType)
+        {
+            case MPPetRestoreType.Health:
+                petData.health = Mathf.Clamp(petData.health + itemConfig.RestorePercent, 0f, 100f);
+                break;
+            case MPPetRestoreType.Mood:
+                petData.mood = Mathf.Clamp(petData.mood + itemConfig.RestorePercent, 0f, 100f);
+                break;
+        }
+
+        // 使用恢复道具后从当前时间继续做状态衰减，避免旧的 lastStatusTicks 立刻抵消恢复值。
+        petData.lastStatusTicks = DateTime.UtcNow.Ticks;
+        careData.count = Mathf.Max(0, careData.count - 1);
+        careData.quantityInitialized = true;
+        SavePetsRuntime();
+        SavePetCareRuntime();
+        return true;
+    }
+
     public void ApplyPetStatusDecay(List<MPPetConfig> configs)
     {
         if (configs == null || configs.Count == 0)
@@ -301,6 +485,11 @@ public partial class MPUser
     private void SavePetsRuntime()
     {
         ES3.Save(m_key_pets_json, JsonConvert.SerializeObject(m_pet_runtime_list));
+    }
+
+    private void SavePetCareRuntime()
+    {
+        ES3.Save(m_key_pet_care_items_json, JsonConvert.SerializeObject(m_pet_care_runtime_list));
     }
 
     public int GetPetRewardInventoryCount(string rewardType)
@@ -350,6 +539,23 @@ public partial class MPUser
         {
             // 旧版本或异常存档无法解析时，返回空列表并由配置同步流程重新补齐。
             return new List<MPPetRuntimeData>();
+        }
+    }
+
+    private List<MPPetCareRuntimeData> DeserializePetCareRuntimeList(string json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return new List<MPPetCareRuntimeData>();
+        }
+
+        try
+        {
+            return JsonConvert.DeserializeObject<List<MPPetCareRuntimeData>>(json) ?? new List<MPPetCareRuntimeData>();
+        }
+        catch (Exception)
+        {
+            return new List<MPPetCareRuntimeData>();
         }
     }
 }

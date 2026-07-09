@@ -89,6 +89,76 @@ public partial class MPGameView
     }
 
     /// <summary>
+    /// 判断当前关卡是否还有未完成的格子。
+    /// </summary>
+    /// <returns>存在未完成格子返回true，否则返回false。</returns>
+    private bool HasUncompletedBlock()
+    {
+        if (m_blocks == null)
+            return false;
+
+        for (int i = 0; i < m_blocks.Count; i++)
+        {
+            if (!m_blocks[i].completed)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 自动完成一个可提示的格子，并同步触发行列完成检查。
+    /// </summary>
+    private void AutoCompleteOneBlock()
+    {
+        MPGameBlock block = GetHintBlock();
+        if (block == null)
+            return;
+
+        if (block.isFill)
+        {
+            block.Fill();
+        }
+        else
+        {
+            block.Blank();
+        }
+
+        block.Disable();
+        Check(block);
+    }
+
+    /// <summary>
+    /// 获取提示道具本次要自动完成的格子，优先选择需要填充的未完成格子。
+    /// </summary>
+    /// <returns>可自动完成的格子，没有可用格子时返回null。</returns>
+    private MPGameBlock GetHintBlock()
+    {
+        if (m_blocks == null)
+            return null;
+
+        for (int i = 0; i < m_blocks.Count; i++)
+        {
+            if (!m_blocks[i].completed && m_blocks[i].isFill)
+            {
+                return m_blocks[i];
+            }
+        }
+
+        for (int i = 0; i < m_blocks.Count; i++)
+        {
+            if (!m_blocks[i].completed)
+            {
+                return m_blocks[i];
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 固定拖拽方向
     /// </summary>
     /// <param name="block"></param>
