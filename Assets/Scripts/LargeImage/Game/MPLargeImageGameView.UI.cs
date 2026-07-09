@@ -83,7 +83,10 @@ public partial class MPLargeImageGameView
     {
         m_lovesCount = Mathf.Max(0, m_lovesCount - 1);
 
-        m_loves[m_lovesCount].SetActive(false);
+        GameObject love = m_loves[m_lovesCount];
+        love.transform.DOKill();
+        love.transform.localScale = Vector3.one;
+        love.SetActive(false);
 
         SaveProgressCache();
         RefreshPropButtons();
@@ -97,7 +100,11 @@ public partial class MPLargeImageGameView
         if (m_lovesCount == m_loves.Count)
             return;
 
-        m_loves[m_lovesCount].SetActive(true);
+        GameObject love = m_loves[m_lovesCount];
+        love.transform.DOKill();
+        love.transform.localScale = Vector3.zero;
+        love.SetActive(true);
+        love.transform.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack).SetLink(love);
 
         m_lovesCount++;
 
@@ -134,6 +141,7 @@ public partial class MPLargeImageGameView
         }
 
         block.Disable();
+        block.PlayHintAnimation();
         Check(block);
     }
 

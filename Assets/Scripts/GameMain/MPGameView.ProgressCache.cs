@@ -78,6 +78,8 @@ public partial class MPGameView
 
         for (int i = 0; i < m_loves.Count; i++)
         {
+            m_loves[i].transform.DOKill();
+            m_loves[i].transform.localScale = Vector3.one;
             m_loves[i].SetActive(i < m_lovesCount);
         }
     }

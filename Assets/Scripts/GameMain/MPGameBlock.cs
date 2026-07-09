@@ -27,6 +27,11 @@ public class MPGameBlock : MonoBehaviour
     private GameObject m_wrong;
 
     /// <summary>
+    /// 提示道具闪烁动画。
+    /// </summary>
+    private Tween m_hintTween;
+
+    /// <summary>
     /// 是否填充
     /// </summary>
     private bool m_isFill;
@@ -111,6 +116,35 @@ public class MPGameBlock : MonoBehaviour
     {
         //GetComponent<Image>().raycastTarget = false;
         m_completed = true;
+    }
+
+    /// <summary>
+    /// 播放提示道具命中的格子闪烁动画。
+    /// </summary>
+    public void PlayHintAnimation()
+    {
+        GameObject target = m_isFill ? m_fill : m_blank;
+        if (target == null)
+            return;
+
+        CanvasGroup cg = target.GetComponent<CanvasGroup>();
+        if (cg == null)
+            return;
+
+        m_hintTween?.Kill();
+        target.SetActive(true);
+
+        cg.alpha = 1;
+
+        m_hintTween = cg.DOFade(0.25f, 0.2f)
+            .SetEase(Ease.Linear)
+            .SetLoops(4, LoopType.Yoyo)
+            .SetLink(gameObject)
+            .OnComplete(() =>
+            {
+                cg.alpha = 1;
+                m_hintTween = null;
+            });
     }
 
     /// <summary>
