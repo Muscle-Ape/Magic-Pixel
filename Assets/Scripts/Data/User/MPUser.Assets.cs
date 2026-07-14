@@ -10,6 +10,8 @@ public partial class MPUser
     #region Key
     private string m_key_coins = "key_coins";
 
+    private string m_ket_diamond = "m_ket_diamond";
+
     /// <summary>
     /// 提示道具数量存档Key。
     /// </summary>
@@ -31,6 +33,11 @@ public partial class MPUser
     private int m_coins;
 
     /// <summary>
+    /// 钻石
+    /// </summary>
+    private int m_diamond;
+
+    /// <summary>
     /// 当前拥有的提示道具数量。
     /// </summary>
     private int m_hintProps;
@@ -46,7 +53,8 @@ public partial class MPUser
 
     private void InitAssets()
     {
-        m_coins = ES3.Load<int>(m_key_coins, 0);
+        m_coins = ES3.Load<int>(m_key_coins, 200);
+        m_diamond = ES3.Load<int>(m_ket_diamond, 0);
         m_hintProps = ES3.Load<int>(m_key_hint_props, 0);
         m_loveRecoverProps = ES3.Load<int>(m_key_love_recover_props, 0);
     }
@@ -70,6 +78,26 @@ public partial class MPUser
     public int GetCoins()
     {
         return m_coins;
+    }
+
+
+    public void AddDiamond(int count)
+    {
+        m_diamond += count;
+
+        ES3.Save(m_ket_diamond, m_diamond);
+    }
+
+    public void UseDiamond(int count)
+    {
+        m_diamond = Mathf.Max(m_diamond - count, 0);
+
+        ES3.Save(m_ket_diamond, m_diamond);
+    }
+
+    public int GetDiamond()
+    {
+        return m_diamond;
     }
 
     /// <summary>

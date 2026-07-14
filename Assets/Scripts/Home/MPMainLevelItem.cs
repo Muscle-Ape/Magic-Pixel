@@ -14,6 +14,11 @@ public class MPMainLevelItem : MonoBehaviour
     private Image m_pixel;
 
     /// <summary>
+    /// 关卡下标框
+    /// </summary>
+    private Image m_levelIndexFrame;
+
+    /// <summary>
     /// 当前关卡从1开始显示的下标文本。
     /// </summary>
     private TMP_Text m_levelIndexText;
@@ -37,11 +42,6 @@ public class MPMainLevelItem : MonoBehaviour
     /// 未解锁状态
     /// </summary>
     private GameObject m_lock;
-
-    /// <summary>
-    /// 背景色
-    /// </summary>
-    private GameObject m_color;
 
     /// <summary>
     /// 关卡点击按钮
@@ -68,14 +68,32 @@ public class MPMainLevelItem : MonoBehaviour
     /// </summary>
     private Action m_refresh;
 
+
+    /// <summary>
+    /// Item未解锁下标框图片资源
+    /// </summary>
+    private Sprite m_itemIndexFrameLockSpriteAsset;
+    /// <summary>
+    /// Item已解锁下标框图片资源
+    /// </summary>
+    private Sprite m_itemIndexFrameUnLockSpriteAsset;
+    /// <summary>
+    /// Item已通关下标框图片资源
+    /// </summary>
+    private Sprite m_itemIndexFramePassSpriteAsset;
+
     /// <summary>
     /// 初始化
     /// </summary>
-    public void Initialize(Action refresh)
+    public void Initialize(Action refresh, Sprite itemIndexFrameLockSpriteAsset, Sprite itemIndexFrameUnLockSpriteAsset, Sprite itemIndexFramePassSpriteAsset)
     {
         m_refresh = refresh;
+        m_itemIndexFrameLockSpriteAsset = itemIndexFrameLockSpriteAsset;
+        m_itemIndexFrameUnLockSpriteAsset = itemIndexFrameUnLockSpriteAsset;
+        m_itemIndexFramePassSpriteAsset = itemIndexFramePassSpriteAsset;
 
         m_pixel = transform.Find("Completed/Pixel").GetComponent<Image>();
+        m_levelIndexFrame = transform.Find("IndexFrame").GetComponent<Image>();
         Transform levelIndexTransform = transform.Find("IndexFrame/IndexText");
         if (levelIndexTransform != null)
         {
@@ -95,7 +113,6 @@ public class MPMainLevelItem : MonoBehaviour
 
         m_unlock = transform.Find("Unlock").gameObject;
         m_lock = transform.Find("Lock").gameObject;
-        m_color = transform.Find("Color").gameObject;
         m_levelBtn = transform.Find("Btn").GetComponent<Button>();
 
         m_levelBtn.onClick.AddListener(OnLevelClick);
@@ -119,9 +136,9 @@ public class MPMainLevelItem : MonoBehaviour
         m_isUnlock = MPUser.instance.MainLevelIsUnlock(m_data.ID);
         if (!m_isUnlock)
         {
+            m_levelIndexFrame.sprite = m_itemIndexFrameLockSpriteAsset;
             m_pixel.gameObject.SetActive(false);
             RefreshStars(false, 0);
-            m_color.SetActive(true);
             m_unlock.SetActive(false);
             m_lock.SetActive(true);
         }
@@ -131,8 +148,8 @@ public class MPMainLevelItem : MonoBehaviour
             bool isPass = MPUser.instance.MainLevelIsPass(m_data.ID);
             if (isPass)
             {
+                m_levelIndexFrame.sprite = m_itemIndexFramePassSpriteAsset;
                 m_pixel.gameObject.SetActive(true);
-                m_color.SetActive(false);
                 m_unlock.SetActive(false);
                 m_lock.SetActive(false);
 
@@ -141,9 +158,9 @@ public class MPMainLevelItem : MonoBehaviour
             }
             else
             {
+                m_levelIndexFrame.sprite = m_itemIndexFrameUnLockSpriteAsset;
                 m_pixel.gameObject.SetActive(false);
                 RefreshStars(false, 0);
-                m_color.SetActive(true);
                 m_unlock.SetActive(true);
                 m_lock.SetActive(false);
             }

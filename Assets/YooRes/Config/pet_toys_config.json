@@ -1,0 +1,50 @@
+[
+  {
+    "id": "toy_ball",
+    "name": "Yarn Ball",
+    "icon": "pet_toy_ball",
+    "itemType": "toy",
+    "restoreType": "mood",
+    "restorePercent": 15,
+    "defaultUnlocked": true,
+    "defaultCount": 5,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked"
+  },
+  {
+    "id": "toy_bone",
+    "name": "Chew Bone",
+    "icon": "pet_toy_bone",
+    "itemType": "toy",
+    "restoreType": "mood",
+    "restorePercent": 25,
+    "defaultUnlocked": true,
+    "defaultCount": 3,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked"
+  },
+  {
+    "id": "toy_mouse",
+    "name": "Toy Mouse",
+    "icon": "pet_toy_mouse",
+    "itemType": "toy",
+    "restoreType": "mood",
+    "restorePercent": 40,
+    "defaultUnlocked": false,
+    "defaultCount": 1,
+    "unlockLevel": 5,
+    "unlockText": "Unlock at Lv.5"
+  },
+  {
+    "id": "toy_tunnel",
+    "name": "Play Tunnel",
+    "icon": "pet_toy_tunnel",
+    "itemType": "toy",
+    "restoreType": "mood",
+    "restorePercent": 60,
+    "defaultUnlocked": false,
+    "defaultCount": 1,
+    "unlockLevel": 10,
+    "unlockText": "Unlock at Lv.10"
+  }
+]

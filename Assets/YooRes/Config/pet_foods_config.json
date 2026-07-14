@@ -1,0 +1,50 @@
+[
+  {
+    "id": "food_kibble",
+    "name": "Kibble",
+    "icon": "pet_food_kibble",
+    "itemType": "food",
+    "restoreType": "health",
+    "restorePercent": 15,
+    "defaultUnlocked": true,
+    "defaultCount": 5,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked"
+  },
+  {
+    "id": "food_canned",
+    "name": "Canned Food",
+    "icon": "pet_food_canned",
+    "itemType": "food",
+    "restoreType": "health",
+    "restorePercent": 25,
+    "defaultUnlocked": true,
+    "defaultCount": 3,
+    "unlockLevel": 1,
+    "unlockText": "Unlocked"
+  },
+  {
+    "id": "food_premium",
+    "name": "Premium Meal",
+    "icon": "pet_food_premium",
+    "itemType": "food",
+    "restoreType": "health",
+    "restorePercent": 40,
+    "defaultUnlocked": false,
+    "defaultCount": 1,
+    "unlockLevel": 5,
+    "unlockText": "Unlock at Lv.5"
+  },
+  {
+    "id": "food_feast",
+    "name": "Pet Feast",
+    "icon": "pet_food_feast",
+    "itemType": "food",
+    "restoreType": "health",
+    "restorePercent": 60,
+    "defaultUnlocked": false,
+    "defaultCount": 1,
+    "unlockLevel": 10,
+    "unlockText": "Unlock at Lv.10"
+  }
+]

@@ -4,6 +4,7 @@ using UnityEngine;
 using HQ.UIManager;
 using SuperScrollView;
 using UnityEngine.UI;
+using TMPro;
 
 [Component("MPHomeView")]
 public class MPHomeView : AWindow
@@ -23,36 +24,86 @@ public class MPHomeView : AWindow
     /// <summary>
     /// 大图模式按钮
     /// </summary>
-    [TransformPath("View/Down/Tab/Btns/LargeImage")]
+    [TransformPath("View/Down/Tab/LargeImage")]
     private Button m_largeImageBtn;
 
     /// <summary>
     /// 自定义模式按钮
     /// </summary>
-    [TransformPath("View/Down/Tab/Btns/Custom")]
+    [TransformPath("View/Down/Tab/Custom")]
     private Button m_customBtn;
 
     /// <summary>
     /// 宠物功能按钮
     /// </summary>
-    [TransformPath("View/Down/Tab/Btns/Pets")]
-    private Button m_PetsBtn;
+    [TransformPath("View/Down/Tab/Pets")]
+    private Button m_petsBtn;
+
+    /// <summary>
+    /// 3D
+    /// </summary>
+    [TransformPath("View/Down/Tab/ThreeD")]
+    private Button m_threeDBtn;
+
+    /// <summary>
+    /// 金币数量
+    /// </summary>
+    [TransformPath("View/Up/Coin/Count")]
+    private TMP_Text m_coinText;
+
+    /// <summary>
+    /// 钻石数量
+    /// </summary>
+    [TransformPath("View/Up/Diamond/Count")]
+    private TMP_Text m_diamondText;
 
     /// <summary>
     /// 主关卡数据
     /// </summary>
     private MPMainLevelModel m_levelModel;
 
+    /// <summary>
+    /// Item未解锁下标框图片资源
+    /// </summary>
+    private Sprite m_itemIndexFrameLockSpriteAsset;
+    /// <summary>
+    /// Item已解锁下标框图片资源
+    /// </summary>
+    private Sprite m_itemIndexFrameUnLockSpriteAsset;
+    /// <summary>
+    /// Item已通关下标框图片资源
+    /// </summary>
+    private Sprite m_itemIndexFramePassSpriteAsset;
+
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_levelModel = MPDataManager.Instance.m_mainLevelModel;
+
+        m_itemIndexFrameLockSpriteAsset = null;
+        m_itemIndexFrameUnLockSpriteAsset = null;
+        m_itemIndexFramePassSpriteAsset = null;
 
         m_loopGrid.InitGridView(m_levelModel.blockInfos.Count, GetMainLevelByRowColumn);
 
         m_settingBtn.onClick.AddListener(OnSettingClick);
         m_largeImageBtn.onClick.AddListener(OnLargeImageClick);
         m_customBtn.onClick.AddListener(OnCustomClick);
-        m_PetsBtn.onClick.AddListener(OnPetsClick);
+        m_petsBtn.onClick.AddListener(OnPetsClick);
+        m_threeDBtn.onClick.AddListener(OnThreeDClick);
+    }
+
+    public override void OnFocus(bool focus)
+    {
+        if (focus)
+        {
+            RefreshUI();
+        }
+    }
+
+    private void RefreshUI()
+    {
+        m_coinText.text = MPUser.instance.GetCoins().ToString();
+        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
     }
 
     private LoopGridViewItem GetMainLevelByRowColumn(LoopGridView view, int index, int row, int column)
@@ -74,7 +125,7 @@ public class MPHomeView : AWindow
         if (!item.IsInitHandlerCalled)
         {
             item.IsInitHandlerCalled = true;
-            level.Initialize(RefreshLevels);
+            level.Initialize(RefreshLevels, m_itemIndexFrameLockSpriteAsset, m_itemIndexFrameUnLockSpriteAsset, m_itemIndexFramePassSpriteAsset);
         }
         level.Refresh(data, index);
 
@@ -117,5 +168,13 @@ public class MPHomeView : AWindow
     private void OnPetsClick()
     {
         UIManager.Inst.ShowWindow<MPPetsView>();
+    }
+
+    /// <summary>
+    /// 3D功能点击回调
+    /// </summary>
+    private void OnThreeDClick()
+    {
+
     }
 }
