@@ -17,7 +17,8 @@ public partial class MPLargeImageGameView
         RefreshPropButtons();
 
         // 1、记录当前已通关关卡
-        MPUser.instance.LargeImageLevelPass(m_blockInfo.ID);
+        MPUser.instance.LargeImageLevelPass(m_blockInfo.ID, m_lovesCount);
+        MPUser.instance.TryClaimLargeImageLevelCoinAward(m_blockInfo);
 
         // 2、更新解锁到的关卡位置，解锁新关卡
         if (m_index == MPUser.instance.GetLargeImageLevlPassIndex())

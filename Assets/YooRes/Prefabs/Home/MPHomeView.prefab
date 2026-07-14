@@ -1637,7 +1637,7 @@ MonoBehaviour:
   m_text: Classic Levels
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 16b0716f2987e5a478e07989f55e0bd0, type: 2}
-  m_sharedMaterial: {fileID: -2345129886822945515, guid: 16b0716f2987e5a478e07989f55e0bd0, type: 2}
+  m_sharedMaterial: {fileID: 2100000, guid: e28a89fb5dee00b40a83b7ab95563e57, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

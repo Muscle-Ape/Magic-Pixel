@@ -17,6 +17,12 @@ public class MPLargeImageBlockInfo
     private string name;
 
     /// <summary>
+    /// 通关奖励金币数量。
+    /// </summary>
+    [JsonProperty("award_coin")]
+    private int awardCoin;
+
+    /// <summary>
     /// 方块位置信息
     /// </summary>
     [JsonProperty]
@@ -26,6 +32,8 @@ public class MPLargeImageBlockInfo
     public string ID { get => id; }
 
     public string Name { get => name; }
+
+    public int AwardCoin { get => awardCoin; }
 
     public List<int> Block { get => block; }
 }

@@ -488,5 +488,7 @@ public partial class MPLargeImageGameView
     {
         SaveProgressCache();
         DestroyWindow();
+
+        m_refreshAction?.Invoke();
     }
 }
