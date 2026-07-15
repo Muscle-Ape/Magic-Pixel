@@ -112,6 +112,24 @@ public partial class MPGameView : AWindow
     private TMP_Text m_loveRecoverPropCountText;
 
     /// <summary>
+    /// 标题文本
+    /// </summary>
+    [TransformPath("View/Title/Text")]
+    private TMP_Text m_titleText;
+
+    /// <summary>
+    /// 金币数量
+    /// </summary>
+    [TransformPath("View/Up/Coin/Count")]
+    private TMP_Text m_coinText;
+
+    /// <summary>
+    /// 钻石数量
+    /// </summary>
+    [TransformPath("View/Up/Diamond/Count")]
+    private TMP_Text m_diamondText;
+
+    /// <summary>
     /// 生命值
     /// </summary>
     private List<GameObject> m_loves;

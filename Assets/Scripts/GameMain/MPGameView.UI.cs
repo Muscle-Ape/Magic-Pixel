@@ -4,10 +4,17 @@ using UnityEngine;
 public partial class MPGameView
 {
     /// <summary>
+    /// 切换模式移动的距离
+    /// </summary>
+    private float m_modeSwitchDistance;
+
+    /// <summary>
     /// 注册界面按钮事件。
     /// </summary>
     private void RegisterUI()
     {
+        m_modeSwitchDistance = (m_modeSwitchFrame.transform as RectTransform).rect.width / 4;
+
         m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
         m_backBtn.onClick.AddListener(OnBackClick);
 
@@ -22,6 +29,16 @@ public partial class MPGameView
         }
 
         RefreshPropButtons();
+
+        RefreshUI();
+
+        m_titleText.text = "Level " + (m_index + 1).ToString();
+    }
+
+    private void RefreshUI()
+    {
+        m_coinText.text = MPUser.instance.GetCoins().ToString();
+        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
     }
 
     /// <summary>
@@ -205,7 +222,7 @@ public partial class MPGameView
         m_isFillMode = !m_isFillMode;
 
         m_modeSwitchTween?.Kill();
-        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFillMode ? 65 : -65, 0.1f).SetEase(Ease.Linear);
+        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFillMode ? m_modeSwitchDistance : -m_modeSwitchDistance, 0.1f).SetEase(Ease.Linear);
 
         m_modeSwitchFill.gameObject.SetActive(m_isFillMode);
         m_modeSwitchBlank.gameObject.SetActive(!m_isFillMode);

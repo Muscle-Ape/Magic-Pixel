@@ -1,6 +1,8 @@
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// 游戏通关时需要做的事情
@@ -75,6 +77,8 @@ public partial class MPGameView
         }
 
         FadeNumberFrames();
+
+        transform.Find("View/Content/Frame").GetComponent<Image>().DOFade(0, SETTLEMENT_NUMBER_FADE_DURATION);
 
         yield return new WaitForSeconds(SETTLEMENT_NUMBER_FADE_DURATION * 0.5f);
 

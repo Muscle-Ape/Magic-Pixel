@@ -27,7 +27,7 @@ public class MPGameNumberFrameBase : MonoBehaviour
     /// <summary>
     /// 默认字体颜色
     /// </summary>
-    protected string m_defaultColor = "#334961";
+    protected string m_defaultColor = "#674219";
 
     /// <summary>
     /// 填充后的字体颜色
