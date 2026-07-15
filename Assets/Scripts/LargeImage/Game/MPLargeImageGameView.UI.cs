@@ -10,14 +10,27 @@ using static UnityEngine.EventSystems.EventTrigger;
 
 public partial class MPLargeImageGameView
 {
+
+    /// <summary>
+    /// 切换模式移动的距离
+    /// </summary>
+    private float m_modeSwitchDistance;
+
+    /// <summary>
+    /// 数字栏拖拽移动一格需要累计的屏幕距离。
+    /// </summary>
+    private const float NUMBER_FRAME_DRAG_STEP_DISTANCE = 60f;
+
     private void RegisterUI()
     {
+
+        m_modeSwitchDistance = (m_modeSwitchFrame.transform as RectTransform).rect.width / 4;
+
         m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
 
-        RegisterMove(m_moveUp, OnMoveUpPointerDown, OnMovePointerUp);
-        RegisterMove(m_moveDown, OnMoveDownPointerDown, OnMovePointerUp);
-        RegisterMove(m_moveLeft, OnMoveLeftPointerDown, OnMovePointerUp);
-        RegisterMove(m_moveRight, OnMoveRightPointerDown, OnMovePointerUp);
+        HideMoveButtons();
+        RegisterNumberFrameMove(m_numberVertical, true);
+        RegisterNumberFrameMove(m_numberHorizontal, false);
 
         m_backBtn.onClick.AddListener(OnBackClick);
 
@@ -32,6 +45,16 @@ public partial class MPLargeImageGameView
         }
 
         RefreshPropButtons();
+
+        RefreshUI();
+
+        m_titleText.text = "Big Level " + (m_index + 1).ToString();
+    }
+
+    private void RefreshUI()
+    {
+        m_coinText.text = MPUser.instance.GetCoins().ToString();
+        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
     }
 
     /// <summary>
@@ -46,12 +69,133 @@ public partial class MPLargeImageGameView
         m_loveRecoverPropCountText.text = MPUser.instance.GetLoveRecoverProps().ToString();
     }
 
+    
+    /// <summary>
+    /// 隐藏旧的方向移动按钮。
+    /// </summary>
+    private void HideMoveButtons()
+    {
+        if (m_moveUp != null && m_moveUp.parent != null)
+        {
+            m_moveUp.parent.gameObject.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// 注册数字栏拖拽移动回调。
+    /// </summary>
+    /// <param name="target">需要监听拖拽的数字栏节点。</param>
+    /// <param name="isVertical">是否为左侧竖向数字栏。</param>
+    private void RegisterNumberFrameMove(RectTransform target, bool isVertical)
+    {
+        if (target == null)
+            return;
+
+        EventTrigger et = target.GetComponent<EventTrigger>();
+        if (et == null)
+        {
+            et = target.gameObject.AddComponent<EventTrigger>();
+        }
+
+        AddNumberFrameMoveEvent(et, EventTriggerType.BeginDrag, data => OnNumberFrameBeginDrag(data as PointerEventData));
+        AddNumberFrameMoveEvent(et, EventTriggerType.Drag, data => OnNumberFrameDrag(data as PointerEventData, isVertical));
+        AddNumberFrameMoveEvent(et, EventTriggerType.EndDrag, data => OnNumberFrameEndDrag(data as PointerEventData));
+        AddNumberFrameMoveEvent(et, EventTriggerType.PointerUp, data => OnNumberFrameEndDrag(data as PointerEventData));
+    }
+
+    /// <summary>
+    /// 添加数字栏拖拽事件。
+    /// </summary>
+    /// <param name="eventTrigger">事件触发器。</param>
+    /// <param name="eventID">事件类型。</param>
+    /// <param name="callback">事件回调。</param>
+    private void AddNumberFrameMoveEvent(EventTrigger eventTrigger, EventTriggerType eventID, UnityEngine.Events.UnityAction<BaseEventData> callback)
+    {
+        Entry entry = new Entry();
+        entry.eventID = eventID;
+        entry.callback.AddListener(callback);
+        eventTrigger.triggers.Add(entry);
+    }
+
+    /// <summary>
+    /// 数字栏开始拖拽。
+    /// </summary>
+    /// <param name="pointerEvent">指针事件数据。</param>
+    private void OnNumberFrameBeginDrag(PointerEventData pointerEvent)
+    {
+        m_numberFrameDragOffset = Vector2.zero;
+        StopMoveCoroutine();
+    }
+
+    /// <summary>
+    /// 数字栏拖拽时根据累计距离移动中心区域展示范围。
+    /// </summary>
+    /// <param name="pointerEvent">指针事件数据。</param>
+    /// <param name="isVertical">是否为左侧竖向数字栏。</param>
+    private void OnNumberFrameDrag(PointerEventData pointerEvent, bool isVertical)
+    {
+        if (pointerEvent == null)
+            return;
+
+        m_numberFrameDragOffset += pointerEvent.delta;
+
+        if (isVertical)
+        {
+            MoveByNumberFrameDrag(true, m_numberFrameDragOffset.y);
+        }
+        else
+        {
+            MoveByNumberFrameDrag(false, m_numberFrameDragOffset.x);
+        }
+    }
+
+    /// <summary>
+    /// 数字栏结束拖拽。
+    /// </summary>
+    /// <param name="pointerEvent">指针事件数据。</param>
+    private void OnNumberFrameEndDrag(PointerEventData pointerEvent)
+    {
+        m_numberFrameDragOffset = Vector2.zero;
+        StopMoveCoroutine();
+    }
+
+    /// <summary>
+    /// 根据数字栏拖拽累计距离移动中心区域。
+    /// </summary>
+    /// <param name="isVertical">是否为竖向移动。</param>
+    /// <param name="distance">当前方向累计拖拽距离。</param>
+    private void MoveByNumberFrameDrag(bool isVertical, float distance)
+    {
+        while (Mathf.Abs(distance) >= NUMBER_FRAME_DRAG_STEP_DISTANCE)
+        {
+            int sign = distance > 0 ? 1 : -1;
+            Vector2Int dir = isVertical ? new Vector2Int(sign, 0) : new Vector2Int(0, -sign);
+            if (!TryMoveContent(dir))
+            {
+                m_numberFrameDragOffset = Vector2.zero;
+                return;
+            }
+
+            if (isVertical)
+            {
+                m_numberFrameDragOffset.y -= sign * NUMBER_FRAME_DRAG_STEP_DISTANCE;
+                distance = m_numberFrameDragOffset.y;
+            }
+            else
+            {
+                m_numberFrameDragOffset.x -= sign * NUMBER_FRAME_DRAG_STEP_DISTANCE;
+                distance = m_numberFrameDragOffset.x;
+            }
+        }
+    }
+
     /// <summary>
     /// 注册移动按钮的回调
     /// </summary>
     /// <param name="target">注册对象</param>
     /// <param name="pointerDown">按下</param>
     /// <param name="pointerUp">抬起</param>
+    /// </summary>
     private void RegisterMove(RectTransform target, Action<PointerEventData> pointerDown, Action<PointerEventData> pointerUp)
     {
         target.GetComponent<Image>().alphaHitTestMinimumThreshold = 0.1f;
@@ -226,9 +370,7 @@ public partial class MPLargeImageGameView
     private IEnumerator StartMove(Vector2Int dir)
     {
         // 1、计算是是否还可以移动
-        Vector2Int startPos = m_blockStatueHead + dir;
-        Vector2Int endPos = m_blockStatueHead + dir * FIXED_SIZE;
-        if (startPos.x < 0 || startPos.y < 0 || endPos.x >= m_size || endPos.y >= m_size)
+        if (!TryMoveContent(dir))
         {
             yield break;
         }
@@ -237,27 +379,42 @@ public partial class MPLargeImageGameView
         float delayTime = 0.3f;
         while (true)
         {
-            m_blockStatueHead += dir;
+            yield return new WaitForSeconds(delayTime);
+            delayTime = 0.1f;
 
-            RefreshContent();
-
-            // 3、判断是否还可以继续移动
-            startPos = m_blockStatueHead + dir;
-            endPos = m_blockStatueHead + dir * FIXED_SIZE;
-            if (startPos.x < 0 || startPos.y < 0 || endPos.x >= m_size || endPos.y >= m_size)
+            if (!TryMoveContent(dir))
             {
                 yield break;
             }
 
+            // 3、判断是否还可以继续移动
+
             // 4、等待继续移动
-            yield return new WaitForSeconds(delayTime);
-            delayTime = 0.1f;
         }
     }
 
     /// <summary>
     /// 刷新游戏区域内容
     /// </summary>
+    /// <summary>
+    /// 尝试按指定方向移动中心区域展示范围。
+    /// </summary>
+    /// <param name="dir">移动方向。</param>
+    /// <returns>成功移动返回true，已经到达边界返回false。</returns>
+    private bool TryMoveContent(Vector2Int dir)
+    {
+        Vector2Int startPos = m_blockStatueHead + dir;
+        Vector2Int endPos = m_blockStatueHead + dir * FIXED_SIZE;
+        if (startPos.x < 0 || startPos.y < 0 || endPos.x >= m_size || endPos.y >= m_size)
+        {
+            return false;
+        }
+
+        m_blockStatueHead += dir;
+        RefreshContent();
+        return true;
+    }
+
     private void RefreshContent()
     {
         // 更新中心区域
@@ -455,6 +612,14 @@ public partial class MPLargeImageGameView
 
     private void OnMovePointerUp(PointerEventData pointerEvent)
     {
+        StopMoveCoroutine();
+    }
+
+    /// <summary>
+    /// 停止中心区域连续移动协程。
+    /// </summary>
+    private void StopMoveCoroutine()
+    {
         if (m_moveCoroutine != null)
         {
             StopCoroutine(m_moveCoroutine);
@@ -470,7 +635,7 @@ public partial class MPLargeImageGameView
         m_isFill = !m_isFill;
 
         m_modeSwitchTween?.Kill();
-        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFill ? 65 : -65, 0.1f).SetEase(Ease.Linear);
+        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFill ? m_modeSwitchDistance : -m_modeSwitchDistance, 0.1f).SetEase(Ease.Linear);
 
         m_modeSwitchFill.gameObject.SetActive(m_isFill);
         m_modeSwitchBlank.gameObject.SetActive(!m_isFill);

@@ -206,7 +206,8 @@ public partial class MPLargeImageGameView
         // 设置大小和颜色
         Vector2 size = isHorizontal ? new Vector2(4, GRID_SIZE) : new Vector2(GRID_SIZE, 4);
         rectTransform.sizeDelta = size;
-        img.color = Color.black;
+        ColorUtility.TryParseHtmlString("#B38337", out Color color);
+        img.color = color;
 
         return rectTransform;
     }
