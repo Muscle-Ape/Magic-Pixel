@@ -1,5 +1,4 @@
-﻿using DG.Tweening;
-using HQ.UIManager;
+﻿using HQ.UIManager;
 using System;
 using System.Collections.Generic;
 using TMPro;
@@ -35,70 +34,46 @@ public partial class MPCustomView : AWindow
     private Button m_settingBtn;
 
     /// <summary>
-    /// 模式切换按钮
+    /// 填充模式按钮。
     /// </summary>
-    [TransformPath("View/ModeSwitch")]
-    private Button m_modeSwitchFrame;
-
-    // <summary>
-    /// 模式切换移动节点
-    /// </summary>
-    [TransformPath("View/ModeSwitch/Btn")]
-    private RectTransform m_modeSwitchBtn;
+    [TransformPath("View/FillBtn")]
+    private Button m_fillModeBtn;
 
     /// <summary>
-    /// 填充模式图片
+    /// 上色模式按钮。
     /// </summary>
-    [TransformPath("View/ModeSwitch/Btn/Fill")]
-    private Image m_modeSwitchFill;
+    [TransformPath("View/PenBtn")]
+    private Button m_colorModeBtn;
 
     /// <summary>
-    /// 上色模式图片
+    /// 10x10尺寸按钮。
     /// </summary>
-    [TransformPath("View/ModeSwitch/Btn/Blank")]
-    private Image m_modeSwitchBlank;
-
-    /// </summary>
-    /// 大小切换模式按钮
-    /// </summary>
-    [TransformPath("View/SizeSwitch")]
-    private Button m_sizeSwitchFrame;
-
-    // <summary>
-    /// 大小切换移动节点
-    /// </summary>
-    [TransformPath("View/SizeSwitch/Btn")]
-    private RectTransform m_sizeSwitchBtn;
+    [TransformPath("View/SizeSwitch/Ten")]
+    private Button m_sizeTenBtn;
 
     /// <summary>
-    /// 10
+    /// 5x5尺寸按钮。
     /// </summary>
-    [TransformPath("View/SizeSwitch/Btn/Ten")]
-    private RectTransform m_sizeSwitchTen;
+    [TransformPath("View/SizeSwitch/Five")]
+    private Button m_sizeFiveBtn;
 
     /// <summary>
-    /// 5
+    /// 10x10尺寸选中状态节点。
     /// </summary>
-    [TransformPath("View/SizeSwitch/Btn/Five")]
-    private RectTransform m_sizeSwitchFive;
+    [TransformPath("View/SizeSwitch/Ten/Open")]
+    private RectTransform m_sizeTenOpen;
+
+    /// <summary>
+    /// 5x5尺寸选中状态节点。
+    /// </summary>
+    [TransformPath("View/SizeSwitch/Five/Open")]
+    private RectTransform m_sizeFiveOpen;
 
     /// <summary>
     /// 用户手指输入节点
     /// </summary>
     [TransformPath("View/Content/Input")]
     private RectTransform m_input;
-
-    /// <summary>
-    /// 色块按钮
-    /// </summary>
-    [TransformPath("View/ColorNode/ColorFrame")]
-    private Button m_colorFrame;
-
-    /// <summary>
-    /// 调色板
-    /// </summary>
-    [TransformPath("View/ColorNode/ColorPanel")]
-    private CanvasGroup m_colorPanel;
 
     /// <summary>
     /// 保存自定义关卡按钮。
@@ -119,14 +94,16 @@ public partial class MPCustomView : AWindow
     private Button m_warehouseBtn;
 
     /// <summary>
-    /// 模式切换动画
+    /// 金币数量
     /// </summary>
-    private Tween m_modeSwitchTween;
+    [TransformPath("View/Up/Coin/Count")]
+    private TMP_Text m_coinText;
 
     /// <summary>
-    /// 方格数量按钮切换动画
+    /// 钻石数量
     /// </summary>
-    private Tween m_sizeSwithcTween;
+    [TransformPath("View/Up/Diamond/Count")]
+    private TMP_Text m_diamondText;
 
     /// <summary>
     /// 方块预制体
@@ -174,21 +151,6 @@ public partial class MPCustomView : AWindow
     private bool m_isClear;
 
     /// <summary>
-    /// 调色板是否打开
-    /// </summary>
-    private bool m_colorPanelIsOpen;
-
-    /// <summary>
-    /// 调色板动画
-    /// </summary>
-    private Sequence m_colorPanelSequence;
-
-    /// <summary>
-    /// 色块动画
-    /// </summary>
-    private Tween m_colorFrameTween;
-
-    /// <summary>
     /// 保存后刷新关卡列表的回调。
     /// </summary>
     private Action m_refreshAction;
@@ -217,6 +179,14 @@ public partial class MPCustomView : AWindow
         StartInitialization();
     }
 
+    public override void OnFocus(bool focus)
+    {
+        if (focus)
+        {
+            RefreshUI();
+        }
+    }
+
     private void StartInitialization()
     {
         CreateGrid(5);
@@ -234,4 +204,5 @@ public class MPCustomViewUIMsgData : UIMsgData
     /// </summary>
     public Action refresh;
 }
+
 

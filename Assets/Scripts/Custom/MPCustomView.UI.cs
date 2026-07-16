@@ -1,5 +1,4 @@
-﻿using DG.Tweening;
-using HQ.UIManager;
+﻿using HQ.UIManager;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,19 +10,13 @@ public partial class MPCustomView
     {
         m_titleInput.text = MPUser.instance.GetDefaultCustomLevelTitle();
 
-        // 调色板动画
-        m_colorPanelSequence = DOTween.Sequence();
-        m_colorPanelSequence.Append(m_colorPanel.DOFade(1, 0.2f).SetEase(Ease.Linear));
-        m_colorPanelSequence.Join(m_colorPanel.transform.DOScale(1, 0.2f).SetEase(Ease.Linear));
-        m_colorPanelSequence.SetAutoKill(false);
-        m_colorPanelSequence.Pause();
-
         // 添加按钮回调
-        m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
-        m_sizeSwitchFrame.onClick.AddListener(OnSizeSwitchClick);
+        m_fillModeBtn.onClick.AddListener(OnFillModeClick);
+        m_colorModeBtn.onClick.AddListener(OnColorModeClick);
+        m_sizeFiveBtn.onClick.AddListener(OnFiveSizeClick);
+        m_sizeTenBtn.onClick.AddListener(OnTenSizeClick);
         m_backBtn.onClick.AddListener(OnBackClick);
         m_settingBtn.onClick.AddListener(OnSettingClick);
-        m_colorFrame.onClick.AddListener(OnColorFrameClick);
         if (m_saveBtn != null)
         {
             m_saveBtn.onClick.AddListener(OnSaveClick);
@@ -33,92 +26,115 @@ public partial class MPCustomView
             m_warehouseBtn.onClick.AddListener(OnWarehouseClick);
         }
 
-        transform.Find("View/ColorNode").GetComponent<MPPalette>().Initialization(SetColor);
-    }
+        transform.Find("View/ColorFrame").GetComponent<MPPalette>().Initialization(SetColor);
 
+        RefreshModeState();
+        RefreshSizeState();
+    }
     private void SetColor(Color color)
     {
         m_currentColor = color;
     }
 
+    private void RefreshUI()
+    {
+        m_coinText.text = MPUser.instance.GetCoins().ToString();
+        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+    }
+
 
     /// <summary>
-    /// 模式切换
+    /// 切换到填充模式。
     /// </summary>
-    private void OnModeSwitchClick()
+    private void OnFillModeClick()
     {
-        m_isFillMode = !m_isFillMode;
+        SetCustomMode(true);
+    }
 
-        m_modeSwitchTween?.Kill();
-        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFillMode ? 65 : -65, 0.1f).SetEase(Ease.Linear);
 
-        m_modeSwitchFill.gameObject.SetActive(m_isFillMode);
-        m_modeSwitchBlank.gameObject.SetActive(!m_isFillMode);
+    /// <summary>
+    /// 切换到上色模式。
+    /// </summary>
+    private void OnColorModeClick()
+    {
+        SetCustomMode(false);
+    }
 
+    /// <summary>
+    /// 设置当前自定义编辑模式。
+    /// </summary>
+    private void SetCustomMode(bool isFillMode)
+    {
+        if (m_isFillMode == isFillMode)
+        {
+            RefreshModeState();
+            return;
+        }
+
+        m_isFillMode = isFillMode;
+        RefreshModeState();
+    }
+
+    /// <summary>
+    /// 刷新当前自定义编辑模式显示。
+    /// </summary>
+    private void RefreshModeState()
+    {
         for (int i = 0; i < m_blocks.Count; i++)
         {
             m_blocks[i].SetMode(m_isFillMode);
         }
-
-        if (m_isFillMode)
-        {
-            m_colorFrameTween?.Kill();
-            m_colorFrameTween = m_colorFrame.transform.DOScale(0, 0.2f).SetEase(Ease.Linear);
-            m_colorFrame.interactable = false;
-
-            m_colorPanelIsOpen = false;
-            m_colorPanelSequence.Pause();
-            m_colorPanelSequence.PlayBackwards();
-        }
-        else
-        {
-            m_colorFrameTween?.Kill();
-            m_colorFrameTween = m_colorFrame.transform.DOScale(1, 0.2f).SetEase(Ease.Linear);
-            m_colorFrame.interactable = true;
-        }
     }
 
 
     /// <summary>
-    /// 大小切换
+    /// 切换到5x5尺寸。
     /// </summary>
-    private void OnSizeSwitchClick()
+    private void OnFiveSizeClick()
     {
-        m_isTenSize = !m_isTenSize;
-
-        m_sizeSwithcTween?.Kill();
-        m_sizeSwithcTween = (m_sizeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isTenSize ? 65 : -65, 0.1f).SetEase(Ease.Linear);
-
-        m_sizeSwitchTen.gameObject.SetActive(m_isTenSize);
-        m_sizeSwitchFive.gameObject.SetActive(!m_isTenSize);
-
-        if (m_isTenSize)
-        {
-            CreateGrid(10);
-        }
-        else
-        {
-            CreateGrid(5);
-        }
+        SetCustomSize(false);
     }
 
-    private void OnColorFrameClick()
+    /// <summary>
+    /// 切换到10x10尺寸。
+    /// </summary>
+    private void OnTenSizeClick()
     {
-        m_colorPanelIsOpen = !m_colorPanelIsOpen;
-
-        m_colorPanelSequence.Pause();
-        if (m_colorPanelIsOpen)
-        {
-            m_colorPanelSequence.PlayForward();
-        }
-        else
-        {
-            m_colorPanelSequence.PlayBackwards();
-        }
-
-
+        SetCustomSize(true);
     }
 
+    /// <summary>
+    /// 设置当前自定义网格尺寸。
+    /// </summary>
+    private void SetCustomSize(bool isTenSize)
+    {
+        if (m_isTenSize == isTenSize)
+        {
+            RefreshSizeState();
+            return;
+        }
+
+        m_isTenSize = isTenSize;
+        CreateGrid(m_isTenSize ? 10 : 5);
+        RefreshSizeState();
+        RefreshModeState();
+    }
+
+    /// <summary>
+    /// 刷新当前自定义网格尺寸显示。
+    /// </summary>
+    private void RefreshSizeState()
+    {
+        if (m_sizeTenOpen != null)
+        {
+            m_sizeTenOpen.gameObject.SetActive(m_isTenSize);
+        }
+
+        if (m_sizeFiveOpen != null)
+        {
+            m_sizeFiveOpen.gameObject.SetActive(!m_isTenSize);
+        }
+    }
 
     /// <summary>
     /// 保存当前自定义关卡。
@@ -298,6 +314,7 @@ public partial class MPCustomView
 
     }
 }
+
 
 
 
