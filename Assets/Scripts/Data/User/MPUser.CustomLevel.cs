@@ -158,6 +158,37 @@ public partial class MPUser
 
 
     /// <summary>
+    /// 删除指定ID的自定义关卡数据和本地图片。
+    /// </summary>
+    public void DeleteCustomLevel(string id)
+    {
+        if (string.IsNullOrEmpty(id))
+            return;
+
+        List<MPCustomLevelInfo> levels = GetCustomLevels();
+        int index = levels.FindIndex(item => item != null && item.ID == id);
+        if (index >= 0)
+        {
+            levels.RemoveAt(index);
+            SaveCustomLevelsJson();
+        }
+
+        if (m_customlevel_passlist == null)
+        {
+            m_customlevel_passlist = ES3.Load<List<string>>(m_key_customlevel_passlist, new List<string>());
+        }
+
+        if (m_customlevel_passlist.Remove(id))
+        {
+            ES3.Save(m_key_customlevel_passlist, m_customlevel_passlist);
+        }
+
+        DeleteCustomLevelFile(GetCustomLevelImagePath(id));
+        DeleteCustomLevelFile(GetCustomLevelIconImagePath(id));
+    }
+
+
+    /// <summary>
     /// 标记自定义关卡已通关。
     /// </summary>
     public void CustomLevelPass(string id)
@@ -211,6 +242,24 @@ public partial class MPUser
         bool dataExists = levels.Exists(item => item != null && item.ID == id);
 
         return dataExists || File.Exists(GetCustomLevelImagePath(id)) || File.Exists(GetCustomLevelIconImagePath(id));
+    }
+
+    /// <summary>
+    /// 删除指定路径的自定义关卡本地文件。
+    /// </summary>
+    private void DeleteCustomLevelFile(string path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            return;
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"Delete custom level file failed: {path}, {exception}");
+        }
     }
 
     /// <summary>

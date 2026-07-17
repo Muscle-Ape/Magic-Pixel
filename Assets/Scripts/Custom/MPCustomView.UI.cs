@@ -26,7 +26,12 @@ public partial class MPCustomView
             m_warehouseBtn.onClick.AddListener(OnWarehouseClick);
         }
 
-        transform.Find("View/ColorFrame").GetComponent<MPPalette>().Initialization(SetColor);
+        MPPalette palette = transform.Find("View/ColorFrame").GetComponent<MPPalette>();
+        palette.Initialization(SetColor);
+        if (ColorUtility.TryParseHtmlString(DEFAULT_CUSTOM_COLOR, out Color defaultColor))
+        {
+            palette.SetPaletteColor(defaultColor);
+        }
 
         RefreshModeState();
         RefreshSizeState();

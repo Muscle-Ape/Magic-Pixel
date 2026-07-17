@@ -4094,7 +4094,7 @@ GameObject:
   - component: {fileID: 2116665833890457176}
   - component: {fileID: 8785551200510451754}
   - component: {fileID: 4328432803997045391}
-  - component: {fileID: 6427396204235490496}
+  - component: {fileID: 904479197996254169}
   m_Layer: 5
   m_Name: WarehouseBtn
   m_TagString: Untagged
@@ -4161,7 +4161,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &6427396204235490496
+--- !u!114 &904479197996254169
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -4170,11 +4170,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 5631401320403938901}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Script: {fileID: 11500000, guid: 7e2d88c6726c4a74a93b9e8d0c5e1f31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Navigation:
-    m_Mode: 3
+    m_Mode: 0
     m_WrapAround: 0
     m_SelectOnUp: {fileID: 0}
     m_SelectOnDown: {fileID: 0}
@@ -4205,6 +4205,14 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+  m_enableScaleAnimation: 1
+  m_pressedScale: 0.92
+  m_pressDuration: 0.08
+  m_releaseDuration: 0.1
+  m_pressEase: 6
+  m_releaseEase: 27
+  m_clickInterval: 0.5
+  m_useUnscaledTime: 1
 --- !u!1 &6142118443741031212
 GameObject:
   m_ObjectHideFlags: 0
@@ -5271,7 +5279,7 @@ GameObject:
   - component: {fileID: 3484363332487866472}
   - component: {fileID: 808068963566243499}
   - component: {fileID: 58721219180245113}
-  - component: {fileID: 9168461459978384709}
+  - component: {fileID: 3052308542017969801}
   m_Layer: 5
   m_Name: CommunityBtn
   m_TagString: Untagged
@@ -5338,7 +5346,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &9168461459978384709
+--- !u!114 &3052308542017969801
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5347,11 +5355,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 7976181172494713244}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Script: {fileID: 11500000, guid: 7e2d88c6726c4a74a93b9e8d0c5e1f31, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Navigation:
-    m_Mode: 3
+    m_Mode: 0
     m_WrapAround: 0
     m_SelectOnUp: {fileID: 0}
     m_SelectOnDown: {fileID: 0}
@@ -5382,6 +5390,14 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+  m_enableScaleAnimation: 1
+  m_pressedScale: 0.92
+  m_pressDuration: 0.08
+  m_releaseDuration: 0.1
+  m_pressEase: 6
+  m_releaseEase: 27
+  m_clickInterval: 0.5
+  m_useUnscaledTime: 1
 --- !u!1 &8023002891608274658
 GameObject:
   m_ObjectHideFlags: 0

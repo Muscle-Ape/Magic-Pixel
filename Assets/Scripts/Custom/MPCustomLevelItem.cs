@@ -13,14 +13,29 @@ public class MPCustomLevelItem : MonoBehaviour
     private Image m_pixel;
 
     /// <summary>
-    /// 关卡点击按钮。
+    /// 关卡开始按钮。
     /// </summary>
-    private Button m_levelBtn;
+    private Button m_playBtn;
+
+    /// <summary>
+    /// 关卡上传按钮。
+    /// </summary>
+    private Button m_uploadBtn;
+
+    /// <summary>
+    /// 关卡删除按钮。
+    /// </summary>
+    private Button m_deleteBtn;
 
     /// <summary>
     /// 关卡标题文本。
     /// </summary>
     private TMP_Text m_nameText;
+
+    /// <summary>
+    /// 关卡尺寸文本。
+    /// </summary>
+    private TMP_Text m_sizeText;
 
     /// <summary>
     /// 当前自定义关卡数据。
@@ -54,11 +69,16 @@ public class MPCustomLevelItem : MonoBehaviour
     {
         m_refresh = refresh;
 
-        m_pixel = transform.Find("Status/Completed/Pixel").GetComponent<Image>();
-        m_levelBtn = transform.Find("Btn").GetComponent<Button>();
+        m_pixel = transform.Find("Completed/Pixel").GetComponent<Image>();
+        m_playBtn = transform.Find("PlayBtn").GetComponent<Button>();
+        m_uploadBtn = transform.Find("UploadBtn").GetComponent<Button>();
+        m_deleteBtn = transform.Find("DeleteBtn").GetComponent<Button>();
         m_nameText = transform.Find("Name").GetComponent<TMP_Text>();
+        m_sizeText = transform.Find("Size").GetComponent<TMP_Text>();
 
-        m_levelBtn.onClick.AddListener(OnLevelClick);
+        m_playBtn.onClick.AddListener(OnLevelClick);
+        m_uploadBtn.onClick.AddListener(OnUploadClick);
+        m_deleteBtn.onClick.AddListener(OnDeleteClick);
     }
 
 
@@ -71,6 +91,7 @@ public class MPCustomLevelItem : MonoBehaviour
         m_index = index;
 
         m_nameText.text = string.IsNullOrEmpty(m_data.Title) ? MPUser.instance.GetDefaultCustomLevelTitle() : m_data.Title;
+        m_sizeText.text = $"{m_data.Size}x{m_data.Size}";
         RefreshCustomLevelIcon();
     }
 
@@ -132,12 +153,41 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        if (m_levelBtn != null)
+        if (m_playBtn != null)
         {
-            m_levelBtn.onClick.RemoveListener(OnLevelClick);
+            m_playBtn.onClick.RemoveListener(OnLevelClick);
+        }
+
+        if (m_uploadBtn != null)
+        {
+            m_uploadBtn.onClick.RemoveListener(OnUploadClick);
+        }
+
+        if (m_deleteBtn != null)
+        {
+            m_deleteBtn.onClick.RemoveListener(OnDeleteClick);
         }
 
         ClearCustomLevelIconAsset();
+    }
+
+    /// <summary>
+    /// 上传自定义关卡按钮点击回调。
+    /// </summary>
+    private void OnUploadClick()
+    {
+    }
+
+    /// <summary>
+    /// 删除当前自定义关卡并刷新列表。
+    /// </summary>
+    private void OnDeleteClick()
+    {
+        if (m_data == null)
+            return;
+
+        MPUser.instance.DeleteCustomLevel(m_data.ID);
+        m_refresh?.Invoke();
     }
 
     /// <summary>

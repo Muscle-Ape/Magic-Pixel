@@ -49,7 +49,7 @@ public class MPPalette : MonoBehaviour
     /// 根据颜色设置调色板各节点的位置。
     /// </summary>
     /// <param name="color">目标颜色。</param>
-    private void SetPaletteColor(Color color)
+    public void SetPaletteColor(Color color)
     {
         SetColor(color);
 

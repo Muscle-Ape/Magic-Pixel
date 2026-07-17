@@ -16,6 +16,11 @@ public partial class MPCustomView : AWindow
     private const int GRID_SIZE = 800;
 
     /// <summary>
+    /// 自定义页面默认选中的颜色。
+    /// </summary>
+    private const string DEFAULT_CUSTOM_COLOR = "#FF8E64";
+
+    /// <summary>
     /// 网格节点
     /// </summary>
     [TransformPath("View/Content/Grid")]
@@ -181,7 +186,7 @@ public partial class MPCustomView : AWindow
 
     public override void OnFocus(bool focus)
     {
-        if (focus)
+        if(focus)
         {
             RefreshUI();
         }

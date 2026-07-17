@@ -1,6 +1,7 @@
 ﻿using HQ.UIManager;
 using SuperScrollView;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -32,9 +33,27 @@ public class MPCustomLevelView : AWindow
     private RectTransform m_emptyTip;
 
     /// <summary>
+    /// 空关卡 创建按钮
+    /// </summary>
+    [TransformPath("View/Center/EmptyTip/CreateBtn")]
+    private Button m_createBtn;
+
+    /// <summary>
     /// 自定义关卡数据列表。
     /// </summary>
     private List<MPCustomLevelInfo> m_levelInfos;
+
+    /// <summary>
+    /// 金币数量
+    /// </summary>
+    [TransformPath("View/Up/Coin/Count")]
+    private TMP_Text m_coinText;
+
+    /// <summary>
+    /// 钻石数量
+    /// </summary>
+    [TransformPath("View/Up/Diamond/Count")]
+    private TMP_Text m_diamondText;
 
     /// <summary>
     /// 加载自定义关卡列表页面数据。
@@ -47,6 +66,15 @@ public class MPCustomLevelView : AWindow
 
         m_backBtn.onClick.AddListener(OnBackClick);
         m_settingBtn.onClick.AddListener(OnSettingClick);
+        m_createBtn.onClick.AddListener(OnBackClick);
+
+        RefreshUI();
+    }
+
+    private void RefreshUI()
+    {
+        m_coinText.text = MPUser.instance.GetCoins().ToString();
+        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
     }
 
     /// <summary>
