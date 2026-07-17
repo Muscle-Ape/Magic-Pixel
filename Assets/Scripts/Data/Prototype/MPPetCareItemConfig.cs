@@ -54,7 +54,7 @@ public class MPPetCareItemConfig
     public int DefaultCount => defaultCount < 0 ? 0 : defaultCount;
     public int UnlockLevel => unlockLevel;
     public string UnlockText => string.IsNullOrEmpty(unlockText) ? $"Unlock at Lv.{unlockLevel}" : unlockText;
-    public string RestoreText => $"{GetRestoreName()} +{RestorePercent:0}%";
+    public string RestoreText => $"+{RestorePercent:0} {GetRestoreName()}";
 
     private string GetRestoreName()
     {

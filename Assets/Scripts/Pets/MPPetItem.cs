@@ -100,23 +100,26 @@ public class MPPetItem : MonoBehaviour
     {
         m_onClick = onClick;
 
-        m_petIcon = transform.Find("PetIcon").GetComponent<Image>();
+        m_petIcon = FindComponent<Image>("PetIcon");
         m_info = FindGameObject("Info");
         m_level = FindComponent<TMP_Text>("Info/LevelText");
         m_timer = FindComponent<TMP_Text>("Info/TimerText");
         m_progressFill = FindComponent<Image>("Info/ProgressBg/ProgressFill");
-        m_selected = FindGameObject("Info/Selected");
+        m_selected = FindGameObject("Selected", "Info/Selected");
         m_lockMask = FindGameObject("LockMask");
         m_unlockText = FindComponent<TMP_Text>("LockMask/UnlockText");
         m_button = GetComponent<Button>();
 
-        m_button.onClick.RemoveListener(OnClick);
-        m_button.onClick.AddListener(OnClick);
+        if (m_button != null)
+        {
+            m_button.onClick.RemoveListener(OnClick);
+            m_button.onClick.AddListener(OnClick);
+        }
 
         m_rewardNodes = new Transform[MAX_REWARD_COUNT];
         for (int i = 0; i < MAX_REWARD_COUNT; i++)
         {
-            m_rewardNodes[i] = transform.Find($"Info/Awards/Award{i + 1}");
+            m_rewardNodes[i] = FindTransform($"Info/Awards/Award{i + 1}", $"Awards/Award{i + 1}");
         }
     }
 
@@ -287,16 +290,36 @@ public class MPPetItem : MonoBehaviour
         m_onClick?.Invoke(m_config);
     }
 
-    private T FindComponent<T>(string path) where T : Component
+    private T FindComponent<T>(params string[] paths) where T : Component
     {
-        Transform target = transform.Find(path);
+        Transform target = FindTransform(paths);
         return target == null ? null : target.GetComponent<T>();
     }
 
-    private GameObject FindGameObject(string path)
+    private GameObject FindGameObject(params string[] paths)
     {
-        Transform target = transform.Find(path);
+        Transform target = FindTransform(paths);
         return target == null ? null : target.gameObject;
+    }
+
+    private Transform FindTransform(params string[] paths)
+    {
+        if (paths == null)
+            return null;
+
+        for (int i = 0; i < paths.Length; i++)
+        {
+            if (string.IsNullOrEmpty(paths[i]))
+                continue;
+
+            Transform target = transform.Find(paths[i]);
+            if (target != null)
+            {
+                return target;
+            }
+        }
+
+        return null;
     }
 
     private void SetActive(GameObject target, bool active)

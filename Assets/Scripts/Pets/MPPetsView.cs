@@ -123,6 +123,18 @@ public class MPPetsView : AWindow
     private Button m_producingBtn;
 
     /// <summary>
+    /// 金币数量
+    /// </summary>
+    [TransformPath("View/Up/Coin/Count")]
+    private TMP_Text m_coinText;
+
+    /// <summary>
+    /// 钻石数量
+    /// </summary>
+    [TransformPath("View/Up/Diamond/Count")]
+    private TMP_Text m_diamondText;
+
+    /// <summary>
     /// 宠物静态配置列表。
     /// </summary>
     private List<MPPetConfig> m_petConfigs;
@@ -136,6 +148,21 @@ public class MPPetsView : AWindow
     /// 玩具配置列表，用于恢复心情度。
     /// </summary>
     private List<MPPetCareItemConfig> m_toyConfigs;
+
+    /// <summary>
+    /// 宠物页签实际展示列表：已解锁在前，未解锁在后，同状态内保留配置顺序。
+    /// </summary>
+    private List<MPPetConfig> m_petDisplayConfigs;
+
+    /// <summary>
+    /// 食物页签实际展示列表：已解锁在前，未解锁在后，同状态内保留配置顺序。
+    /// </summary>
+    private List<MPPetCareItemConfig> m_foodDisplayConfigs;
+
+    /// <summary>
+    /// 玩具页签实际展示列表：已解锁在前，未解锁在后，同状态内保留配置顺序。
+    /// </summary>
+    private List<MPPetCareItemConfig> m_toyDisplayConfigs;
 
     /// <summary>
     /// 当前页签类型。
@@ -187,8 +214,17 @@ public class MPPetsView : AWindow
         RegisterUI();
         SelectDefaultPet();
         MPUser.instance.ApplyPetStatusDecay(m_petConfigs);
+        RebuildAllDisplayConfigs();
         SwitchTab(PetsTabType.Pets);
         RefreshPetInfo();
+    }
+
+    public override void OnFocus(bool focus)
+    {
+        if (focus)
+        {
+            RefreshUI();
+        }
     }
 
     public override void OnRelease()
@@ -217,6 +253,12 @@ public class MPPetsView : AWindow
         // 状态衰减每秒检查一次，但存档写入由 MPUser 内部控制最小间隔。
         MPUser.instance.ApplyPetStatusDecay(m_petConfigs);
         RefreshPetInfo();
+    }
+
+    private void RefreshUI()
+    {
+        m_coinText.text = MPUser.instance.GetCoins().ToString();
+        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
     }
 
     /// <summary>
@@ -273,6 +315,7 @@ public class MPPetsView : AWindow
 
         m_currentTab = tab;
         RefreshTabState();
+        RebuildCurrentTabDisplayConfigs();
 
         int count = GetCurrentTabCount();
         if (!m_gridInitialized)
@@ -285,9 +328,121 @@ public class MPPetsView : AWindow
         {
             m_contentGrid.SetListItemCount(count);
             m_contentGrid.RefreshAllShownItem();
-            if (count > 0)
+        }
+
+        MoveCurrentTabToDefaultItem(count);
+    }
+
+    /// <summary>
+    /// 切换到宠物页时，默认定位到详情区当前展示的宠物；其他页签默认回到第一个 Item。
+    /// </summary>
+    private void MoveCurrentTabToDefaultItem(int count)
+    {
+        if (m_contentGrid == null || count <= 0)
+            return;
+
+        int targetIndex = 0;
+        if (m_currentTab == PetsTabType.Pets && m_selectedPetConfig != null)
+        {
+            int selectedIndex = FindPetConfigIndex(m_selectedPetConfig.ID);
+            if (selectedIndex >= 0)
             {
-                m_contentGrid.MovePanelToItemByRowColumn(0, 0);
+                targetIndex = selectedIndex;
+            }
+        }
+
+        m_contentGrid.MovePanelToItemByIndex(targetIndex);
+    }
+
+    /// <summary>
+    /// 食物/玩具解锁后会重排展示列表，这里把列表定位到刚选中的 Item。
+    /// </summary>
+    private void MoveCurrentTabToSelectedCareItem(string itemId)
+    {
+        if (m_contentGrid == null || string.IsNullOrEmpty(itemId))
+            return;
+
+        List<MPPetCareItemConfig> configs = GetCareConfigs(m_currentTab);
+        int index = FindCareConfigIndex(configs, itemId);
+        if (index >= 0)
+        {
+            m_contentGrid.MovePanelToItemByIndex(index);
+        }
+    }
+
+    /// <summary>
+    /// 重建全部页签的展示列表。展示顺序只影响 UI，不修改原始配置列表。
+    /// </summary>
+    private void RebuildAllDisplayConfigs()
+    {
+        m_petDisplayConfigs = BuildPetDisplayConfigs(m_petConfigs);
+        m_foodDisplayConfigs = BuildCareDisplayConfigs(m_foodConfigs);
+        m_toyDisplayConfigs = BuildCareDisplayConfigs(m_toyConfigs);
+    }
+
+    /// <summary>
+    /// 重建当前页签的展示列表。解锁状态变化后调用，用于把新解锁 Item 移到未解锁 Item 前面。
+    /// </summary>
+    private void RebuildCurrentTabDisplayConfigs()
+    {
+        switch (m_currentTab)
+        {
+            case PetsTabType.Pets:
+                m_petDisplayConfigs = BuildPetDisplayConfigs(m_petConfigs);
+                break;
+            case PetsTabType.Food:
+                m_foodDisplayConfigs = BuildCareDisplayConfigs(m_foodConfigs);
+                break;
+            case PetsTabType.Toys:
+                m_toyDisplayConfigs = BuildCareDisplayConfigs(m_toyConfigs);
+                break;
+        }
+    }
+
+    private List<MPPetConfig> BuildPetDisplayConfigs(List<MPPetConfig> configs)
+    {
+        List<MPPetConfig> result = new List<MPPetConfig>();
+        AddPetDisplayConfigs(result, configs, true);
+        AddPetDisplayConfigs(result, configs, false);
+        return result;
+    }
+
+    private void AddPetDisplayConfigs(List<MPPetConfig> result, List<MPPetConfig> configs, bool unlockedOnly)
+    {
+        if (result == null || configs == null)
+            return;
+
+        for (int i = 0; i < configs.Count; i++)
+        {
+            MPPetConfig config = configs[i];
+            bool unlocked = config != null && MPUser.instance.PetIsUnlock(config.ID);
+            if (unlocked == unlockedOnly)
+            {
+                result.Add(config);
+            }
+        }
+    }
+
+    private List<MPPetCareItemConfig> BuildCareDisplayConfigs(List<MPPetCareItemConfig> configs)
+    {
+        List<MPPetCareItemConfig> result = new List<MPPetCareItemConfig>();
+        AddCareDisplayConfigs(result, configs, true);
+        AddCareDisplayConfigs(result, configs, false);
+        return result;
+    }
+
+    private void AddCareDisplayConfigs(List<MPPetCareItemConfig> result, List<MPPetCareItemConfig> configs, bool unlockedOnly)
+    {
+        if (result == null || configs == null)
+            return;
+
+        for (int i = 0; i < configs.Count; i++)
+        {
+            MPPetCareItemConfig config = configs[i];
+            bool unlocked = config != null && MPUser.instance.PetCareItemIsUnlock(config.ID);
+            if (unlocked == unlockedOnly)
+            {
+                result.Add(config);
             }
         }
     }
@@ -300,11 +455,11 @@ public class MPPetsView : AWindow
         switch (m_currentTab)
         {
             case PetsTabType.Pets:
-                return m_petConfigs.Count;
+                return m_petDisplayConfigs == null ? 0 : m_petDisplayConfigs.Count;
             case PetsTabType.Food:
-                return m_foodConfigs.Count;
+                return m_foodDisplayConfigs == null ? 0 : m_foodDisplayConfigs.Count;
             case PetsTabType.Toys:
-                return m_toyConfigs.Count;
+                return m_toyDisplayConfigs == null ? 0 : m_toyDisplayConfigs.Count;
             default:
                 return 0;
         }
@@ -320,9 +475,9 @@ public class MPPetsView : AWindow
             case PetsTabType.Pets:
                 return GetPetItem(index);
             case PetsTabType.Food:
-                return GetCareItem(index, m_foodConfigs, "MPFoodItem");
+                return GetCareItem(index, m_foodDisplayConfigs, "MPFoodItem");
             case PetsTabType.Toys:
-                return GetCareItem(index, m_toyConfigs, "MPToyItem");
+                return GetCareItem(index, m_toyDisplayConfigs, "MPToyItem");
             default:
                 return null;
         }
@@ -330,10 +485,13 @@ public class MPPetsView : AWindow
 
     private LoopGridViewItem GetPetItem(int index)
     {
-        if (index < 0 || index >= m_petConfigs.Count)
+        if (m_petDisplayConfigs == null || index < 0 || index >= m_petDisplayConfigs.Count)
             return null;
 
-        MPPetConfig config = m_petConfigs[index];
+        MPPetConfig config = m_petDisplayConfigs[index];
+        if (config == null)
+            return null;
+
         LoopGridViewItem item = m_contentGrid.NewListViewItem("MPPetItem");
         MPPetItem petItem = item.GetComponent<MPPetItem>();
         if (petItem == null)
@@ -359,6 +517,9 @@ public class MPPetsView : AWindow
             return null;
 
         MPPetCareItemConfig config = configs[index];
+        if (config == null)
+            return null;
+
         LoopGridViewItem item = m_contentGrid.NewListViewItem(prefabName);
         MPPetCareItem careItem = item.GetComponent<MPPetCareItem>();
         if (careItem == null)
@@ -381,6 +542,60 @@ public class MPPetsView : AWindow
     }
 
     /// <summary>
+    /// 只刷新当前可见的宠物 Item。普通选择不需要重建整个 Content，未显示的格子等滚动出来时会自动刷新。
+    /// </summary>
+    private void RefreshShownPetItem(string petId)
+    {
+        if (m_currentTab != PetsTabType.Pets || string.IsNullOrEmpty(petId) || m_contentGrid == null)
+            return;
+
+        int index = FindPetConfigIndex(petId);
+        if (index < 0)
+            return;
+
+        LoopGridViewItem item = m_contentGrid.GetShownItemByItemIndex(index);
+        if (item == null)
+            return;
+
+        MPPetItem petItem = item.GetComponent<MPPetItem>();
+        if (petItem == null)
+            return;
+
+        MPPetConfig config = m_petDisplayConfigs[index];
+        MPPetRuntimeData runtimeData = MPUser.instance.GetPetRuntimeData(config.ID);
+        bool selected = m_selectedPetConfig != null && m_selectedPetConfig.ID == config.ID;
+        petItem.Refresh(config, runtimeData, selected);
+    }
+
+    /// <summary>
+    /// 只刷新当前可见的食物/玩具 Item。选择和使用道具时只改受影响的格子，真正解锁时才整体刷新。
+    /// </summary>
+    private void RefreshShownCareItem(PetsTabType tab, string itemId)
+    {
+        if (tab != m_currentTab || string.IsNullOrEmpty(itemId) || m_contentGrid == null)
+            return;
+
+        List<MPPetCareItemConfig> configs = GetCareConfigs(tab);
+        int index = FindCareConfigIndex(configs, itemId);
+        if (index < 0)
+            return;
+
+        LoopGridViewItem item = m_contentGrid.GetShownItemByItemIndex(index);
+        if (item == null)
+            return;
+
+        MPPetCareItem careItem = item.GetComponent<MPPetCareItem>();
+        if (careItem == null)
+            return;
+
+        MPPetCareItemConfig config = configs[index];
+        MPPetCareRuntimeData runtimeData = MPUser.instance.GetPetCareRuntimeData(config.ID);
+        bool selected = m_selectedCareItemTab == m_currentTab && m_selectedCareItemId == config.ID;
+        bool canUse = m_selectedPetConfig != null && MPUser.instance.PetCareItemCanUse(m_selectedPetConfig.ID, config);
+        careItem.Refresh(config, runtimeData, selected, canUse);
+    }
+
+    /// <summary>
     /// 宠物 Item 点击回调。已解锁宠物执行选中，未解锁宠物进入解锁提示入口。
     /// </summary>
     private void OnPetItemClick(MPPetConfig config)
@@ -391,13 +606,27 @@ public class MPPetsView : AWindow
         if (!MPUser.instance.PetIsUnlock(config.ID))
         {
             OnLockedPetItemClick(config);
+            if (MPUser.instance.PetIsUnlock(config.ID))
+            {
+                MPUser.instance.SetSelectedPet(config.ID);
+                m_selectedPetConfig = config;
+                RefreshPetInfo();
+                RebuildCurrentTabDisplayConfigs();
+                m_contentGrid.RefreshAllShownItem();
+                MoveCurrentTabToDefaultItem(GetCurrentTabCount());
+            }
             return;
         }
+
+        string previousPetId = m_selectedPetConfig != null ? m_selectedPetConfig.ID : null;
+        if (previousPetId == config.ID)
+            return;
 
         MPUser.instance.SetSelectedPet(config.ID);
         m_selectedPetConfig = config;
         RefreshPetInfo();
-        m_contentGrid.RefreshAllShownItem();
+        RefreshShownPetItem(previousPetId);
+        RefreshShownPetItem(config.ID);
     }
 
     private void OnCareItemClick(MPPetCareItemConfig config)
@@ -407,18 +636,28 @@ public class MPPetsView : AWindow
 
         if (!MPUser.instance.PetCareItemIsUnlock(config.ID))
         {
-            ClearCareItemSelection();
-            m_contentGrid.RefreshAllShownItem();
             OnLockedCareItemClick(config);
+            if (MPUser.instance.PetCareItemIsUnlock(config.ID))
+            {
+                SelectCareItem(config);
+                RebuildCurrentTabDisplayConfigs();
+                m_contentGrid.RefreshAllShownItem();
+                MoveCurrentTabToSelectedCareItem(config.ID);
+            }
             return;
         }
 
         if (m_selectedPetConfig == null)
             return;
 
-        m_selectedCareItemId = config.ID;
-        m_selectedCareItemTab = m_currentTab;
-        m_contentGrid.RefreshAllShownItem();
+        string previousItemId = m_selectedCareItemId;
+        PetsTabType previousItemTab = m_selectedCareItemTab;
+        if (previousItemTab == m_currentTab && previousItemId == config.ID)
+            return;
+
+        SelectCareItem(config);
+        RefreshShownCareItem(previousItemTab, previousItemId);
+        RefreshShownCareItem(m_currentTab, config.ID);
     }
 
     private void OnCareItemUseClick(MPPetCareItemConfig config)
@@ -440,7 +679,7 @@ public class MPPetsView : AWindow
         if (MPUser.instance.UsePetCareItem(m_selectedPetConfig.ID, config))
         {
             RefreshPetInfo();
-            m_contentGrid.RefreshAllShownItem();
+            RefreshShownCareItem(m_currentTab, config.ID);
         }
     }
 
@@ -448,6 +687,15 @@ public class MPPetsView : AWindow
     {
         m_selectedCareItemId = null;
         m_selectedCareItemTab = PetsTabType.Pets;
+    }
+
+    private void SelectCareItem(MPPetCareItemConfig config)
+    {
+        if (config == null || !MPUser.instance.PetCareItemIsUnlock(config.ID))
+            return;
+
+        m_selectedCareItemId = config.ID;
+        m_selectedCareItemTab = m_currentTab;
     }
 
     /// <summary>
@@ -639,6 +887,49 @@ public class MPPetsView : AWindow
             return null;
 
         return m_petConfigs.Find(item => item != null && item.ID == id);
+    }
+
+    private int FindPetConfigIndex(string id)
+    {
+        if (string.IsNullOrEmpty(id) || m_petDisplayConfigs == null)
+            return -1;
+
+        for (int i = 0; i < m_petDisplayConfigs.Count; i++)
+        {
+            MPPetConfig config = m_petDisplayConfigs[i];
+            if (config != null && config.ID == id)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private List<MPPetCareItemConfig> GetCareConfigs(PetsTabType tab)
+    {
+        switch (tab)
+        {
+            case PetsTabType.Food:
+                return m_foodDisplayConfigs;
+            case PetsTabType.Toys:
+                return m_toyDisplayConfigs;
+            default:
+                return null;
+        }
+    }
+
+    private int FindCareConfigIndex(List<MPPetCareItemConfig> configs, string id)
+    {
+        if (string.IsNullOrEmpty(id) || configs == null)
+            return -1;
+
+        for (int i = 0; i < configs.Count; i++)
+        {
+            MPPetCareItemConfig config = configs[i];
+            if (config != null && config.ID == id)
+                return i;
+        }
+
+        return -1;
     }
 
     private Transform FindViewTransform(string path)
