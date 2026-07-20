@@ -51,6 +51,11 @@ public class MPPetItem : MonoBehaviour
     private GameObject m_lockMask;
 
     /// <summary>
+    /// 未解锁状态下额外显示的锁定框，对应 prefab 中的 LockFrame。
+    /// </summary>
+    private GameObject m_lockFrame;
+
+    /// <summary>
     /// 未解锁条件文本。
     /// </summary>
     private TMP_Text m_unlockText;
@@ -107,6 +112,7 @@ public class MPPetItem : MonoBehaviour
         m_progressFill = FindComponent<Image>("Info/ProgressBg/ProgressFill");
         m_selected = FindGameObject("Selected", "Info/Selected");
         m_lockMask = FindGameObject("LockMask");
+        m_lockFrame = FindGameObject("LockFrame");
         m_unlockText = FindComponent<TMP_Text>("LockMask/UnlockText");
         m_button = GetComponent<Button>();
 
@@ -137,6 +143,7 @@ public class MPPetItem : MonoBehaviour
         SetPetIcon(config);
         SetActive(m_info, unlocked);
         SetActive(m_lockMask, !unlocked);
+        SetActive(m_lockFrame, !unlocked);
         SetActive(m_selected, unlocked && selected);
 
         if (m_button != null)
