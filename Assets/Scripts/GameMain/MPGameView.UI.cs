@@ -1,4 +1,5 @@
 using DG.Tweening;
+using HQ.UIManager;
 using UnityEngine;
 
 public partial class MPGameView
@@ -72,6 +73,11 @@ public partial class MPGameView
 
         SaveProgressCache();
         RefreshPropButtons();
+
+        if (m_lovesCount <= 0)
+        {
+            OpenFailPop();
+        }
     }
 
     /// <summary>
@@ -212,6 +218,80 @@ public partial class MPGameView
         }
 
         AddLoves();
+    }
+
+    /// <summary>
+    /// 打开游戏失败弹窗。
+    /// </summary>
+    private void OpenFailPop()
+    {
+        if (m_isCustomLevel || m_isFailPopShowing || m_hasCompleted)
+            return;
+
+        m_isFailPopShowing = true;
+        MPGameFailPopUIMsgData data = new MPGameFailPopUIMsgData()
+        {
+            homeAction = OnFailHomeClick,
+            replayAction = OnFailReplayClick,
+            restoreLifeAction = OnFailRestoreLifeClick,
+        };
+
+        UIManager.Inst.ShowWindow<MPGameFailPop>(data, true, UILayer.Top);
+    }
+
+    /// <summary>
+    /// 失败弹窗中点击回到主页。
+    /// </summary>
+    private void OnFailHomeClick()
+    {
+        m_isFailPopShowing = false;
+        m_hasCompleted = true;
+        ClearProgressCache();
+        DestroyWindow();
+        m_refreshAction?.Invoke();
+    }
+
+    /// <summary>
+    /// 失败弹窗中点击重玩当前关卡。
+    /// </summary>
+    private void OnFailReplayClick()
+    {
+        m_isFailPopShowing = false;
+        m_hasCompleted = true;
+        ClearProgressCache();
+
+        MPGameViewUIMsgData data = new MPGameViewUIMsgData()
+        {
+            blockInfo = m_blockInfo,
+            index = m_index,
+            refresh = m_refreshAction,
+        };
+
+        DestroyWindow();
+        UIManager.Inst.ShowWindow<MPGameView>(data);
+    }
+
+    /// <summary>
+    /// 失败弹窗中点击恢复一点生命值。
+    /// </summary>
+    /// <returns>成功恢复生命值返回true，弹窗会关闭。</returns>
+    private bool OnFailRestoreLifeClick()
+    {
+        if (m_lovesCount >= m_loves.Count)
+        {
+            RefreshPropButtons();
+            return false;
+        }
+
+        if (!MPUser.instance.UseLoveRecoverProp())
+        {
+            RefreshPropButtons();
+            return false;
+        }
+
+        AddLoves();
+        m_isFailPopShowing = false;
+        return true;
     }
 
     /// <summary>

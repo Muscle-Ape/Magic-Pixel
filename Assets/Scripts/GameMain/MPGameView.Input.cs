@@ -351,6 +351,7 @@ public partial class MPGameView
             if (!correct)
             {
                 CannotContinueDragging();
+                SubLoves();
                 return;
             }
 

@@ -16,6 +16,12 @@ public partial class MPGameView : AWindow
     private const int GRID_SIZE = 800;
 
     /// <summary>
+    /// 页面根节点交互控制组件，游戏完成后用于统一禁止按钮点击。
+    /// </summary>
+    [TransformPath("View")]
+    private CanvasGroup m_viewCanvasGroup;
+
+    /// <summary>
     /// 竖着的数字提示父节点
     /// </summary>
     [TransformPath("View/Content/Vertical")]
@@ -32,6 +38,12 @@ public partial class MPGameView : AWindow
     /// </summary>
     [TransformPath("View/Content/Grid")]
     private GridLayoutGroup m_blockGrid;
+
+    /// <summary>
+    /// 结算时覆盖在中心内容区域上的完成图片框。
+    /// </summary>
+    [TransformPath("View/Content/CompletedFrame")]
+    private Image m_completedFrame;
 
     /// <summary>
     /// 分隔线段节点
@@ -112,6 +124,12 @@ public partial class MPGameView : AWindow
     private TMP_Text m_loveRecoverPropCountText;
 
     /// <summary>
+    /// 标题节点，结算动画开始时会随数字提示同步淡出。
+    /// </summary>
+    [TransformPath("View/Title")]
+    private RectTransform m_title;
+
+    /// <summary>
     /// 标题文本
     /// </summary>
     [TransformPath("View/Title/Text")]
@@ -130,6 +148,12 @@ public partial class MPGameView : AWindow
     private TMP_Text m_diamondText;
 
     /// <summary>
+    /// 生命值父节点，结算动画开始时会随数字提示同步淡出。
+    /// </summary>
+    [TransformPath("View/Loves")]
+    private RectTransform m_lovesNode;
+
+    /// <summary>
     /// 生命值
     /// </summary>
     private List<GameObject> m_loves;
@@ -138,6 +162,11 @@ public partial class MPGameView : AWindow
     /// 剩余生命值
     /// </summary>
     private int m_lovesCount;
+
+    /// <summary>
+    /// 当前是否已经打开失败弹窗，避免生命值归零后重复弹出。
+    /// </summary>
+    private bool m_isFailPopShowing;
 
     /// <summary>
     /// 方块信息
@@ -278,7 +307,7 @@ public partial class MPGameView : AWindow
         m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical");
 
         // 初始化生命值
-        Transform lovesNode = transform.Find("View/Loves");
+        Transform lovesNode = m_lovesNode == null ? transform.Find("View/Loves") : m_lovesNode;
         m_loves = new List<GameObject>();
         for (int i = 0; i < lovesNode.childCount; i++)
         {

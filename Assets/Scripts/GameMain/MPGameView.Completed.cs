@@ -1,4 +1,5 @@
 using DG.Tweening;
+using HQ.UIManager;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -71,12 +72,16 @@ public partial class MPGameView
     /// </summary>
     private IEnumerator PlayCompletedAnimation()
     {
+        LockCompletedInteraction();
+
         if (m_input != null)
         {
             m_input.gameObject.SetActive(false);
         }
 
         FadeNumberFrames();
+        FadeSettlementUI();
+        FadeCompletedFrame();
 
         transform.Find("View/Content/Frame").GetComponent<Image>().DOFade(0, SETTLEMENT_NUMBER_FADE_DURATION);
 
@@ -122,6 +127,94 @@ public partial class MPGameView
         yield return new WaitForSeconds(SETTLEMENT_BLOCK_ANIMATION_DURATION);
 
         Destroy(readableTexture);
+        OpenCompletedView();
+    }
+
+    /// <summary>
+    /// 淡入结算完成图片框。
+    /// </summary>
+    /// <summary>
+    /// 游戏完成瞬间锁定页面交互，避免结算动画播放期间继续点击按钮。
+    /// </summary>
+    private void LockCompletedInteraction()
+    {
+        if (m_viewCanvasGroup == null)
+            return;
+
+        m_viewCanvasGroup.interactable = false;
+        m_viewCanvasGroup.blocksRaycasts = false;
+    }
+
+    /// <summary>
+    /// 淡出结算期间不再需要展示的标题、生命值、模式切换和道具区域。
+    /// </summary>
+    private void FadeSettlementUI()
+    {
+        FadeGraphics(m_title, SETTLEMENT_NUMBER_FADE_DURATION);
+        FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
+
+        if (m_modeSwitchFrame != null)
+        {
+            FadeGraphics(m_modeSwitchFrame.transform as RectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
+        }
+
+        FadeGraphics(m_props, SETTLEMENT_NUMBER_FADE_DURATION);
+    }
+
+    /// <summary>
+    /// 淡出指定节点下所有UGUI图形元素。
+    /// </summary>
+    /// <param name="root">需要淡出的节点。</param>
+    /// <param name="duration">淡出时长。</param>
+    private void FadeGraphics(RectTransform root, float duration)
+    {
+        if (root == null)
+            return;
+
+        Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            if (graphics[i] == null)
+                continue;
+
+            graphics[i].DOKill();
+            graphics[i].DOFade(0f, duration).SetEase(Ease.Linear).SetLink(graphics[i].gameObject);
+        }
+    }
+
+    private void FadeCompletedFrame()
+    {
+        if (m_completedFrame == null)
+            return;
+
+        m_completedFrame.DOKill();
+        Color color = m_completedFrame.color;
+        color.a = 0;
+        m_completedFrame.color = color;
+        m_completedFrame.DOFade(1f, SETTLEMENT_NUMBER_FADE_DURATION).SetEase(Ease.Linear).SetLink(m_completedFrame.gameObject);
+    }
+
+    /// <summary>
+    /// 打开主关卡结算界面并关闭当前游戏界面。
+    /// </summary>
+    private void OpenCompletedView()
+    {
+        RectTransform completedFrameTransform = m_completedFrame == null ? null : m_completedFrame.transform as RectTransform;
+        Canvas completedFrameCanvas = completedFrameTransform == null ? null : completedFrameTransform.GetComponentInParent<Canvas>();
+        Camera completedFrameCamera = completedFrameCanvas != null && completedFrameCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? completedFrameCanvas.worldCamera : null;
+        MPGameCompletedViewUIMsgData data = new MPGameCompletedViewUIMsgData()
+        {
+            blockInfo = m_blockInfo,
+            index = m_index,
+            lovesCount = m_lovesCount,
+            pictureStartAnchoredPosition = completedFrameTransform == null ? Vector2.zero : completedFrameTransform.anchoredPosition,
+            pictureStartScreenPosition = completedFrameTransform == null ? Vector2.zero : RectTransformUtility.WorldToScreenPoint(completedFrameCamera, completedFrameTransform.position),
+            hasPictureStartScreenPosition = completedFrameTransform != null,
+            refresh = m_refreshAction,
+        };
+
+        UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
+        DestroyWindow();
     }
 
     /// <summary>

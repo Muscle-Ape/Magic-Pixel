@@ -192,6 +192,11 @@ public partial class MPLargeImageGameView : AWindow
     private int m_lovesCount;
 
     /// <summary>
+    /// 当前是否已经打开失败弹窗，避免生命值归零后重复弹出。
+    /// </summary>
+    private bool m_isFailPopShowing;
+
+    /// <summary>
     /// 方块信息
     /// </summary>
     private MPLargeImageBlockInfo m_blockInfo;
