@@ -6,13 +6,21 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-[Component("MPGameCompletedView")]
-public class MPGameCompletedView : AWindow
+/// <summary>
+/// 大图模式游戏完成结算界面。
+/// </summary>
+[Component("MPLargeImageGameCompletedView")]
+public class MPLargeImageGameCompletedView : AWindow
 {
     /// <summary>
-    /// 图片节点从结算框移动到最终位置的动画时长。
+    /// 图片节点从游戏页网格位置移动到完成页目标位置的动画时长。
     /// </summary>
     private const float PICTURE_MOVE_DURATION = 0.45f;
+
+    /// <summary>
+    /// 大图从局部视野缩回完整图片的动画时长。
+    /// </summary>
+    private const float PICTURE_ZOOM_BACK_DURATION = 0.5f;
 
     /// <summary>
     /// 底部按钮、标题和星星缩放显示的动画时长。
@@ -32,13 +40,13 @@ public class MPGameCompletedView : AWindow
     private TMP_Text m_diamondText;
 
     /// <summary>
-    /// 返回按钮。
+    /// 返回大图关卡列表按钮。
     /// </summary>
     [TransformPath("View/Up/BackBtn")]
     private Button m_backBtn;
 
     /// <summary>
-    /// 重玩当前关卡按钮。
+    /// 重玩当前大图关卡按钮。
     /// </summary>
     [TransformPath("View/ReplayBtn")]
     private Button m_replayBtn;
@@ -50,15 +58,27 @@ public class MPGameCompletedView : AWindow
     private Button m_nextBtn;
 
     /// <summary>
-    /// 完成图片所在节点，用于从游戏页结算框位置移动到当前页面初始位置。
+    /// 完成图片所在节点，用于从游戏页网格位置移动到当前页面目标位置。
     /// </summary>
     [TransformPath("View/PictureNode")]
     private RectTransform m_pictureNode;
 
     /// <summary>
-    /// 通关完成图片。
+    /// 图片遮罩节点，遮罩范围对应游戏页结算时看到的像素区域。
     /// </summary>
-    [TransformPath("View/PictureNode/Picture")]
+    [TransformPath("View/PictureNode/Mask")]
+    private RectTransform m_pictureMask;
+
+    /// <summary>
+    /// 大图通关完成图片节点，结算页入场时会放大并偏移到当前可视区域。
+    /// </summary>
+    [TransformPath("View/PictureNode/Mask/Picture")]
+    private RectTransform m_pictureTransform;
+
+    /// <summary>
+    /// 大图通关完成图片。
+    /// </summary>
+    [TransformPath("View/PictureNode/Mask/Picture")]
     private Image m_picture;
 
     /// <summary>
@@ -80,12 +100,12 @@ public class MPGameCompletedView : AWindow
     private TMP_Text m_titleText;
 
     /// <summary>
-    /// 当前完成的主线关卡配置。
+    /// 当前完成的大图关卡配置。
     /// </summary>
-    private MPMainBlockInfo m_blockInfo;
+    private MPLargeImageBlockInfo m_blockInfo;
 
     /// <summary>
-    /// 当前完成的主线关卡下标。
+    /// 当前完成的大图关卡下标。
     /// </summary>
     private int m_index;
 
@@ -95,19 +115,54 @@ public class MPGameCompletedView : AWindow
     private int m_lovesCount;
 
     /// <summary>
-    /// 返回主页或重开关卡时用于刷新关卡列表的回调。
+    /// 结算时可视区域左上角在完整大图中的行列坐标。
+    /// </summary>
+    private Vector2Int m_viewHead;
+
+    /// <summary>
+    /// 大图完整网格尺寸。
+    /// </summary>
+    private int m_imageSize;
+
+    /// <summary>
+    /// 结算时可视区域尺寸。
+    /// </summary>
+    private int m_visibleSize;
+
+    /// <summary>
+    /// 返回列表或重开关卡时用于刷新大图关卡列表的回调。
     /// </summary>
     private Action m_refreshAction;
 
     /// <summary>
-    /// 图片节点在结算页中的目标位置，也就是预制体内配置的初始位置。
+    /// 图片节点在完成页中的目标位置，也就是预制体内配置的初始位置。
     /// </summary>
     private Vector2 m_pictureTargetPosition;
 
     /// <summary>
-    /// 图片节点进入结算页时的起始位置，对齐游戏页的CompletedFrame。
+    /// 图片节点进入完成页时的起始位置，对齐游戏页中心网格。
     /// </summary>
     private Vector2 m_pictureStartPosition;
+
+    /// <summary>
+    /// 大图图片节点在预制体中的原始位置。
+    /// </summary>
+    private Vector2 m_innerPictureTargetPosition;
+
+    /// <summary>
+    /// 大图图片节点入场时为了对齐当前可视区域使用的起始位置。
+    /// </summary>
+    private Vector2 m_innerPictureStartPosition;
+
+    /// <summary>
+    /// 大图图片节点在预制体中的原始缩放。
+    /// </summary>
+    private Vector3 m_innerPictureTargetScale;
+
+    /// <summary>
+    /// 大图图片节点入场时为了对齐当前可视区域使用的起始缩放。
+    /// </summary>
+    private Vector3 m_innerPictureStartScale;
 
     /// <summary>
     /// 每颗星星的节点。
@@ -146,19 +201,23 @@ public class MPGameCompletedView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
-        MPGameCompletedViewUIMsgData data = uiMsg as MPGameCompletedViewUIMsgData;
+        MPLargeImageGameCompletedViewUIMsgData data = uiMsg as MPLargeImageGameCompletedViewUIMsgData;
         if (data == null)
         {
-            ReturnHome();
+            ReturnLevelList();
             return;
         }
 
         m_blockInfo = data.blockInfo;
         m_index = data.index;
         m_lovesCount = data.lovesCount;
+        m_viewHead = data.viewHead;
+        m_imageSize = data.imageSize;
+        m_visibleSize = data.visibleSize;
         m_pictureStartPosition = ResolvePictureStartPosition(data);
         m_refreshAction = data.refresh;
 
+        ResolvePictureNodes();
         CacheOriginalState();
         RegisterUI();
         RefreshUI();
@@ -169,6 +228,27 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
+    /// 解析大图显示节点。
+    /// </summary>
+    private void ResolvePictureNodes()
+    {
+        if (m_pictureMask == null)
+        {
+            m_pictureMask = transform.Find("View/PictureNode/Mask") as RectTransform;
+        }
+
+        if (m_pictureTransform == null)
+        {
+            m_pictureTransform = transform.Find("View/PictureNode/Mask/Picture") as RectTransform;
+        }
+
+        if (m_picture == null)
+        {
+            m_picture = m_pictureTransform == null ? null : m_pictureTransform.GetComponent<Image>();
+        }
+    }
+
+    /// <summary>
     /// 缓存预制体中配置好的初始状态，供入场动画恢复到正确位置和缩放。
     /// </summary>
     private void CacheOriginalState()
@@ -176,6 +256,13 @@ public class MPGameCompletedView : AWindow
         if (m_pictureNode != null)
         {
             m_pictureTargetPosition = m_pictureNode.anchoredPosition;
+        }
+
+        if (m_pictureTransform != null)
+        {
+            m_innerPictureTargetPosition = m_pictureTransform.anchoredPosition;
+            m_innerPictureTargetScale = m_pictureTransform.localScale;
+            CalculatePictureStartState();
         }
 
         m_replayOriginalScale = m_replayBtn == null ? Vector3.one : m_replayBtn.transform.localScale;
@@ -204,11 +291,75 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 将游戏页CompletedFrame的屏幕坐标转换到当前PictureNode父节点的本地坐标。
+    /// 计算大图内容节点的起始缩放和偏移，让完成页打开时显示的局部区域与游戏页结算像素对齐。
+    /// </summary>
+    private void CalculatePictureStartState()
+    {
+        int imageSize = Mathf.Max(1, m_imageSize);
+        int visibleSize = Mathf.Clamp(m_visibleSize, 1, imageSize);
+        float zoomScale = Mathf.Max(1f, imageSize / (float)visibleSize);
+
+        Vector2 contentSize = GetPictureSize();
+        float centerColumn = Mathf.Clamp(m_viewHead.y + visibleSize * 0.5f, 0f, imageSize);
+        float centerRow = Mathf.Clamp(m_viewHead.x + visibleSize * 0.5f, 0f, imageSize);
+        float columnPercent = centerColumn / imageSize;
+        float rowPercent = centerRow / imageSize;
+
+        Vector2 offset = new Vector2(
+            (0.5f - columnPercent) * contentSize.x * zoomScale,
+            (rowPercent - 0.5f) * contentSize.y * zoomScale
+        );
+
+        m_innerPictureStartPosition = m_innerPictureTargetPosition + offset;
+        m_innerPictureStartScale = new Vector3(
+            m_innerPictureTargetScale.x * zoomScale,
+            m_innerPictureTargetScale.y * zoomScale,
+            m_innerPictureTargetScale.z
+        );
+    }
+
+    /// <summary>
+    /// 获取完整大图图片节点的显示尺寸。
+    /// </summary>
+    /// <returns>完整大图图片节点尺寸。</returns>
+    private Vector2 GetPictureSize()
+    {
+        if (m_pictureTransform != null)
+        {
+            Vector2 size = m_pictureTransform.rect.size;
+            if (size.x > 0f && size.y > 0f)
+            {
+                return size;
+            }
+        }
+
+        if (m_picture != null)
+        {
+            RectTransform pictureTransform = m_picture.transform as RectTransform;
+            if (pictureTransform != null)
+            {
+                Vector2 size = pictureTransform.rect.size;
+                if (size.x > 0f && size.y > 0f)
+                {
+                    return size;
+                }
+            }
+        }
+
+        if (m_pictureMask != null)
+        {
+            return m_pictureMask.rect.size;
+        }
+
+        return Vector2.one;
+    }
+
+    /// <summary>
+    /// 将游戏页中心网格的屏幕坐标转换到当前PictureNode父节点的本地坐标。
     /// </summary>
     /// <param name="data">游戏结算页打开时传入的数据。</param>
     /// <returns>PictureNode入场动画的起始锚点位置。</returns>
-    private Vector2 ResolvePictureStartPosition(MPGameCompletedViewUIMsgData data)
+    private Vector2 ResolvePictureStartPosition(MPLargeImageGameCompletedViewUIMsgData data)
     {
         if (m_pictureNode == null || !data.hasPictureStartScreenPosition)
         {
@@ -232,14 +383,14 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 注册结算页按钮事件。
+    /// 注册完成页按钮事件。
     /// </summary>
     private void RegisterUI()
     {
         if (m_backBtn != null)
         {
-            m_backBtn.onClick.RemoveListener(ReturnHome);
-            m_backBtn.onClick.AddListener(ReturnHome);
+            m_backBtn.onClick.RemoveListener(ReturnLevelList);
+            m_backBtn.onClick.AddListener(ReturnLevelList);
         }
 
         if (m_replayBtn != null)
@@ -287,7 +438,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 刷新主线关卡完成图。
+    /// 刷新大图模式关卡完成图。
     /// </summary>
     private void RefreshPicture()
     {
@@ -305,6 +456,12 @@ public class MPGameCompletedView : AWindow
         if (m_pictureNode != null)
         {
             m_pictureNode.anchoredPosition = m_pictureStartPosition;
+        }
+
+        if (m_pictureTransform != null)
+        {
+            m_pictureTransform.anchoredPosition = m_innerPictureStartPosition;
+            m_pictureTransform.localScale = m_innerPictureStartScale;
         }
 
         if (m_replayBtn != null)
@@ -339,7 +496,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 播放结算页入场动画，先移动完成图，再显示标题、星星和底部按钮。
+    /// 播放结算页入场动画，先移动局部图，再缩回完整图，最后显示标题、星星和底部按钮。
     /// </summary>
     private void PlayEnterAnimation()
     {
@@ -352,12 +509,37 @@ public class MPGameCompletedView : AWindow
             m_enterSequence.Append(m_pictureNode.DOAnchorPos(m_pictureTargetPosition, PICTURE_MOVE_DURATION).SetEase(Ease.Linear));
         }
 
+        Tween zoomBackTween = CreatePictureZoomBackTween();
+        if (zoomBackTween != null)
+        {
+            m_enterSequence.Append(zoomBackTween);
+        }
+
         m_enterSequence.Append(CreateElementShowTween());
+    }
+
+    /// <summary>
+    /// 创建大图图片从当前可视局部缩回完整图片的动画。
+    /// </summary>
+    /// <returns>大图图片缩回动画。</returns>
+    private Tween CreatePictureZoomBackTween()
+    {
+        if (m_pictureTransform == null)
+        {
+            return null;
+        }
+
+        m_pictureTransform.DOKill();
+        Sequence sequence = DOTween.Sequence();
+        sequence.Join(m_pictureTransform.DOAnchorPos(m_innerPictureTargetPosition, PICTURE_ZOOM_BACK_DURATION).SetEase(Ease.Linear));
+        sequence.Join(m_pictureTransform.DOScale(m_innerPictureTargetScale, PICTURE_ZOOM_BACK_DURATION).SetEase(Ease.Linear));
+        return sequence;
     }
 
     /// <summary>
     /// 创建标题、星星和底部按钮同时缩放显示的动画。
     /// </summary>
+    /// <returns>元素显示动画。</returns>
     private Tween CreateElementShowTween()
     {
         Sequence sequence = DOTween.Sequence();
@@ -399,49 +581,51 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 点击重玩按钮，重新打开当前主线关卡。
+    /// 点击重玩按钮，重新打开当前大图关卡。
     /// </summary>
     private void OnReplayClick()
     {
-        OpenMainLevel(m_blockInfo, m_index);
+        OpenLargeImageLevel(m_blockInfo, m_index);
     }
 
     /// <summary>
-    /// 点击下一关按钮，如果下一关不存在或尚未解锁，则返回主页。
+    /// 点击下一关按钮，如果下一关不存在或尚未解锁，则返回大图关卡列表。
     /// </summary>
     private void OnNextLevelClick()
     {
-        List<MPMainBlockInfo> levels = MPDataManager.Instance.m_mainLevelModel.blockInfos;
+        List<MPLargeImageBlockInfo> levels = MPDataManager.Instance.m_largeImageModel.blockInfos;
         int nextIndex = m_index + 1;
 
         if (levels == null || nextIndex >= levels.Count)
         {
-            ReturnHome();
+            ReturnLevelList();
             return;
         }
 
-        MPMainBlockInfo nextLevel = levels[nextIndex];
-        if (nextLevel == null || !MPUser.instance.MainLevelIsUnlock(nextLevel.ID))
+        MPLargeImageBlockInfo nextLevel = levels[nextIndex];
+        if (nextLevel == null || !MPUser.instance.LargeImageLevelIsUnlock(nextLevel.ID))
         {
-            ReturnHome();
+            ReturnLevelList();
             return;
         }
 
-        OpenMainLevel(nextLevel, nextIndex);
+        OpenLargeImageLevel(nextLevel, nextIndex);
     }
 
     /// <summary>
-    /// 打开指定主线关卡。
+    /// 打开指定大图关卡。
     /// </summary>
-    private void OpenMainLevel(MPMainBlockInfo blockInfo, int index)
+    /// <param name="blockInfo">大图关卡配置。</param>
+    /// <param name="index">大图关卡下标。</param>
+    private void OpenLargeImageLevel(MPLargeImageBlockInfo blockInfo, int index)
     {
         if (blockInfo == null)
         {
-            ReturnHome();
+            ReturnLevelList();
             return;
         }
 
-        MPGameViewUIMsgData data = new MPGameViewUIMsgData()
+        MPLargeImageGameViewUIMsgData data = new MPLargeImageGameViewUIMsgData()
         {
             blockInfo = blockInfo,
             index = index,
@@ -449,13 +633,13 @@ public class MPGameCompletedView : AWindow
         };
 
         DestroyWindow();
-        UIManager.Inst.ShowWindow<MPGameView>(data);
+        UIManager.Inst.ShowWindow<MPLargeImageGameView>(data);
     }
 
     /// <summary>
-    /// 返回主页，并触发关卡列表刷新。
+    /// 返回大图关卡列表，并触发列表刷新。
     /// </summary>
-    private void ReturnHome()
+    private void ReturnLevelList()
     {
         DestroyWindow();
         m_refreshAction?.Invoke();
@@ -467,15 +651,18 @@ public class MPGameCompletedView : AWindow
     }
 }
 
-public class MPGameCompletedViewUIMsgData : UIMsgData
+/// <summary>
+/// 打开大图模式完成结算界面需要传递的数据。
+/// </summary>
+public class MPLargeImageGameCompletedViewUIMsgData : UIMsgData
 {
     /// <summary>
-    /// 当前完成的主线关卡配置。
+    /// 当前完成的大图关卡配置。
     /// </summary>
-    public MPMainBlockInfo blockInfo;
+    public MPLargeImageBlockInfo blockInfo;
 
     /// <summary>
-    /// 当前完成的主线关卡下标。
+    /// 当前完成的大图关卡下标。
     /// </summary>
     public int index;
 
@@ -485,7 +672,22 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     public int lovesCount;
 
     /// <summary>
-    /// 完成图片入场动画的起始锚点位置，对齐MPGameView中的CompletedFrame。
+    /// 结算时可视区域左上角在完整大图中的行列坐标。
+    /// </summary>
+    public Vector2Int viewHead;
+
+    /// <summary>
+    /// 大图完整网格尺寸。
+    /// </summary>
+    public int imageSize;
+
+    /// <summary>
+    /// 结算时可视区域尺寸。
+    /// </summary>
+    public int visibleSize;
+
+    /// <summary>
+    /// 完成图片入场动画的起始锚点位置，对齐大图游戏页中心网格。
     /// </summary>
     public Vector2 pictureStartAnchoredPosition;
 
@@ -500,7 +702,7 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     public bool hasPictureStartScreenPosition;
 
     /// <summary>
-    /// 页面返回主页时刷新主界面关卡列表的回调。
+    /// 页面返回大图关卡列表时刷新列表的回调。
     /// </summary>
     public Action refresh;
 }

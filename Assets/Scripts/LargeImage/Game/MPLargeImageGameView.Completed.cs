@@ -1,5 +1,6 @@
 using UnityEngine;
 using DG.Tweening;
+using HQ.UIManager;
 using System.Collections;
 using UnityEngine.UI;
 
@@ -79,14 +80,14 @@ public partial class MPLargeImageGameView
 
         if (m_pixel == null || m_blockGrid2Array == null)
         {
-            DestroyWindow();
+            OpenCompletedView();
             yield break;
         }
 
         Texture2D readableTexture = CreateReadableTexture(m_pixel);
         if (readableTexture == null)
         {
-            DestroyWindow();
+            OpenCompletedView();
             yield break;
         }
 
@@ -120,6 +121,33 @@ public partial class MPLargeImageGameView
         yield return new WaitForSeconds(SETTLEMENT_BLOCK_ANIMATION_DURATION);
 
         Destroy(readableTexture);
+        OpenCompletedView();
+    }
+
+    /// <summary>
+    /// 打开大图模式结算界面并关闭当前游戏界面。
+    /// </summary>
+    private void OpenCompletedView()
+    {
+        RectTransform gridTransform = m_blockGrid == null ? null : m_blockGrid.transform as RectTransform;
+        Canvas gridCanvas = gridTransform == null ? null : gridTransform.GetComponentInParent<Canvas>();
+        Camera gridCamera = gridCanvas != null && gridCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? gridCanvas.worldCamera : null;
+
+        MPLargeImageGameCompletedViewUIMsgData data = new MPLargeImageGameCompletedViewUIMsgData()
+        {
+            blockInfo = m_blockInfo,
+            index = m_index,
+            lovesCount = m_lovesCount,
+            viewHead = m_blockStatueHead,
+            imageSize = m_size,
+            visibleSize = FIXED_SIZE,
+            pictureStartAnchoredPosition = gridTransform == null ? Vector2.zero : gridTransform.anchoredPosition,
+            pictureStartScreenPosition = gridTransform == null ? Vector2.zero : RectTransformUtility.WorldToScreenPoint(gridCamera, gridTransform.position),
+            hasPictureStartScreenPosition = gridTransform != null,
+            refresh = m_refreshAction,
+        };
+
+        UIManager.Inst.ShowWindow<MPLargeImageGameCompletedView>(data);
         DestroyWindow();
     }
 
