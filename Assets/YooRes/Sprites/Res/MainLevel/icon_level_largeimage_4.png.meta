@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 14d3bebdc46b4050b9ffb03f2d2a8207
+guid: 702d860ff2f140b599f984fa8f6cbc62
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -21,7 +21,7 @@ TextureImporter:
     heightScale: 0.25
     normalMapFilter: 0
     flipGreenChannel: 0
-  isReadable: 1
+  isReadable: 0
   streamingMipmaps: 0
   streamingMipmapsPriority: 0
   vTOnly: 0
@@ -69,9 +69,9 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 3
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 32
+    maxTextureSize: 1024
     resizeAlgorithm: 0
-    textureFormat: 4
+    textureFormat: -1
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
@@ -99,7 +99,7 @@ TextureImporter:
     outline: []
     physicsShape: []
     bones: []
-    spriteID: 0bb58388ab7a4bca865ab10a581c19c5
+    spriteID: e725a10287ec480eb62b3cff1afab09b
     internalID: 0
     vertices: []
     indices: 
@@ -112,3 +112,4 @@ TextureImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+

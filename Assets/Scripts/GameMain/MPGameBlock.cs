@@ -7,6 +7,11 @@ using UnityEngine.UI;
 public class MPGameBlock : MonoBehaviour
 {
     /// <summary>
+    /// 填充色块和叉号出现时的缩放动画时长。
+    /// </summary>
+    private const float MARK_SCALE_ANIMATION_DURATION = 0.18f;
+
+    /// <summary>
     /// 填充标记
     /// </summary>
     private GameObject m_fill;
@@ -95,20 +100,20 @@ public class MPGameBlock : MonoBehaviour
         m_index = index;
     }
 
-    public void Fill()
+    public void Fill(bool playAnimation = true)
     {
         if (m_completed)
             return;
 
-        m_fill.SetActive(true);
+        ShowMark(m_fill, playAnimation);
     }
 
-    public void Blank()
+    public void Blank(bool playAnimation = true)
     {
         if (m_completed)
             return;
 
-        m_blank.SetActive(true);
+        ShowMark(m_blank, playAnimation);
     }
 
     public void Wrong()
@@ -215,5 +220,30 @@ public class MPGameBlock : MonoBehaviour
         m_wrong.SetActive(true);
 
         yield return img.DOFade(1, 0.2f).SetEase(Ease.Linear).SetLoops(2, LoopType.Yoyo);
+    }
+
+    /// <summary>
+    /// 显示填充色块或叉号，并根据需要播放从0到1的缩放动画。
+    /// </summary>
+    /// <param name="target">需要显示的标记节点。</param>
+    /// <param name="playAnimation">是否播放出现动画。</param>
+    private void ShowMark(GameObject target, bool playAnimation)
+    {
+        if (target == null)
+            return;
+
+        target.transform.DOKill();
+        target.SetActive(true);
+
+        if (!playAnimation)
+        {
+            target.transform.localScale = Vector3.one;
+            return;
+        }
+
+        target.transform.localScale = Vector3.zero;
+        target.transform.DOScale(Vector3.one, MARK_SCALE_ANIMATION_DURATION)
+            .SetEase(Ease.OutBack)
+            .SetLink(target);
     }
 }

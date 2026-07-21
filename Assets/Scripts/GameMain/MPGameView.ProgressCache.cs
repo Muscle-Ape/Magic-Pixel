@@ -102,11 +102,11 @@ public partial class MPGameView
 
             if (block.isFill)
             {
-                block.Fill();
+                block.Fill(false);
             }
             else
             {
-                block.Blank();
+                block.Blank(false);
             }
 
             block.Disable();

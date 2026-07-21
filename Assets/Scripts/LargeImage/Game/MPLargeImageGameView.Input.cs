@@ -243,6 +243,7 @@ public partial class MPLargeImageGameView
                 StartCoroutine(PlayCompletedAnimation());
             }
         }
+        StartCoroutine(PlayCompletedAnimation());
     }
 
     #region EventSystem

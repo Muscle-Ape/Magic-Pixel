@@ -7,6 +7,11 @@ using UnityEngine.UI;
 public class MPLargeImageGameBlock : MonoBehaviour
 {
     /// <summary>
+    /// 填充色块和叉号出现时的缩放动画时长。
+    /// </summary>
+    private const float MARK_SCALE_ANIMATION_DURATION = 0.18f;
+
+    /// <summary>
     /// 填充标记
     /// </summary>
     private GameObject m_fill;
@@ -111,8 +116,8 @@ public class MPLargeImageGameBlock : MonoBehaviour
         if (m_completed && !fouce)
             return;
 
-        m_blank.SetActive(false);
-        m_fill.SetActive(true);
+        HideMark(m_blank);
+        ShowMark(m_fill, !fouce);
     }
 
     public void Blank(bool fouce = false)
@@ -120,8 +125,8 @@ public class MPLargeImageGameBlock : MonoBehaviour
         if (m_completed && !fouce)
             return;
 
-        m_blank.SetActive(true);
-        m_fill.SetActive(false);
+        ShowMark(m_blank, !fouce);
+        HideMark(m_fill);
     }
 
     public void Empty(bool fouce = false)
@@ -129,8 +134,8 @@ public class MPLargeImageGameBlock : MonoBehaviour
         if (m_completed && !fouce)
             return;
 
-        m_blank.SetActive(false);
-        m_fill.SetActive(false);
+        HideMark(m_blank);
+        HideMark(m_fill);
     }
 
     public void Wrong()
@@ -253,6 +258,45 @@ public class MPLargeImageGameBlock : MonoBehaviour
             return;
 
         cg.alpha = alpha;
+    }
+
+    /// <summary>
+    /// 显示填充色块或叉号，并根据需要播放从0到1的缩放动画。
+    /// </summary>
+    /// <param name="target">需要显示的标记节点。</param>
+    /// <param name="playAnimation">是否播放出现动画。</param>
+    private void ShowMark(GameObject target, bool playAnimation)
+    {
+        if (target == null)
+            return;
+
+        target.transform.DOKill();
+        target.SetActive(true);
+
+        if (!playAnimation)
+        {
+            target.transform.localScale = Vector3.one;
+            return;
+        }
+
+        target.transform.localScale = Vector3.zero;
+        target.transform.DOScale(Vector3.one, MARK_SCALE_ANIMATION_DURATION)
+            .SetEase(Ease.OutBack)
+            .SetLink(target);
+    }
+
+    /// <summary>
+    /// 隐藏填充色块或叉号，并清理未完成的缩放动画。
+    /// </summary>
+    /// <param name="target">需要隐藏的标记节点。</param>
+    private void HideMark(GameObject target)
+    {
+        if (target == null)
+            return;
+
+        target.transform.DOKill();
+        target.transform.localScale = Vector3.one;
+        target.SetActive(false);
     }
 
     /// <summary>
