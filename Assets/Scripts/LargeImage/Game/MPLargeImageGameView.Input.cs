@@ -240,7 +240,7 @@ public partial class MPLargeImageGameView
             if (!m_isRestoringProgress)
             {
                 UpdateData();
-                Debug.LogError("LargeImageCompleted");
+                StartCoroutine(PlayCompletedAnimation());
             }
         }
     }

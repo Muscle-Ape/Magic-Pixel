@@ -384,7 +384,7 @@ public partial class MPLargeImageGameView
         m_isFailPopShowing = true;
         MPGameFailPopUIMsgData data = new MPGameFailPopUIMsgData()
         {
-            homeAction = OnFailHomeClick,
+            exitAction = OnFailExitClick,
             replayAction = OnFailReplayClick,
             restoreLifeAction = OnFailRestoreLifeClick,
         };
@@ -393,15 +393,14 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
-    /// 失败弹窗中点击回到主页。
+    /// 失败弹窗中点击退出当前游戏。
     /// </summary>
-    private void OnFailHomeClick()
+    private void OnFailExitClick()
     {
         m_isFailPopShowing = false;
         m_hasCompleted = true;
         ClearProgressCache();
         DestroyWindow();
-        UIManager.Inst.DestroyWindow<MPLargeImageLevelView>();
     }
 
     /// <summary>

@@ -62,6 +62,12 @@ public partial class MPLargeImageGameView : AWindow
     private GridLayoutGroup m_blockGrid;
 
     /// <summary>
+    /// 游戏内容边框。
+    /// </summary>
+    [TransformPath("View/Content/Frame")]
+    private Image m_contentFrame;
+
+    /// <summary>
     /// 分隔线段节点
     /// </summary>
     [TransformPath("View/Content/Line")]
@@ -166,8 +172,20 @@ public partial class MPLargeImageGameView : AWindow
     /// <summary>
     /// 标题文本
     /// </summary>
+    [TransformPath("View/Title")]
+    private RectTransform m_title;
+
+    /// <summary>
+    /// 标题文本内容。
+    /// </summary>
     [TransformPath("View/Title/Text")]
     private TMP_Text m_titleText;
+
+    /// <summary>
+    /// 生命值节点。
+    /// </summary>
+    [TransformPath("View/Loves")]
+    private RectTransform m_lovesNode;
 
     /// <summary>
     /// 金币数量

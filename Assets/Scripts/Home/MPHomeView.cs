@@ -143,7 +143,10 @@ public class MPHomeView : AWindow
     /// </summary>
     private void OnSettingClick()
     {
+        MPUser.instance.AddHintProps(10);
+        MPUser.instance.AddLoveRecoverProps(10);
 
+        RefreshUI();
     }
 
     /// <summary>

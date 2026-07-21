@@ -6,10 +6,10 @@ using UnityEngine.UI;
 public class MPGameFailPop : AWindow
 {
     /// <summary>
-    /// 回到主页按钮。
+    /// 退出当前游戏按钮。
     /// </summary>
-    [TransformPath("View/Window/HomeBtn")]
-    private Button m_homeBtn;
+    [TransformPath("View/Window/ExitBtn")]
+    private Button m_exitBtn;
 
     /// <summary>
     /// 重玩按钮。
@@ -24,9 +24,9 @@ public class MPGameFailPop : AWindow
     private Button m_restoreLifeBtn;
 
     /// <summary>
-    /// 回到主页回调。
+    /// 退出当前游戏回调。
     /// </summary>
-    private Action m_homeAction;
+    private Action m_exitAction;
 
     /// <summary>
     /// 重玩当前关卡回调。
@@ -50,7 +50,7 @@ public class MPGameFailPop : AWindow
         MPGameFailPopUIMsgData data = uiMsg as MPGameFailPopUIMsgData;
         if (data != null)
         {
-            m_homeAction = data.homeAction;
+            m_exitAction = data.exitAction;
             m_replayAction = data.replayAction;
             m_restoreLifeAction = data.restoreLifeAction;
         }
@@ -63,10 +63,10 @@ public class MPGameFailPop : AWindow
     /// </summary>
     private void RegisterUI()
     {
-        if (m_homeBtn != null)
+        if (m_exitBtn != null)
         {
-            m_homeBtn.onClick.RemoveListener(OnHomeClick);
-            m_homeBtn.onClick.AddListener(OnHomeClick);
+            m_exitBtn.onClick.RemoveListener(OnExitClick);
+            m_exitBtn.onClick.AddListener(OnExitClick);
         }
 
         if (m_replayBtn != null)
@@ -83,11 +83,11 @@ public class MPGameFailPop : AWindow
     }
 
     /// <summary>
-    /// 点击回到主页按钮。
+    /// 点击退出当前游戏按钮。
     /// </summary>
-    private void OnHomeClick()
+    private void OnExitClick()
     {
-        ClosePop(m_homeAction);
+        ClosePop(m_exitAction);
     }
 
     /// <summary>
@@ -129,9 +129,9 @@ public class MPGameFailPop : AWindow
 public class MPGameFailPopUIMsgData : UIMsgData
 {
     /// <summary>
-    /// 回到主页回调。
+    /// 退出当前游戏回调。
     /// </summary>
-    public Action homeAction;
+    public Action exitAction;
 
     /// <summary>
     /// 重玩当前关卡回调。

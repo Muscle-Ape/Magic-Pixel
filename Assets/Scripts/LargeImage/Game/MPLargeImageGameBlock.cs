@@ -12,6 +12,11 @@ public class MPLargeImageGameBlock : MonoBehaviour
     private GameObject m_fill;
 
     /// <summary>
+    /// 填充节点下用于普通游戏状态显示的颜色块。
+    /// </summary>
+    private GameObject m_fillColor;
+
+    /// <summary>
     /// 空白标记模式提示
     /// </summary>
     private GameObject m_blankHit;
@@ -30,6 +35,11 @@ public class MPLargeImageGameBlock : MonoBehaviour
     /// 提示道具闪烁动画。
     /// </summary>
     private Tween m_hintTween;
+
+    /// <summary>
+    /// 结算时像素格缩放变色动画。
+    /// </summary>
+    private Sequence m_settlementSequence;
 
     /// <summary>
     /// 是否填充
@@ -69,6 +79,11 @@ public class MPLargeImageGameBlock : MonoBehaviour
     public void Init(int index)
     {
         m_fill = transform.Find("Fill").gameObject;
+        Transform fillColor = transform.Find("Fill/Color");
+        if (fillColor != null)
+        {
+            m_fillColor = fillColor.gameObject;
+        }
 
         m_blank = transform.Find("Blank").gameObject;
 
@@ -82,6 +97,7 @@ public class MPLargeImageGameBlock : MonoBehaviour
     public void Refresh(bool isFill, bool completed, bool isFillMode = true)
     {
         StopHintAnimation();
+        m_settlementSequence?.Kill();
 
         m_isFill = isFill;
 
@@ -181,6 +197,45 @@ public class MPLargeImageGameBlock : MonoBehaviour
 
         SetAlpha(m_fill, 1);
         SetAlpha(m_blank, 1);
+    }
+
+    /// <summary>
+    /// 播放结算时当前格子变为最终像素颜色的动画。
+    /// </summary>
+    /// <param name="targetColor">最终像素颜色。</param>
+    /// <param name="duration">动画时长。</param>
+    public Tween PlaySettlementAnimation(Color targetColor, float duration)
+    {
+        if (m_fill == null)
+            return null;
+
+        m_hintTween?.Kill();
+        m_settlementSequence?.Kill();
+
+        m_blank.SetActive(false);
+        m_blankHit.SetActive(false);
+        m_wrong.SetActive(false);
+        m_fill.SetActive(true);
+        if (m_fillColor != null)
+        {
+            m_fillColor.SetActive(false);
+        }
+
+        Image img = m_fill.GetComponent<Image>();
+        if (img == null)
+            return null;
+
+        targetColor.a = 1;
+        img.color = Color.white;
+        m_fill.transform.localScale = Vector3.zero;
+
+        m_settlementSequence = DOTween.Sequence();
+        m_settlementSequence.Join(m_fill.transform.DOScale(Vector3.one, duration).SetEase(Ease.OutBack));
+        m_settlementSequence.Join(img.DOColor(targetColor, duration).SetEase(Ease.Linear));
+        m_settlementSequence.SetLink(gameObject);
+        m_settlementSequence.OnComplete(() => m_settlementSequence = null);
+
+        return m_settlementSequence;
     }
 
     /// <summary>
