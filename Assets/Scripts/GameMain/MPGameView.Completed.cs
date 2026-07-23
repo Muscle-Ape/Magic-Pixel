@@ -103,6 +103,9 @@ public partial class MPGameView
             m_lineNode.gameObject.SetActive(false);
         }
 
+        // 像素渐显动画音效
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundPixelAnimation);
+
         int diagonalCount = Mathf.Max(1, m_size * 2 - 1);
         float diagonalDelay = Mathf.Clamp(SETTLEMENT_BLOCK_TOTAL_DELAY / diagonalCount, 0.02f, 0.06f);
         for (int diagonal = 0; diagonal < diagonalCount; diagonal++)

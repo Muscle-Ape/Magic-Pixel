@@ -478,6 +478,9 @@ public class MPPetCareItem : MonoBehaviour
             return;
 
         m_onClick?.Invoke(m_config);
+
+        // 按钮点击音效
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     /// <summary>
@@ -489,6 +492,9 @@ public class MPPetCareItem : MonoBehaviour
             return;
 
         m_onUseClick?.Invoke(m_config);
+
+        // 按钮点击音效
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     /// <summary>

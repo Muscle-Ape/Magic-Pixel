@@ -113,6 +113,9 @@ public class MPButton : Button
             return false;
         }
 
+        // 按钮点击音效
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         m_lastClickTime = CurrentTime;
         onClick.Invoke();
         return true;

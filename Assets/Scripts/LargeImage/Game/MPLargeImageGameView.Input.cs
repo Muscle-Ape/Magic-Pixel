@@ -243,7 +243,7 @@ public partial class MPLargeImageGameView
                 StartCoroutine(PlayCompletedAnimation());
             }
         }
-        StartCoroutine(PlayCompletedAnimation());
+        //StartCoroutine(PlayCompletedAnimation());
     }
 
     #region EventSystem
@@ -262,6 +262,9 @@ public partial class MPLargeImageGameView
             if (!beforeCompleted)
             {
                 Check(block);
+
+                // 音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
             }
 
             if (correct)
@@ -277,6 +280,9 @@ public partial class MPLargeImageGameView
             {
                 CannotContinueDragging();
                 SubLoves();
+
+                // 错误提示音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
             }
         }
     }
@@ -323,12 +329,18 @@ public partial class MPLargeImageGameView
                 if (!beforeCompleted)
                 {
                     Check(block);
+
+                    // 音效
+                    MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
                 }
 
                 if (!correct)
                 {
                     CannotContinueDragging();
                     SubLoves();
+
+                    // 错误提示音效
+                    MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
                     return;
                 }
 
@@ -365,12 +377,18 @@ public partial class MPLargeImageGameView
             if (!beforeCompleted)
             {
                 Check(block);
+
+                // 音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
             }
 
             if (!correct)
             {
                 CannotContinueDragging();
                 SubLoves();
+
+                // 错误提示音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
                 return;
             }
 

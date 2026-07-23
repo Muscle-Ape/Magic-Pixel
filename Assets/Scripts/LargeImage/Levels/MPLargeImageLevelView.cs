@@ -201,5 +201,6 @@ public class MPLargeImageLevelView : AWindow
 
     private void OnSettingClick()
     {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 }

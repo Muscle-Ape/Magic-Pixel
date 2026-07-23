@@ -386,7 +386,7 @@ public partial class MPUser
         return Mathf.Clamp01(1f - (float)remaining / config.RewardIntervalSeconds);
     }
 
-    public bool ClaimPetReward(MPPetConfig config)
+    public bool ClaimPetReward(MPPetConfig config, List<string> changedCareItemIds = null)
     {
         if (config == null || !PetRewardIsReady(config))
             return false;
@@ -399,24 +399,78 @@ public partial class MPUser
         for (int i = 0; i < rewards.Count; i++)
         {
             MPPetRewardConfig reward = rewards[i];
-            if (reward == null)
-                continue;
+            string changedCareItemId = GrantPetReward(reward);
+            if (!string.IsNullOrEmpty(changedCareItemId) && changedCareItemIds != null && !changedCareItemIds.Contains(changedCareItemId))
+            {
+                changedCareItemIds.Add(changedCareItemId);
+            }
 
-            if (reward.Type == "coin")
-            {
-                // 金币接入项目已有资产系统，其它奖励先进入宠物临时背包。
-                AddCoins(reward.Count);
-            }
-            else
-            {
-                AddPetRewardInventory(reward.Type, reward.Count);
-            }
+            // 金币接入项目已有资产系统，其它奖励先进入宠物临时背包。
+            AddCoins(reward.Count);
         }
 
         // 领取成功后重置本轮奖励倒计时。
         data.rewardStartTicks = DateTime.UtcNow.Ticks;
+        data.rewardStartTicks = DateTime.UtcNow.Ticks;
         SavePetsRuntime();
         return true;
+    }
+
+    /// <summary>
+    /// 根据宠物奖励类型，把奖励发放到当前项目已有的用户数据中。
+    /// 返回值只在食物/玩具数量变化时使用，方便界面层只刷新受影响的 Item。
+    /// </summary>
+    private string GrantPetReward(MPPetRewardConfig reward)
+    {
+        if (reward == null || reward.Count <= 0 || string.IsNullOrEmpty(reward.Type))
+            return null;
+
+        string rewardType = reward.Type.Trim();
+        string rewardTypeLower = rewardType.ToLowerInvariant();
+
+        switch (rewardTypeLower)
+        {
+            case "coin":
+                AddCoins(reward.Count);
+                return null;
+            case "diamond":
+                AddDiamond(reward.Count);
+                return null;
+            case "hint":
+                AddHintProps(reward.Count);
+                return null;
+            case "life":
+                AddLoveRecoverProps(reward.Count);
+                return null;
+            case "food":
+            case "toy":
+                return GrantPetCareReward(reward);
+        }
+
+        Debug.LogWarning($"Unknown pet reward type: {rewardType}");
+        return null;
+    }
+
+    /// <summary>
+    /// 发放食物/玩具奖励。配置必须填写奖励 id，避免配置错误时静默发到默认物品。
+    /// </summary>
+    private string GrantPetCareReward(MPPetRewardConfig reward)
+    {
+        if (reward == null || string.IsNullOrEmpty(reward.ID))
+        {
+            Debug.LogWarning($"Pet care reward id is empty. Type: {reward?.Type}");
+            return null;
+        }
+
+        string careItemId = reward.ID.Trim();
+        if (GetPetCareRuntimeData(careItemId) == null)
+        {
+            Debug.LogWarning($"Pet care reward id is not found: {careItemId}");
+            return null;
+        }
+
+        AddPetCareItemCount(careItemId, reward.Count);
+        return careItemId;
     }
 
     public bool UsePetCareItem(string petId, MPPetCareItemConfig itemConfig)

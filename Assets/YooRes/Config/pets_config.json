@@ -14,16 +14,19 @@
       {
         "type": "coin",
         "icon": "pet_reward_coin",
+        "id": null,
         "count": 120
       },
       {
-        "type": "light",
+        "type": "hint",
         "icon": "pet_reward_hint",
+        "id": null,
         "count": 1
       },
       {
-        "type": "paw",
+        "type": "life",
         "icon": "pet_reward_life",
+        "id": null,
         "count": 1
       }
     ]
@@ -43,16 +46,19 @@
       {
         "type": "coin",
         "icon": "pet_reward_coin",
+        "id": null,
         "count": 90
       },
       {
-        "type": "light",
+        "type": "hint",
         "icon": "pet_reward_hint",
+        "id": null,
         "count": 1
       },
       {
-        "type": "paw",
+        "type": "life",
         "icon": "pet_reward_life",
+        "id": null,
         "count": 1
       }
     ]
@@ -72,11 +78,13 @@
       {
         "type": "coin",
         "icon": "pet_reward_coin",
+        "id": null,
         "count": 80
       },
       {
-        "type": "light",
+        "type": "hint",
         "icon": "pet_reward_hint",
+        "id": null,
         "count": 1
       }
     ]
@@ -96,16 +104,19 @@
       {
         "type": "coin",
         "icon": "pet_reward_coin",
+        "id": null,
         "count": 100
       },
       {
-        "type": "leaf",
+        "type": "food",
         "icon": "pet_reward_food",
+        "id": "food_apple",
         "count": 1
       },
       {
-        "type": "paw",
+        "type": "life",
         "icon": "pet_reward_life",
+        "id": null,
         "count": 1
       }
     ]
@@ -125,11 +136,13 @@
       {
         "type": "coin",
         "icon": "pet_reward_coin",
+        "id": null,
         "count": 75
       },
       {
-        "type": "paw",
+        "type": "life",
         "icon": "pet_reward_life",
+        "id": null,
         "count": 1
       }
     ]

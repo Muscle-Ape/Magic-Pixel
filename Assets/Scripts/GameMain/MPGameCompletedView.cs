@@ -353,6 +353,8 @@ public class MPGameCompletedView : AWindow
         }
 
         m_enterSequence.Append(CreateElementShowTween());
+
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
     }
 
     /// <summary>

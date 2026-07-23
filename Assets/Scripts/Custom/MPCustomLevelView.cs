@@ -137,6 +137,7 @@ public class MPCustomLevelView : AWindow
     /// </summary>
     private void OnSettingClick()
     {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 }
 

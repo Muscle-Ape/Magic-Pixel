@@ -190,6 +190,8 @@ public class MPMainLevelItem : MonoBehaviour
 
     private void OnLevelClick()
     {
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         if (m_isUnlock)
         {
             MPGameViewUIMsgData data = new MPGameViewUIMsgData()

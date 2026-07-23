@@ -90,6 +90,9 @@ public class MPHomeView : AWindow
         m_customBtn.onClick.AddListener(OnCustomClick);
         m_petsBtn.onClick.AddListener(OnPetsClick);
         m_threeDBtn.onClick.AddListener(OnThreeDClick);
+
+        // 开始播放背景音乐
+        MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
     }
 
     public override void OnFocus(bool focus)
@@ -143,10 +146,7 @@ public class MPHomeView : AWindow
     /// </summary>
     private void OnSettingClick()
     {
-        MPUser.instance.AddHintProps(10);
-        MPUser.instance.AddLoveRecoverProps(10);
-
-        RefreshUI();
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 
     /// <summary>

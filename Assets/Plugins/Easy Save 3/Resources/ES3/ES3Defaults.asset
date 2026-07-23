@@ -32,6 +32,8 @@ MonoBehaviour:
     assemblyNames:
     - Assembly-CSharp
     - Assembly-CSharp-firstpass
+    - com.Brogrammist.JSAM
+    - com.Brogrammist.JSAM.Editor
     - HQ.UIManager
     - PsdPlugin
     - YooAsset

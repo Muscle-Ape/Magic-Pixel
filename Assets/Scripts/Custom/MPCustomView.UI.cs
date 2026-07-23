@@ -97,6 +97,8 @@ public partial class MPCustomView
     /// </summary>
     private void OnFiveSizeClick()
     {
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         SetCustomSize(false);
     }
 
@@ -105,6 +107,8 @@ public partial class MPCustomView
     /// </summary>
     private void OnTenSizeClick()
     {
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         SetCustomSize(true);
     }
 
@@ -316,7 +320,7 @@ public partial class MPCustomView
 
     private void OnSettingClick()
     {
-
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 }
 

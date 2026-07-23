@@ -295,6 +295,9 @@ public class MPPetItem : MonoBehaviour
             return;
 
         m_onClick?.Invoke(m_config);
+
+        // 按钮点击音效
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     private T FindComponent<T>(params string[] paths) where T : Component
@@ -389,16 +392,30 @@ public class MPPetItem : MonoBehaviour
         if (string.IsNullOrEmpty(rewardType))
             return string.Empty;
 
-        switch (rewardType)
+        switch (rewardType.ToLowerInvariant())
         {
             case "coin":
                 return "C";
+            case "diamond":
+            case "diamonds":
+            case "gem":
+            case "gems":
+                return "D";
             case "light":
+            case "hint":
+            case "hint_prop":
                 return "L";
             case "paw":
+            case "love":
+            case "life":
+            case "love_recover":
+            case "life_recover":
                 return "P";
             case "leaf":
+            case "food":
                 return "Leaf";
+            case "toy":
+                return "Toy";
             default:
                 return rewardType;
         }

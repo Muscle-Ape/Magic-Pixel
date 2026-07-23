@@ -18,6 +18,10 @@ public partial class MPGameView
 
         m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
         m_backBtn.onClick.AddListener(OnBackClick);
+        if (m_settingBtn != null)
+        {
+            m_settingBtn.onClick.AddListener(OnSettingClick);
+        }
 
         if (m_hintPropBtn != null)
         {
@@ -299,6 +303,8 @@ public partial class MPGameView
     /// </summary>
     private void OnModeSwitchClick()
     {
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         m_isFillMode = !m_isFillMode;
 
         m_modeSwitchTween?.Kill();
@@ -313,9 +319,16 @@ public partial class MPGameView
         }
     }
 
+    private void OnSettingClick()
+    {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
+    }
+
     private void OnBackClick()
     {
         SaveProgressCache();
         DestroyWindow();
+
+        MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
     }
 }

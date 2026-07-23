@@ -34,6 +34,10 @@ public partial class MPLargeImageGameView
         RegisterNumberFrameMove(m_numberHorizontal, false);
 
         m_backBtn.onClick.AddListener(OnBackClick);
+        if (m_settingBtn != null)
+        {
+            m_settingBtn.onClick.AddListener(OnSettingClick);
+        }
 
         if (m_hintPropBtn != null)
         {
@@ -70,7 +74,7 @@ public partial class MPLargeImageGameView
         m_loveRecoverPropCountText.text = MPUser.instance.GetLoveRecoverProps().ToString();
     }
 
-    
+
     /// <summary>
     /// 隐藏旧的方向移动按钮。
     /// </summary>
@@ -711,6 +715,8 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void OnModeSwitchClick()
     {
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         m_isFill = !m_isFill;
 
         m_modeSwitchTween?.Kill();
@@ -728,11 +734,18 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 返回按钮回调
     /// </summary>
+    private void OnSettingClick()
+    {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
+    }
+
     private void OnBackClick()
     {
         SaveProgressCache();
         DestroyWindow();
 
         m_refreshAction?.Invoke();
+
+        MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
     }
 }

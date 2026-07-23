@@ -17,6 +17,7 @@ public partial class MPUser
 
     public void Initialization()
     {
+        InitSetting();
         InitAssets();
         InitMainLevel();
         InitLargeImageLevel();

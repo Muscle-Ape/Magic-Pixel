@@ -516,6 +516,8 @@ public class MPLargeImageGameCompletedView : AWindow
         }
 
         m_enterSequence.Append(CreateElementShowTween());
+
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
     }
 
     /// <summary>

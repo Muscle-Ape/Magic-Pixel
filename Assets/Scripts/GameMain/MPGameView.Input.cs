@@ -243,6 +243,9 @@ public partial class MPGameView
             if (!beforeCompleted)
             {
                 Check(block);
+
+                // 音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
             }
 
             if (correct)
@@ -258,6 +261,9 @@ public partial class MPGameView
             {
                 CannotContinueDragging();
                 SubLoves();
+
+                // 错误提示音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
             }
         }
     }
@@ -304,12 +310,18 @@ public partial class MPGameView
                 if (!beforeCompleted)
                 {
                     Check(block);
+
+                    // 音效
+                    MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
                 }
 
                 if (!correct)
                 {
                     CannotContinueDragging();
                     SubLoves();
+
+                    // 错误提示音效
+                    MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
                     return;
                 }
 
@@ -346,12 +358,18 @@ public partial class MPGameView
             if (!beforeCompleted)
             {
                 Check(block);
+
+                // 音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
             }
 
             if (!correct)
             {
                 CannotContinueDragging();
                 SubLoves();
+
+                // 错误提示音效
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
                 return;
             }
 

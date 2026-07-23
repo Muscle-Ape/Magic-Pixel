@@ -257,8 +257,15 @@ public class MPPetsView : AWindow
 
     private void RefreshUI()
     {
-        m_coinText.text = MPUser.instance.GetCoins().ToString();
-        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        if (m_coinText != null)
+        {
+            m_coinText.text = MPUser.instance.GetCoins().ToString();
+        }
+
+        if (m_diamondText != null)
+        {
+            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        }
     }
 
     /// <summary>
@@ -308,6 +315,9 @@ public class MPPetsView : AWindow
     /// </summary>
     private void SwitchTab(PetsTabType tab)
     {
+        // 按钮点击音效
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+
         if (m_currentTab != tab)
         {
             ClearCareItemSelection();
@@ -850,6 +860,7 @@ public class MPPetsView : AWindow
 
     private void OnSettingClick()
     {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 
     private void OnPetTabClick()
@@ -875,9 +886,29 @@ public class MPPetsView : AWindow
         if (m_selectedPetConfig == null)
             return;
 
-        if (MPUser.instance.ClaimPetReward(m_selectedPetConfig))
+        List<string> changedCareItemIds = new List<string>();
+        if (MPUser.instance.ClaimPetReward(m_selectedPetConfig, changedCareItemIds))
         {
+            RefreshUI();
             RefreshPetInfo();
+            RefreshShownPetItem(m_selectedPetConfig.ID);
+            RefreshChangedCareItems(changedCareItemIds);
+        }
+    }
+
+    /// <summary>
+    /// 领取奖励可能会增加食物或玩具数量，只刷新当前可见且数量发生变化的格子。
+    /// </summary>
+    private void RefreshChangedCareItems(List<string> itemIds)
+    {
+        if (itemIds == null || itemIds.Count == 0)
+            return;
+
+        for (int i = 0; i < itemIds.Count; i++)
+        {
+            string itemId = itemIds[i];
+            RefreshShownCareItem(PetsTabType.Food, itemId);
+            RefreshShownCareItem(PetsTabType.Toys, itemId);
         }
     }
 
@@ -1000,16 +1031,30 @@ public class MPPetsView : AWindow
         if (string.IsNullOrEmpty(rewardType))
             return string.Empty;
 
-        switch (rewardType)
+        switch (rewardType.ToLowerInvariant())
         {
             case "coin":
                 return "C";
+            case "diamond":
+            case "diamonds":
+            case "gem":
+            case "gems":
+                return "D";
             case "light":
+            case "hint":
+            case "hint_prop":
                 return "L";
             case "paw":
+            case "love":
+            case "life":
+            case "love_recover":
+            case "life_recover":
                 return "P";
             case "leaf":
+            case "food":
                 return "Leaf";
+            case "toy":
+                return "Toy";
             default:
                 return rewardType;
         }

@@ -91,7 +91,7 @@ public class MPPetConfig
 public class MPPetRewardConfig
 {
     /// <summary>
-    /// 奖励类型，coin 会直接进入金币，其它类型暂存到宠物奖励背包中。
+    /// 奖励类型。金币、钻石、提示、生命恢复、食物、玩具等都通过该字段区分。
     /// </summary>
     [JsonProperty]
     private string type;
@@ -103,6 +103,12 @@ public class MPPetRewardConfig
     private string icon;
 
     /// <summary>
+    /// 食物/玩具奖励对应的物品 ID。其他奖励配置为 null 即可。
+    /// </summary>
+    [JsonProperty]
+    private string id;
+
+    /// <summary>
     /// 单次领取数量。
     /// </summary>
     [JsonProperty]
@@ -110,5 +116,6 @@ public class MPPetRewardConfig
 
     public string Type => type;
     public string Icon => icon;
+    public string ID => id;
     public int Count => count;
 }

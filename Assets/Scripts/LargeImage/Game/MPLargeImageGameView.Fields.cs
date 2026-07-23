@@ -387,8 +387,9 @@ public partial class MPLargeImageGameView : AWindow
 
         m_detectionInterval = GRID_SIZE / m_size * (Screen.height / 2338f) * 0.9f;
 
-
         StartInitialization();
+
+        MPAudioManager.Instance.StopBGM(MPMusic.MPBGMMain);
     }
 
     private void StartInitialization()

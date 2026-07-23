@@ -333,6 +333,8 @@ public partial class MPGameView : AWindow
 
 
         StartInitialization();
+
+        MPAudioManager.Instance.StopBGM(MPMusic.MPBGMMain);
     }
 
     private void StartInitialization()
