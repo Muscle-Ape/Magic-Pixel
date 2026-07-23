@@ -219,10 +219,7 @@ public partial class MPGameView
             if (!m_isRestoringProgress && !m_hasCompleted)
             {
                 UpdateData();
-                if (!m_isCustomLevel)
-                {
-                    StartCoroutine(PlayCompletedAnimation());
-                }
+                StartCoroutine(PlayCompletedAnimation());
             }
         }
     }

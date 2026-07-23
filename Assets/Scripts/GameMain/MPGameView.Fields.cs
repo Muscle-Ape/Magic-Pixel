@@ -179,6 +179,11 @@ public partial class MPGameView : AWindow
     private bool m_isCustomLevel;
 
     /// <summary>
+    /// 当前自定义关卡数据，用于结算时读取本地缓存的完成图片。
+    /// </summary>
+    private MPCustomLevelInfo m_customLevelInfo;
+
+    /// <summary>
     /// 当前关卡所属的下标
     /// </summary>
     private int m_index;
@@ -207,6 +212,11 @@ public partial class MPGameView : AWindow
     /// 像素信息
     /// </summary>
     private Texture2D m_pixel;
+
+    /// <summary>
+    /// 当前像素图是否为运行时读取的本地自定义图片，页面释放时需要主动销毁。
+    /// </summary>
+    private bool m_isRuntimePixelTexture;
 
     /// <summary>
     /// 大小
@@ -296,7 +306,8 @@ public partial class MPGameView : AWindow
     {
         MPGameViewUIMsgData data = uiMsg as MPGameViewUIMsgData;
         m_isCustomLevel = data.isCustomLevel;
-        m_blockInfo = m_isCustomLevel ? data.customLevelInfo.ToMainBlockInfo() : data.blockInfo;
+        m_customLevelInfo = m_isCustomLevel ? data.customLevelInfo : null;
+        m_blockInfo = m_isCustomLevel ? m_customLevelInfo.ToMainBlockInfo() : data.blockInfo;
         m_index = data.index;
         m_refreshAction = data.refresh;
 
@@ -318,13 +329,16 @@ public partial class MPGameView : AWindow
         // 获取网格大小
         if (m_isCustomLevel)
         {
-            m_size = data.customLevelInfo.Size;
+            m_size = m_customLevelInfo.Size;
+            m_pixel = MPUser.instance.LoadCustomLevelImageTexture(m_customLevelInfo);
+            m_isRuntimePixelTexture = m_pixel != null;
             lovesNode.gameObject.SetActive(false);
             m_props.gameObject.SetActive(false);
         }
         else
         {
             m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID);
+            m_isRuntimePixelTexture = false;
             m_size = m_pixel.height;
             m_props.gameObject.SetActive(true);
         }

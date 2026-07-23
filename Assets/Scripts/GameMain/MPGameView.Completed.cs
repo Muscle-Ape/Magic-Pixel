@@ -89,12 +89,14 @@ public partial class MPGameView
 
         if (m_pixel == null || m_blocks == null || m_blocks.Count == 0)
         {
+            OpenCompletedView();
             yield break;
         }
 
         Texture2D readableTexture = CreateReadableTexture(m_pixel);
         if (readableTexture == null)
         {
+            OpenCompletedView();
             yield break;
         }
 
@@ -208,8 +210,10 @@ public partial class MPGameView
         MPGameCompletedViewUIMsgData data = new MPGameCompletedViewUIMsgData()
         {
             blockInfo = m_blockInfo,
+            customLevelInfo = m_customLevelInfo,
+            isCustomLevel = m_isCustomLevel,
             index = m_index,
-            lovesCount = m_lovesCount,
+            lovesCount = m_isCustomLevel ? m_loves.Count : m_lovesCount,
             pictureStartAnchoredPosition = completedFrameTransform == null ? Vector2.zero : completedFrameTransform.anchoredPosition,
             pictureStartScreenPosition = completedFrameTransform == null ? Vector2.zero : RectTransformUtility.WorldToScreenPoint(completedFrameCamera, completedFrameTransform.position),
             hasPictureStartScreenPosition = completedFrameTransform != null,
@@ -288,5 +292,18 @@ public partial class MPGameView
             RenderTexture.active = previousActive;
             RenderTexture.ReleaseTemporary(renderTexture);
         }
+    }
+
+    /// <summary>
+    /// 释放自定义关卡结算时从本地读取出来的运行时像素图。
+    /// </summary>
+    private void ReleaseRuntimePixelTexture()
+    {
+        if (!m_isRuntimePixelTexture || m_pixel == null)
+            return;
+
+        Destroy(m_pixel);
+        m_pixel = null;
+        m_isRuntimePixelTexture = false;
     }
 }

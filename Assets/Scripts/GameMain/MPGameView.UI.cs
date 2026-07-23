@@ -15,6 +15,7 @@ public partial class MPGameView
     private void RegisterUI()
     {
         m_modeSwitchDistance = (m_modeSwitchFrame.transform as RectTransform).rect.width / 4;
+        RefreshModeSwitchPosition();
 
         m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
         m_backBtn.onClick.AddListener(OnBackClick);
@@ -38,6 +39,23 @@ public partial class MPGameView
         RefreshUI();
 
         m_titleText.text = "Level " + (m_index + 1).ToString();
+    }
+
+    /// <summary>
+    /// 自定义关卡会隐藏右侧道具区域，因此底部模式切换按钮需要居中显示。
+    /// </summary>
+    private void RefreshModeSwitchPosition()
+    {
+        if (!m_isCustomLevel || m_modeSwitchFrame == null)
+            return;
+
+        RectTransform modeSwitchRect = m_modeSwitchFrame.transform as RectTransform;
+        if (modeSwitchRect == null)
+            return;
+
+        Vector2 anchoredPosition = modeSwitchRect.anchoredPosition;
+        anchoredPosition.x = 0f;
+        modeSwitchRect.anchoredPosition = anchoredPosition;
     }
 
     private void RefreshUI()

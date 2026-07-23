@@ -85,6 +85,16 @@ public class MPGameCompletedView : AWindow
     private MPMainBlockInfo m_blockInfo;
 
     /// <summary>
+    /// 当前完成的自定义关卡数据。
+    /// </summary>
+    private MPCustomLevelInfo m_customLevelInfo;
+
+    /// <summary>
+    /// 当前完成页是否来自自定义关卡。
+    /// </summary>
+    private bool m_isCustomLevel;
+
+    /// <summary>
     /// 当前完成的主线关卡下标。
     /// </summary>
     private int m_index;
@@ -144,6 +154,16 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private Sequence m_enterSequence;
 
+    /// <summary>
+    /// 自定义关卡完成图运行时创建的贴图。
+    /// </summary>
+    private Texture2D m_runtimePictureTexture;
+
+    /// <summary>
+    /// 自定义关卡完成图运行时创建的精灵。
+    /// </summary>
+    private Sprite m_runtimePictureSprite;
+
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         MPGameCompletedViewUIMsgData data = uiMsg as MPGameCompletedViewUIMsgData;
@@ -154,11 +174,14 @@ public class MPGameCompletedView : AWindow
         }
 
         m_blockInfo = data.blockInfo;
+        m_customLevelInfo = data.customLevelInfo;
+        m_isCustomLevel = data.isCustomLevel;
         m_index = data.index;
         m_lovesCount = data.lovesCount;
         m_pictureStartPosition = ResolvePictureStartPosition(data);
         m_refreshAction = data.refresh;
 
+        RefreshCustomModeLayout();
         CacheOriginalState();
         RegisterUI();
         RefreshUI();
@@ -208,6 +231,31 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     /// <param name="data">游戏结算页打开时传入的数据。</param>
     /// <returns>PictureNode入场动画的起始锚点位置。</returns>
+    /// <summary>
+    /// 自定义关卡没有下一关按钮，重玩按钮需要居中显示。
+    /// </summary>
+    private void RefreshCustomModeLayout()
+    {
+        if (!m_isCustomLevel)
+            return;
+
+        if (m_nextBtn != null)
+        {
+            m_nextBtn.gameObject.SetActive(false);
+        }
+
+        if (m_replayBtn != null)
+        {
+            RectTransform replayRect = m_replayBtn.transform as RectTransform;
+            if (replayRect != null)
+            {
+                Vector2 anchoredPosition = replayRect.anchoredPosition;
+                anchoredPosition.x = 0f;
+                replayRect.anchoredPosition = anchoredPosition;
+            }
+        }
+    }
+
     private Vector2 ResolvePictureStartPosition(MPGameCompletedViewUIMsgData data)
     {
         if (m_pictureNode == null || !data.hasPictureStartScreenPosition)
@@ -291,10 +339,39 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void RefreshPicture()
     {
-        if (m_picture == null || m_blockInfo == null)
+        if (m_picture == null)
+            return;
+
+        ClearRuntimePictureAsset();
+        if (m_isCustomLevel)
+        {
+            RefreshCustomLevelPicture();
+            return;
+        }
+
+        if (m_blockInfo == null)
             return;
 
         m_picture.sprite = MPLoad.Load<Sprite>("icon_" + m_blockInfo.ID);
+    }
+
+    /// <summary>
+    /// 读取自定义关卡本地缓存图片，并生成完成页使用的运行时Sprite。
+    /// </summary>
+    private void RefreshCustomLevelPicture()
+    {
+        m_picture.sprite = null;
+        m_runtimePictureTexture = MPUser.instance.LoadCustomLevelImageTexture(m_customLevelInfo);
+        if (m_runtimePictureTexture == null)
+            return;
+
+        m_runtimePictureSprite = Sprite.Create(
+            m_runtimePictureTexture,
+            new Rect(0, 0, m_runtimePictureTexture.width, m_runtimePictureTexture.height),
+            new Vector2(0.5f, 0.5f),
+            100f);
+        m_picture.sprite = m_runtimePictureSprite;
+        m_picture.preserveAspect = true;
     }
 
     /// <summary>
@@ -405,6 +482,12 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void OnReplayClick()
     {
+        if (m_isCustomLevel)
+        {
+            OpenCustomLevel();
+            return;
+        }
+
         OpenMainLevel(m_blockInfo, m_index);
     }
 
@@ -413,6 +496,12 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void OnNextLevelClick()
     {
+        if (m_isCustomLevel)
+        {
+            ReturnHome();
+            return;
+        }
+
         List<MPMainBlockInfo> levels = MPDataManager.Instance.m_mainLevelModel.blockInfos;
         int nextIndex = m_index + 1;
 
@@ -455,6 +544,29 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
+    /// 重新打开当前自定义关卡。
+    /// </summary>
+    private void OpenCustomLevel()
+    {
+        if (m_customLevelInfo == null)
+        {
+            ReturnHome();
+            return;
+        }
+
+        MPGameViewUIMsgData data = new MPGameViewUIMsgData()
+        {
+            customLevelInfo = m_customLevelInfo,
+            isCustomLevel = true,
+            index = m_index,
+            refresh = m_refreshAction,
+        };
+
+        DestroyWindow();
+        UIManager.Inst.ShowWindow<MPGameView>(data);
+    }
+
+    /// <summary>
     /// 返回主页，并触发关卡列表刷新。
     /// </summary>
     private void ReturnHome()
@@ -466,6 +578,30 @@ public class MPGameCompletedView : AWindow
     private void OnDestroy()
     {
         m_enterSequence?.Kill();
+        ClearRuntimePictureAsset();
+    }
+
+    /// <summary>
+    /// 释放自定义关卡完成页运行时创建的图片资源。
+    /// </summary>
+    private void ClearRuntimePictureAsset()
+    {
+        if (m_picture != null && m_picture.sprite == m_runtimePictureSprite)
+        {
+            m_picture.sprite = null;
+        }
+
+        if (m_runtimePictureSprite != null)
+        {
+            Destroy(m_runtimePictureSprite);
+            m_runtimePictureSprite = null;
+        }
+
+        if (m_runtimePictureTexture != null)
+        {
+            Destroy(m_runtimePictureTexture);
+            m_runtimePictureTexture = null;
+        }
     }
 }
 
@@ -475,6 +611,16 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     /// 当前完成的主线关卡配置。
     /// </summary>
     public MPMainBlockInfo blockInfo;
+
+    /// <summary>
+    /// 当前完成的自定义关卡数据。
+    /// </summary>
+    public MPCustomLevelInfo customLevelInfo;
+
+    /// <summary>
+    /// 当前完成页是否来自自定义关卡。
+    /// </summary>
+    public bool isCustomLevel;
 
     /// <summary>
     /// 当前完成的主线关卡下标。

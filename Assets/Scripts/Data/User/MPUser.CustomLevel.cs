@@ -123,6 +123,24 @@ public partial class MPUser
 
 
     /// <summary>
+    /// 读取自定义关卡完整像素图，调用方使用结束后需要自行销毁返回的Texture2D。
+    /// </summary>
+    public Texture2D LoadCustomLevelImageTexture(MPCustomLevelInfo levelInfo)
+    {
+        if (levelInfo == null)
+            return null;
+
+        Texture2D texture = LoadCustomLevelImageTextureFromFile(GetCustomLevelImagePath(levelInfo.ID));
+        if (texture != null)
+        {
+            return texture;
+        }
+
+        return CreateCustomLevelImageTextureFromConfig(levelInfo);
+    }
+
+
+    /// <summary>
     /// 确保自定义关卡图片目录存在。
     /// </summary>
     public void EnsureCustomLevelImageDirectory()
@@ -260,6 +278,79 @@ public partial class MPUser
         {
             Debug.LogWarning($"Delete custom level file failed: {path}, {exception}");
         }
+    }
+
+    /// <summary>
+    /// 从本地缓存文件中读取自定义关卡像素图。
+    /// </summary>
+    private Texture2D LoadCustomLevelImageTextureFromFile(string path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            return null;
+
+        Texture2D texture = null;
+        try
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if (!texture.LoadImage(bytes))
+            {
+                UnityEngine.Object.Destroy(texture);
+                return null;
+            }
+
+            texture.filterMode = FilterMode.Point;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            return texture;
+        }
+        catch (Exception exception)
+        {
+            if (texture != null)
+            {
+                UnityEngine.Object.Destroy(texture);
+            }
+
+            Debug.LogWarning($"Load custom level image failed: {path}, {exception}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 本地缓存图片缺失时，根据自定义关卡颜色配置临时生成完整像素图。
+    /// </summary>
+    private Texture2D CreateCustomLevelImageTextureFromConfig(MPCustomLevelInfo levelInfo)
+    {
+        int size = Mathf.Max(1, levelInfo.Size);
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        texture.filterMode = FilterMode.Point;
+        texture.wrapMode = TextureWrapMode.Clamp;
+
+        Color[] pixels = new Color[size * size];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = Color.white;
+        }
+        texture.SetPixels(pixels);
+
+        if (levelInfo.Colors != null)
+        {
+            for (int i = 0; i < levelInfo.Colors.Count; i++)
+            {
+                MPCustomLevelColorInfo colorInfo = levelInfo.Colors[i];
+                if (colorInfo == null || colorInfo.Index < 0 || colorInfo.Index >= pixels.Length)
+                    continue;
+
+                if (!ColorUtility.TryParseHtmlString(colorInfo.Color, out Color color))
+                    continue;
+
+                int x = colorInfo.Index % size;
+                int y = size - 1 - colorInfo.Index / size;
+                texture.SetPixel(x, y, color);
+            }
+        }
+
+        texture.Apply(false, false);
+        return texture;
     }
 
     /// <summary>

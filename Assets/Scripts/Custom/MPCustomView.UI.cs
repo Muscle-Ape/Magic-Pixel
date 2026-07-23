@@ -1,4 +1,5 @@
 ﻿using HQ.UIManager;
+using DG.Tweening;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,6 +36,7 @@ public partial class MPCustomView
 
         RefreshModeState();
         RefreshSizeState();
+        InitializeSaveAnimation();
     }
     private void SetColor(Color color)
     {
@@ -194,6 +196,7 @@ public partial class MPCustomView
 
         MPUser.instance.SaveCustomLevel(levelInfo);
         m_refreshAction?.Invoke();
+        PlaySaveAnimation(id);
 
         // 清空当前格子的状态
         for (int i = 0; i < m_blocks.Count; i++)
@@ -304,6 +307,132 @@ public partial class MPCustomView
 
         return Color.white;
     }
+    /// <summary>
+    /// 初始化保存动画节点状态。
+    /// </summary>
+    private void InitializeSaveAnimation()
+    {
+        if (m_animationNode != null)
+        {
+            m_animationNodeStartAnchoredPosition = m_animationNode.anchoredPosition;
+            m_animationNode.localScale = Vector3.one;
+            m_animationNode.gameObject.SetActive(false);
+        }
+
+        if (m_warehouseIcon != null)
+        {
+            m_warehouseIconStartScale = m_warehouseIcon.localScale;
+        }
+    }
+
+    /// <summary>
+    /// 播放保存成功后飞向仓库的动画。
+    /// </summary>
+    private void PlaySaveAnimation(string id)
+    {
+        if (m_animationNode == null || m_animationPicture == null || m_warehouseIcon == null)
+            return;
+
+        m_saveAnimationSequence?.Kill();
+        m_warehouseIcon.DOKill();
+        CloseSaveAnimationNode();
+
+        if (!SetSaveAnimationPicture(id))
+            return;
+
+        m_animationNode.gameObject.SetActive(true);
+        m_animationNode.anchoredPosition = m_animationNodeStartAnchoredPosition;
+        m_animationNode.localScale = Vector3.one;
+        m_warehouseIcon.localScale = m_warehouseIconStartScale;
+
+        m_saveAnimationSequence = DOTween.Sequence();
+        m_saveAnimationSequence.Join(m_animationNode.DOMove(m_warehouseIcon.position, 0.45f).SetEase(Ease.InOutQuad));
+        m_saveAnimationSequence.Join(m_animationNode.DOScale(Vector3.zero, 0.45f).SetEase(Ease.InQuad));
+        m_saveAnimationSequence.Append(m_warehouseIcon.DOScale(m_warehouseIconStartScale * 1.2f, 0.12f).SetEase(Ease.OutBack));
+        m_saveAnimationSequence.Append(m_warehouseIcon.DOScale(m_warehouseIconStartScale, 0.12f).SetEase(Ease.InOutQuad));
+        m_saveAnimationSequence.OnComplete(CloseSaveAnimationNode);
+    }
+
+    /// <summary>
+    /// 设置保存动画图片。
+    /// </summary>
+    private bool SetSaveAnimationPicture(string id)
+    {
+        ClearSaveAnimationAsset();
+
+        string path = MPUser.instance.GetCustomLevelIconImagePath(id);
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            return false;
+
+        byte[] bytes = File.ReadAllBytes(path);
+        m_saveAnimationTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!m_saveAnimationTexture.LoadImage(bytes))
+        {
+            ClearSaveAnimationAsset();
+            return false;
+        }
+
+        m_saveAnimationTexture.filterMode = FilterMode.Point;
+        m_saveAnimationTexture.wrapMode = TextureWrapMode.Clamp;
+        m_saveAnimationSprite = Sprite.Create(m_saveAnimationTexture, new Rect(0, 0, m_saveAnimationTexture.width, m_saveAnimationTexture.height), new Vector2(0.5f, 0.5f), 100f);
+        m_animationPicture.sprite = m_saveAnimationSprite;
+        return true;
+    }
+
+    /// <summary>
+    /// 关闭保存动画节点并重置显示状态。
+    /// </summary>
+    private void CloseSaveAnimationNode()
+    {
+        if (m_animationNode != null)
+        {
+            m_animationNode.gameObject.SetActive(false);
+            m_animationNode.anchoredPosition = m_animationNodeStartAnchoredPosition;
+            m_animationNode.localScale = Vector3.one;
+        }
+
+        if (m_animationPicture != null)
+        {
+            m_animationPicture.sprite = null;
+        }
+
+        ClearSaveAnimationAsset();
+    }
+
+    /// <summary>
+    /// 清理保存动画运行时创建的图片资源。
+    /// </summary>
+    private void ClearSaveAnimationAsset()
+    {
+        if (m_saveAnimationSprite != null)
+        {
+            Destroy(m_saveAnimationSprite);
+            m_saveAnimationSprite = null;
+        }
+
+        if (m_saveAnimationTexture != null)
+        {
+            Destroy(m_saveAnimationTexture);
+            m_saveAnimationTexture = null;
+        }
+    }
+
+    /// <summary>
+    /// 清理保存动画运行状态。
+    /// </summary>
+    private void ClearSaveAnimation()
+    {
+        m_saveAnimationSequence?.Kill();
+        m_saveAnimationSequence = null;
+
+        if (m_warehouseIcon != null)
+        {
+            m_warehouseIcon.DOKill();
+            m_warehouseIcon.localScale = m_warehouseIconStartScale;
+        }
+
+        CloseSaveAnimationNode();
+    }
 
     /// <summary>
     /// 打开自定义关卡仓库页面。
@@ -315,6 +444,7 @@ public partial class MPCustomView
 
     private void OnBackClick()
     {
+        ClearSaveAnimation();
         DestroyWindow();
     }
 
@@ -322,7 +452,19 @@ public partial class MPCustomView
     {
         UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
+
+    /// <summary>
+    /// 界面销毁时清理保存动画。
+    /// </summary>
+    private void OnDestroy()
+    {
+        ClearSaveAnimation();
+    }
 }
+
+
+
+
 
 
 

@@ -99,6 +99,24 @@ public partial class MPCustomView : AWindow
     private Button m_warehouseBtn;
 
     /// <summary>
+    /// 关卡仓库按钮图标节点。
+    /// </summary>
+    [TransformPath("View/WarehouseBtn/Icon")]
+    private RectTransform m_warehouseIcon;
+
+    /// <summary>
+    /// 保存动画节点。
+    /// </summary>
+    [TransformPath("View/AnimationNode")]
+    private RectTransform m_animationNode;
+
+    /// <summary>
+    /// 保存动画图片。
+    /// </summary>
+    [TransformPath("View/AnimationNode/Picture")]
+    private Image m_animationPicture;
+
+    /// <summary>
     /// 金币数量
     /// </summary>
     [TransformPath("View/Up/Coin/Count")]
@@ -164,6 +182,31 @@ public partial class MPCustomView : AWindow
     /// 当前自定义关卡网格尺寸。
     /// </summary>
     private int m_currentSize = 5;
+
+    /// <summary>
+    /// 保存动画节点初始锚点位置。
+    /// </summary>
+    private Vector2 m_animationNodeStartAnchoredPosition;
+
+    /// <summary>
+    /// 仓库图标初始缩放。
+    /// </summary>
+    private Vector3 m_warehouseIconStartScale = Vector3.one;
+
+    /// <summary>
+    /// 保存动画序列。
+    /// </summary>
+    private DG.Tweening.Sequence m_saveAnimationSequence;
+
+    /// <summary>
+    /// 保存动画运行时贴图。
+    /// </summary>
+    private Texture2D m_saveAnimationTexture;
+
+    /// <summary>
+    /// 保存动画运行时精灵。
+    /// </summary>
+    private Sprite m_saveAnimationSprite;
 
 
 
