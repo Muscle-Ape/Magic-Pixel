@@ -358,6 +358,13 @@ public class MPLargeImageLevelItem : MonoBehaviour
 
         if (!m_isUnlock)
         {
+            MPLargeImageLevelUnlockPopUIMsgData unlockData = new MPLargeImageLevelUnlockPopUIMsgData()
+            {
+                levelInfo = m_data,
+                index = m_index,
+                refresh = m_refresh,
+            };
+            UIManager.Inst.ShowWindow<MPLargeImageLevelUnlockPop>(unlockData, true, UILayer.Top);
             return;
         }
 
@@ -367,6 +374,6 @@ public class MPLargeImageLevelItem : MonoBehaviour
             index = m_index,
             refresh = m_refresh,
         };
-        UIManager.Inst.ShowWindow<MPLargeImageGameView>(data);
+        MPTransitionView.OpenWindow<MPLargeImageGameView>(data, GetComponentInParent<AWindow>());
     }
 }

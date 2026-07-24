@@ -24,8 +24,8 @@ public static class MPLoad
     /// <typeparam name="T"></typeparam>
     /// <param name="url"></param>
     /// <returns></returns>
-    public static async Task<T> LoadAsync<T>(string url) where T : UnityEngine.Object
+    public static T LoadAsync<T>(string url) where T : UnityEngine.Object
     {
-        return YooAssets.LoadAssetAsync<T>(url).AssetObject as T; 
+        return YooAssets.LoadAssetAsync<T>(url).AssetObject as T;
     }
 }

@@ -423,8 +423,11 @@ public partial class MPLargeImageGameView
             refresh = m_refreshAction,
         };
 
-        DestroyWindow();
-        UIManager.Inst.ShowWindow<MPLargeImageGameView>(data);
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
+        });
     }
 
     /// <summary>
@@ -742,10 +745,14 @@ public partial class MPLargeImageGameView
     private void OnBackClick()
     {
         SaveProgressCache();
-        DestroyWindow();
 
-        m_refreshAction?.Invoke();
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
 
-        MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+            m_refreshAction?.Invoke();
+
+            MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+        });
     }
 }

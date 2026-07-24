@@ -38,6 +38,12 @@ public class MPGameCompletedView : AWindow
     private Button m_backBtn;
 
     /// <summary>
+    /// 设置按钮。
+    /// </summary>
+    [TransformPath("View/Up/SettingBtn")]
+    private Button m_settingBtn;
+
+    /// <summary>
     /// 重玩当前关卡按钮。
     /// </summary>
     [TransformPath("View/ReplayBtn")]
@@ -290,6 +296,12 @@ public class MPGameCompletedView : AWindow
             m_backBtn.onClick.AddListener(ReturnHome);
         }
 
+        if (m_settingBtn != null)
+        {
+            m_settingBtn.onClick.RemoveListener(OnSettingClick);
+            m_settingBtn.onClick.AddListener(OnSettingClick);
+        }
+
         if (m_replayBtn != null)
         {
             m_replayBtn.onClick.RemoveListener(OnReplayClick);
@@ -522,6 +534,14 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
+    /// 打开设置弹窗。
+    /// </summary>
+    private void OnSettingClick()
+    {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
+    }
+
+    /// <summary>
     /// 打开指定主线关卡。
     /// </summary>
     private void OpenMainLevel(MPMainBlockInfo blockInfo, int index)
@@ -539,8 +559,11 @@ public class MPGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        DestroyWindow();
-        UIManager.Inst.ShowWindow<MPGameView>(data);
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            UIManager.Inst.ShowWindow<MPGameView>(data, true);
+        });
     }
 
     /// <summary>
@@ -562,8 +585,11 @@ public class MPGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        DestroyWindow();
-        UIManager.Inst.ShowWindow<MPGameView>(data);
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            UIManager.Inst.ShowWindow<MPGameView>(data, true);
+        });
     }
 
     /// <summary>
@@ -571,8 +597,13 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void ReturnHome()
     {
-        DestroyWindow();
-        m_refreshAction?.Invoke();
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            m_refreshAction?.Invoke();
+
+            MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+        });
     }
 
     private void OnDestroy()

@@ -46,6 +46,12 @@ public class MPLargeImageGameCompletedView : AWindow
     private Button m_backBtn;
 
     /// <summary>
+    /// 设置按钮。
+    /// </summary>
+    [TransformPath("View/Up/SettingBtn")]
+    private Button m_settingBtn;
+
+    /// <summary>
     /// 重玩当前大图关卡按钮。
     /// </summary>
     [TransformPath("View/ReplayBtn")]
@@ -393,6 +399,12 @@ public class MPLargeImageGameCompletedView : AWindow
             m_backBtn.onClick.AddListener(ReturnLevelList);
         }
 
+        if (m_settingBtn != null)
+        {
+            m_settingBtn.onClick.RemoveListener(OnSettingClick);
+            m_settingBtn.onClick.AddListener(OnSettingClick);
+        }
+
         if (m_replayBtn != null)
         {
             m_replayBtn.onClick.RemoveListener(OnReplayClick);
@@ -615,6 +627,14 @@ public class MPLargeImageGameCompletedView : AWindow
     }
 
     /// <summary>
+    /// 打开设置弹窗。
+    /// </summary>
+    private void OnSettingClick()
+    {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
+    }
+
+    /// <summary>
     /// 打开指定大图关卡。
     /// </summary>
     /// <param name="blockInfo">大图关卡配置。</param>
@@ -634,8 +654,11 @@ public class MPLargeImageGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        DestroyWindow();
-        UIManager.Inst.ShowWindow<MPLargeImageGameView>(data);
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
+        });
     }
 
     /// <summary>
@@ -643,8 +666,13 @@ public class MPLargeImageGameCompletedView : AWindow
     /// </summary>
     private void ReturnLevelList()
     {
-        DestroyWindow();
-        m_refreshAction?.Invoke();
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            m_refreshAction?.Invoke();
+
+            MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+        });
     }
 
     private void OnDestroy()

@@ -886,6 +886,7 @@ public class MPPetsView : AWindow
         if (m_selectedPetConfig == null)
             return;
 
+        List<MPPetRewardConfig> claimedRewards = new List<MPPetRewardConfig>(m_selectedPetConfig.Rewards);
         List<string> changedCareItemIds = new List<string>();
         if (MPUser.instance.ClaimPetReward(m_selectedPetConfig, changedCareItemIds))
         {
@@ -893,7 +894,20 @@ public class MPPetsView : AWindow
             RefreshPetInfo();
             RefreshShownPetItem(m_selectedPetConfig.ID);
             RefreshChangedCareItems(changedCareItemIds);
+            ShowPetRewardsPop(claimedRewards);
         }
+    }
+
+    /// <summary>
+    /// 奖励已经在 MPUser 中发放完成，这里只打开领取展示弹窗。
+    /// </summary>
+    private void ShowPetRewardsPop(List<MPPetRewardConfig> rewards)
+    {
+        MPPetRewardsPopUIMsgData data = new MPPetRewardsPopUIMsgData()
+        {
+            rewards = rewards,
+        };
+        UIManager.Inst.ShowWindow<MPPetRewardsPop>(data, true, UILayer.Top);
     }
 
     /// <summary>

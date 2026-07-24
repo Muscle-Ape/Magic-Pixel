@@ -202,7 +202,7 @@ public class MPCustomLevelItem : MonoBehaviour
             index = m_index,
             refresh = m_refresh,
         };
-        UIManager.Inst.ShowWindow<MPGameView>(data);
+        MPTransitionView.OpenWindow<MPGameView>(data, GetComponentInParent<AWindow>());
     }
 }
 

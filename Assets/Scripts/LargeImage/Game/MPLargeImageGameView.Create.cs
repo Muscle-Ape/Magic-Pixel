@@ -148,30 +148,30 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void CreateLine()
     {
-        if (FIXED_SIZE == 5)
-            return;
+        //if (FIXED_SIZE == 5)
+        //    return;
 
-        if (FIXED_SIZE == 10)
-        {
-            RectTransform h = NewLineImage(true);
-            RectTransform v = NewLineImage(false);
+        //if (FIXED_SIZE == 10)
+        //{
+        RectTransform h = NewLineImage(true);
+        RectTransform v = NewLineImage(false);
 
-            h.anchoredPosition = Vector2.zero;
-            v.anchoredPosition = Vector2.zero;
-        }
-        else if (FIXED_SIZE == 15)
-        {
-            float unit = GRID_SIZE / 6f;
+        h.anchoredPosition = Vector2.zero;
+        v.anchoredPosition = Vector2.zero;
+        //}
+        //else if (FIXED_SIZE == 15)
+        //{
+        //    float unit = GRID_SIZE / 6f;
 
-            for (int i = -1; i < 2; i += 2)
-            {
-                RectTransform h = NewLineImage(true);
-                RectTransform v = NewLineImage(false);
+        //    for (int i = -1; i < 2; i += 2)
+        //    {
+        //        RectTransform h = NewLineImage(true);
+        //        RectTransform v = NewLineImage(false);
 
-                h.anchoredPosition = new Vector2(unit * i, 0);
-                v.anchoredPosition = new Vector2(0, unit * i);
-            }
-        }
+        //        h.anchoredPosition = new Vector2(unit * i, 0);
+        //        v.anchoredPosition = new Vector2(0, unit * i);
+        //    }
+        //}
     }
 
     /// <summary>

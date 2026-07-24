@@ -289,8 +289,11 @@ public partial class MPGameView
             refresh = m_refreshAction,
         };
 
-        DestroyWindow();
-        UIManager.Inst.ShowWindow<MPGameView>(data);
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            UIManager.Inst.ShowWindow<MPGameView>(data, true);
+        });
     }
 
     /// <summary>
@@ -345,8 +348,12 @@ public partial class MPGameView
     private void OnBackClick()
     {
         SaveProgressCache();
-        DestroyWindow();
 
-        MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+
+            MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+        });
     }
 }

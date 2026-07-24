@@ -200,7 +200,16 @@ public class MPMainLevelItem : MonoBehaviour
                 index = m_index,
                 refresh = m_refresh,
             };
-            UIManager.Inst.ShowWindow<MPGameView>(data);
+            MPTransitionView.OpenWindow<MPGameView>(data, GetComponentInParent<AWindow>());
+            return;
         }
+
+        MPLevelUnlockPopUIMsgData unlockData = new MPLevelUnlockPopUIMsgData()
+        {
+            levelInfo = m_data,
+            index = m_index,
+            refresh = m_refresh,
+        };
+        UIManager.Inst.ShowWindow<MPLevelUnlockPop>(unlockData, true, UILayer.Top);
     }
 }
