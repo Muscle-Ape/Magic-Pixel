@@ -754,7 +754,7 @@ public class MPPetsView : AWindow
         if (data == null)
             return;
 
-        SetImageSprite(m_pet, m_selectedPetConfig.Icon);
+        SetImageSprite(m_pet, GetPetMainIcon(m_selectedPetConfig), true);
         SetProgress(m_healthProgressFill, data.health / 100f);
         SetProgress(m_moodProgressFill, data.mood / 100f);
 
@@ -1003,7 +1003,15 @@ public class MPPetsView : AWindow
     /// <summary>
     /// 通过项目资源加载封装加载图片，失败时保留 prefab 原有占位图。
     /// </summary>
-    private void SetImageSprite(Image image, string location)
+    private string GetPetMainIcon(MPPetConfig config)
+    {
+        if (config == null || string.IsNullOrEmpty(config.Icon))
+            return null;
+
+        return $"{config.Icon}_main";
+    }
+
+    private void SetImageSprite(Image image, string location, bool setNativeSize = false)
     {
         if (image == null || string.IsNullOrEmpty(location))
             return;
@@ -1014,6 +1022,10 @@ public class MPPetsView : AWindow
             if (sprite != null)
             {
                 image.sprite = sprite;
+                if (setNativeSize)
+                {
+                    image.SetNativeSize();
+                }
             }
         }
         catch (Exception)

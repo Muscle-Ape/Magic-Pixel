@@ -286,6 +286,7 @@ public class MPPetItem : MonoBehaviour
         if (sprite != null)
         {
             m_petIcon.sprite = sprite;
+            m_petIcon.SetNativeSize();
         }
     }
 
