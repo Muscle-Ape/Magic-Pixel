@@ -36,6 +36,9 @@ MonoBehaviour:
     - com.Brogrammist.JSAM.Editor
     - HQ.UIManager
     - PsdPlugin
+    - spine-csharp
+    - spine-unity
+    - spine-unity-editor
     - YooAsset
     - YooAsset.Editor
     showAdvancedSettings: 0
