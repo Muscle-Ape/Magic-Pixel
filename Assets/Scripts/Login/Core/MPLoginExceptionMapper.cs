@@ -1,0 +1,63 @@
+using System;
+using Unity.Services.Authentication;
+using Unity.Services.Core;
+
+/// <summary>
+/// 将 Unity Services 或系统异常转换成项目内部统一错误。
+/// UI 层不需要理解各种 SDK 异常类型。
+/// </summary>
+public static class MPLoginExceptionMapper
+{
+    /// <summary>
+    /// 根据异常类型生成可展示、可判断是否重试的 MPLoginError。
+    /// </summary>
+    public static MPLoginError Map(Exception exception)
+    {
+        if (exception is OperationCanceledException)
+        {
+            return MPLoginError.Create(MPLoginErrorCodes.UserCancelled, "登录已取消。", false, 0, exception);
+        }
+
+        if (exception is TimeoutException)
+        {
+            return MPLoginError.Create(MPLoginErrorCodes.RequestTimeout, "请求超时，请检查网络后重试。", true, 0, exception);
+        }
+
+        if (exception is AuthenticationException authenticationException)
+        {
+            return MPLoginError.Create(
+                MPLoginErrorCodes.InvalidCredentials,
+                "认证失败，请检查登录信息后重试。",
+                false,
+                authenticationException.ErrorCode,
+                exception);
+        }
+
+        if (exception is RequestFailedException requestFailedException)
+        {
+            return MPLoginError.Create(
+                MPLoginErrorCodes.ServerError,
+                requestFailedException.Message,
+                true,
+                requestFailedException.ErrorCode,
+                exception);
+        }
+
+        if (exception is ServicesInitializationException)
+        {
+            return MPLoginError.Create(
+                MPLoginErrorCodes.ServerError,
+                exception.Message,
+                true,
+                0,
+                exception);
+        }
+
+        return MPLoginError.Create(
+            MPLoginErrorCodes.Unknown,
+            exception == null ? "登录失败，请稍后重试。" : exception.Message,
+            true,
+            0,
+            exception);
+    }
+}

@@ -19,6 +19,13 @@ public class MPLauncher : MonoBehaviour
         // 初始化UI管理器
         UIManager.Inst.Init();
 
+        // 默认使用游客模式登录。
+        yield return MPLoginManager.Instance.Initialize();
+        if (!MPLoginManager.Instance.IsLoggedIn)
+        {
+            Debug.LogWarning($"[MPLauncher] 游客登录失败，将以本地数据继续启动。{MPLoginManager.Instance.LastError}");
+        }
+
         // 数据管理器初始化
         MPDataManager.Instance.Initialize();
 
