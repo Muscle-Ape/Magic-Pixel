@@ -20,7 +20,7 @@ public static class MPLoginExceptionMapper
 
         if (exception is TimeoutException)
         {
-            return MPLoginError.Create(MPLoginErrorCodes.RequestTimeout, "请求超时，请检查网络后重试。", true, 0, exception);
+            return MPLoginError.Create(MPLoginErrorCodes.RequestTimeout, "请求超时，请检查网络后重试。", true, 0, exception, true);
         }
 
         if (exception is AuthenticationException authenticationException)
@@ -40,7 +40,8 @@ public static class MPLoginExceptionMapper
                 requestFailedException.Message,
                 true,
                 requestFailedException.ErrorCode,
-                exception);
+                exception,
+                true);
         }
 
         if (exception is ServicesInitializationException)
@@ -50,7 +51,8 @@ public static class MPLoginExceptionMapper
                 exception.Message,
                 true,
                 0,
-                exception);
+                exception,
+                true);
         }
 
         return MPLoginError.Create(

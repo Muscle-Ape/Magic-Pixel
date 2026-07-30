@@ -21,10 +21,28 @@ public enum MPLoginState
     LoggedIn = Authenticated,
     /// <summary>刷新认证状态中。</summary>
     RefreshingToken = 5,
+    /// <summary>刷新会话中，兼容技术文档中的命名。</summary>
+    RefreshingSession = RefreshingToken,
     /// <summary>加载玩家业务数据中，预留给后续接入云存档或服务器数据。</summary>
     LoadingUserData = 6,
     /// <summary>登出中。</summary>
     LoggingOut = 7,
     /// <summary>登录或绑定失败。</summary>
-    Failed = 8
+    Failed = 8,
+    /// <summary>检查本地登录资料中。</summary>
+    CheckingLocalSession = 9,
+    /// <summary>恢复已有会话中。</summary>
+    RestoringSession = 10,
+    /// <summary>执行匿名登录中。</summary>
+    LoggingInAnonymously = 11,
+    /// <summary>等待玩家选择登录方式。</summary>
+    WaitingForLoginSelection = 12,
+    /// <summary>执行第三方认证中。</summary>
+    AuthenticatingThirdParty = 13,
+    /// <summary>绑定第三方或账号密码身份中。</summary>
+    BindingIdentity = 14,
+    /// <summary>处理账号冲突中。</summary>
+    ResolvingAccountConflict = 15,
+    /// <summary>网络或服务临时不可用，本地资料应保留。</summary>
+    TemporaryUnavailable = 16
 }

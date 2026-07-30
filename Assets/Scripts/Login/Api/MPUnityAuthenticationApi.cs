@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
+using Unity.Services.Core.Environments;
 using UnityEngine;
 
 /// <summary>
@@ -16,9 +17,25 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     private const string GUEST_PROFILE = "guest";
 
     /// <summary>
+    /// 编辑器模式下使用的 Unity Services Environment 名称。
+    /// </summary>
+    private const string DEVELOPMENT_ENVIRONMENT = "development";
+
+    /// <summary>
+    /// 非编辑器构建使用的 Unity Services Environment 名称。
+    /// </summary>
+    private const string PRODUCTION_ENVIRONMENT = "production";
+
+    /// <summary>
     /// 是否已经提示过 Cloud Project Id 未绑定，避免重复刷日志。
     /// </summary>
     private bool m_hasWarnedCloudProjectId;
+
+    /// <summary>
+    /// 等待应用的 Unity Authentication Profile。
+    /// 调用方可能在 Unity Services 初始化前请求切 Profile，因此这里先记录目标值，初始化完成后再应用。
+    /// </summary>
+    private string m_requestedProfile;
 
     /// <summary>
     /// Unity Authentication 当前是否处于已登录状态。
@@ -44,6 +61,7 @@ public class MPUnityAuthenticationApi : IMPAuthApi
 
         if (UnityServices.State == ServicesInitializationState.Initialized)
         {
+            ApplyRequestedProfileIfPossible();
             return;
         }
 
@@ -53,7 +71,11 @@ public class MPUnityAuthenticationApi : IMPAuthApi
             Debug.LogWarning("[MPLogin] Unity Cloud Project Id is empty. Bind a Cloud Project before using online Authentication.");
         }
 
-        await UnityServices.InitializeAsync();
+        InitializationOptions options = new InitializationOptions()
+            .SetEnvironmentName(GetUnityEnvironmentName());
+
+        await UnityServices.InitializeAsync(options);
+        ApplyRequestedProfileIfPossible();
     }
 
     /// <summary>
@@ -61,6 +83,7 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// </summary>
     public async Task<MPUserSession> SignInAnonymouslyAsync(CancellationToken cancellationToken = default)
     {
+        SwitchProfile(GUEST_PROFILE);
         await InitializeAsync(cancellationToken);
 
         IAuthenticationService service = AuthenticationService.Instance;
@@ -229,8 +252,18 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// </summary>
     public bool SwitchProfile(string profile)
     {
-        AuthenticationService.Instance.SwitchProfile(profile);
-        return true;
+        if (string.IsNullOrEmpty(profile))
+        {
+            return false;
+        }
+
+        m_requestedProfile = profile;
+        if (UnityServices.State != ServicesInitializationState.Initialized)
+        {
+            return true;
+        }
+
+        return ApplyRequestedProfileIfPossible();
     }
 
     /// <summary>
@@ -240,5 +273,46 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     {
         AuthenticationService.Instance.ClearSessionToken();
         return true;
+    }
+
+    /// <summary>
+    /// 在 Unity Services 已初始化且未登录时应用等待中的 Profile。
+    /// SessionToken 按 Profile 隔离保存，自动恢复前必须确保当前 Profile 正确。
+    /// </summary>
+    private bool ApplyRequestedProfileIfPossible()
+    {
+        if (string.IsNullOrEmpty(m_requestedProfile) ||
+            UnityServices.State != ServicesInitializationState.Initialized)
+        {
+            return true;
+        }
+
+        IAuthenticationService service = AuthenticationService.Instance;
+        if (service.Profile == m_requestedProfile)
+        {
+            return true;
+        }
+
+        if (service.IsSignedIn)
+        {
+            Debug.LogWarning($"[MPLogin] 当前已登录，无法切换 Unity Authentication Profile：{service.Profile} -> {m_requestedProfile}");
+            return false;
+        }
+
+        service.SwitchProfile(m_requestedProfile);
+        return service.Profile == m_requestedProfile;
+    }
+
+    /// <summary>
+    /// 根据运行环境选择 Unity Services Environment。
+    /// 编辑器中使用 development，发布构建中使用 production。
+    /// </summary>
+    private static string GetUnityEnvironmentName()
+    {
+#if UNITY_EDITOR
+        return DEVELOPMENT_ENVIRONMENT;
+#else
+        return PRODUCTION_ENVIRONMENT;
+#endif
     }
 }

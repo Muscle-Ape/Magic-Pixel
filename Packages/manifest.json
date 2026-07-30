@@ -7,11 +7,15 @@
     "com.unity.ide.visualstudio": "2.0.27",
     "com.unity.nuget.newtonsoft-json": "3.2.2",
     "com.unity.services.authentication": "3.6.1",
+    "com.unity.services.cloud-diagnostics": "1.0.12",
     "com.unity.test-framework": "1.1.33",
     "com.unity.textmeshpro": "3.0.7",
     "com.unity.timeline": "1.7.7",
     "com.unity.ugui": "1.0.0",
     "com.unity.visualscripting": "1.9.4",
+    "com.google.external-dependency-manager": "1.2.187",
+    "com.google.play.games": "file:com.google.play.games",
+    "com.lupidan.apple-signin-unity": "1.5.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
@@ -49,7 +53,10 @@
       "name": "package.openupm.com",
       "url": "https://package.openupm.com",
       "scopes": [
-        "com.tuyoogame.yooasset"
+        "com.tuyoogame.yooasset",
+        "com.google.external-dependency-manager",
+        "com.google.play.games",
+        "com.lupidan.apple-signin-unity"
       ]
     }
   ]

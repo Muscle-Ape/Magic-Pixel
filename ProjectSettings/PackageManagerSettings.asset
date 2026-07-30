@@ -31,6 +31,9 @@ MonoBehaviour:
     m_Url: https://package.openupm.com
     m_Scopes:
     - com.tuyoogame.yooasset
+    - com.google.external-dependency-manager
+    - com.google.play.games
+    - com.lupidan.apple-signin-unity
     m_IsDefault: 0
     m_Capabilities: 0
     m_ConfigSource: 4
@@ -39,6 +42,6 @@ MonoBehaviour:
   m_RegistryInfoDraft:
     m_Modified: 0
     m_ErrorMessage: 
-    m_UserModificationsInstanceId: -850
-    m_OriginalInstanceId: -854
+    m_UserModificationsInstanceId: -830
+    m_OriginalInstanceId: -834
   m_LoadAssets: 0

@@ -15,6 +15,24 @@ public abstract class MPLoginRequest
 public class MPGuestLoginRequest : MPLoginRequest
 {
     /// <summary>
+    /// 客户端持久化的匿名身份 Id。
+    /// 当前 Unity Authentication 不直接使用，预留给后续游戏服务器匿名恢复接口。
+    /// </summary>
+    public string anonymousId;
+
+    /// <summary>
+    /// 当前安装实例 Id。
+    /// 用于后续服务端判断同一安装上的匿名账号恢复和风控。
+    /// </summary>
+    public string installationId;
+
+    /// <summary>
+    /// 匿名登录幂等键。
+    /// 请求超时重试时复用同一个键，避免服务端创建多个匿名账号。
+    /// </summary>
+    public string idempotencyKey;
+
+    /// <summary>
     /// 设备唯一标识，当前预留，后续可用于风控或数据分析。
     /// </summary>
     public string deviceId;

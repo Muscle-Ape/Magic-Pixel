@@ -30,10 +30,14 @@ MonoBehaviour:
     referenceMode: 2
     serializationDepthLimit: 64
     assemblyNames:
+    - AppleAuth
+    - AppleAuth.Editor
     - Assembly-CSharp
     - Assembly-CSharp-firstpass
     - com.Brogrammist.JSAM
     - com.Brogrammist.JSAM.Editor
+    - Google.Play.Games
+    - Google.Play.Games.Editor
     - HQ.UIManager
     - PsdPlugin
     - spine-csharp

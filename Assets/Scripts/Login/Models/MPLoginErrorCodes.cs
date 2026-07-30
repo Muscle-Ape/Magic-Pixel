@@ -15,6 +15,18 @@ public static class MPLoginErrorCodes
     /// <summary>本地没有可复用的登录会话。</summary>
     public const string NoLocalSession = "NO_LOCAL_SESSION";
 
+    /// <summary>匿名恢复失败。</summary>
+    public const string AnonymousRecoveryFailed = "ANONYMOUS_RECOVERY_FAILED";
+
+    /// <summary>账号被禁用、删除或暂不可用。</summary>
+    public const string AccountDisabled = "ACCOUNT_DISABLED";
+
+    /// <summary>账号绑定冲突。</summary>
+    public const string AccountBindingConflict = "ACCOUNT_BINDING_CONFLICT";
+
+    /// <summary>第三方平台 SDK 尚未接入或未初始化。</summary>
+    public const string PlatformSdkNotReady = "PLATFORM_SDK_NOT_READY";
+
     /// <summary>用户取消登录。</summary>
     public const string UserCancelled = "USER_CANCELLED";
 
@@ -27,11 +39,17 @@ public static class MPLoginErrorCodes
     /// <summary>服务端或 Unity Services 返回错误。</summary>
     public const string ServerError = "SERVER_ERROR";
 
+    /// <summary>服务维护中。</summary>
+    public const string Maintenance = "MAINTENANCE";
+
     /// <summary>Token 已过期。</summary>
     public const string TokenExpired = "TOKEN_EXPIRED";
 
     /// <summary>Token 无效。</summary>
     public const string TokenInvalid = "TOKEN_INVALID";
+
+    /// <summary>本地 Session 已确认失效。</summary>
+    public const string SessionInvalid = "SESSION_INVALID";
 
     /// <summary>第三方平台授权失败。</summary>
     public const string ThirdPartyAuthFailed = "THIRD_PARTY_AUTH_FAILED";

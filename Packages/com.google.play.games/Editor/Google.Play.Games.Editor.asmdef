@@ -1,0 +1,13 @@
+{
+    "name": "Google.Play.Games.Editor",
+    "references": [
+        "Google.Play.Games"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Google.VersionHandler.dll"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ]
+}

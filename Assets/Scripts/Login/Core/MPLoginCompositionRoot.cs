@@ -9,8 +9,19 @@ public static class MPLoginCompositionRoot
     /// </summary>
     public static IMPLoginManager CreateDefault()
     {
+        return CreateDefaultServices().loginManager;
+    }
+
+    /// <summary>
+    /// 创建登录模块默认依赖集合。
+    /// </summary>
+    public static MPLoginServiceContainer CreateDefaultServices()
+    {
         IMPAuthApi authApi = new MPUnityAuthenticationApi();
         IMPSessionService sessionService = new MPSessionService();
+        IMPLocalLoginRepository localLoginRepository = new MPEasySaveLocalLoginRepository();
+        IMPInstallationService installationService = new MPEasySaveInstallationService();
+        MPLoginConfiguration configuration = MPLoginConfiguration.LoadOrCreateDefault();
 
         IMPThirdPartyAuthAdapterFactory adapterFactory = new MPThirdPartyAuthAdapterFactory(new IMPThirdPartyAuthAdapter[]
         {
@@ -30,6 +41,16 @@ public static class MPLoginCompositionRoot
             new MPThirdPartyLoginStrategy(MPLoginType.Facebook, adapterFactory, authApi)
         });
 
-        return new MPLoginManagerCore(strategyFactory, adapterFactory, authApi, sessionService);
+        IMPLoginManager loginManager = new MPLoginManagerCore(strategyFactory, adapterFactory, authApi, sessionService);
+        IMPLoginFlowController flowController = new MPLoginFlowController(loginManager, localLoginRepository, installationService, configuration);
+
+        return new MPLoginServiceContainer
+        {
+            loginManager = loginManager,
+            flowController = flowController,
+            localLoginRepository = localLoginRepository,
+            installationService = installationService,
+            configuration = configuration
+        };
     }
 }

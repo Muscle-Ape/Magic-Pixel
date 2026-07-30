@@ -101,7 +101,7 @@ public class MPLoginManagerCore : IMPLoginManager
             return PublishFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.LoginInProgress, "登录流程正在进行中。"));
         }
 
-        ChangeState(MPLoginState.Authenticating);
+        ChangeState(GetLoginState(loginType));
         LastError = null;
 
         // 新登录开始时取消上一条仍未结束的登录链路，避免旧回调覆盖新状态。
@@ -148,6 +148,15 @@ public class MPLoginManagerCore : IMPLoginManager
         try
         {
             await m_authApi.InitializeAsync(cancellationToken);
+            if (m_authApi.IsAuthorized)
+            {
+                MPUserSession session = await m_authApi.GetCurrentSessionAsync(MPLoginType.Guest, cancellationToken);
+                m_sessionService.SetSession(session);
+                ChangeState(MPLoginState.Authenticated);
+                LoginSucceeded?.Invoke(session);
+                return MPLoginResult.Success(session);
+            }
+
             if (!m_authApi.SessionTokenExists)
             {
                 return PublishFailure(MPLoginType.None, MPLoginError.Create(MPLoginErrorCodes.NoLocalSession, "本地不存在可用的登录凭证。"));
@@ -171,7 +180,7 @@ public class MPLoginManagerCore : IMPLoginManager
             return false;
         }
 
-        ChangeState(MPLoginState.RefreshingToken);
+            ChangeState(MPLoginState.RefreshingSession);
 
         try
         {
@@ -246,7 +255,7 @@ public class MPLoginManagerCore : IMPLoginManager
 
         try
         {
-            ChangeState(MPLoginState.Authenticating);
+            ChangeState(MPLoginState.BindingIdentity);
             MPUserSession session;
 
             if (loginType == MPLoginType.UsernamePassword)
@@ -373,9 +382,32 @@ public class MPLoginManagerCore : IMPLoginManager
     private bool IsBusy()
     {
         return State == MPLoginState.Authenticating ||
+               State == MPLoginState.LoggingInAnonymously ||
+               State == MPLoginState.AuthenticatingThirdParty ||
+               State == MPLoginState.BindingIdentity ||
+               State == MPLoginState.RestoringSession ||
                State == MPLoginState.RefreshingToken ||
                State == MPLoginState.LoadingUserData ||
                State == MPLoginState.LoggingOut;
+    }
+
+    /// <summary>
+    /// 根据登录方式返回更精确的流程状态。
+    /// </summary>
+    private static MPLoginState GetLoginState(MPLoginType loginType)
+    {
+        switch (loginType)
+        {
+            case MPLoginType.Guest:
+                return MPLoginState.LoggingInAnonymously;
+            case MPLoginType.Google:
+            case MPLoginType.GooglePlayGames:
+            case MPLoginType.Apple:
+            case MPLoginType.Facebook:
+                return MPLoginState.AuthenticatingThirdParty;
+            default:
+                return MPLoginState.Authenticating;
+        }
     }
 
     /// <summary>

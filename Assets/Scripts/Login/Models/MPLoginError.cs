@@ -15,11 +15,13 @@ public class MPLoginError
     public int serviceErrorCode;
     /// <summary>原始异常，仅用于调试，不要直接展示给玩家。</summary>
     public Exception exception;
+    /// <summary>是否属于网络、超时、维护等临时失败，不应清理本地账号资料。</summary>
+    public bool isTemporary;
 
     /// <summary>
     /// 创建统一错误对象。
     /// </summary>
-    public static MPLoginError Create(string code, string message, bool retryable = false, int serviceErrorCode = 0, Exception exception = null)
+    public static MPLoginError Create(string code, string message, bool retryable = false, int serviceErrorCode = 0, Exception exception = null, bool isTemporary = false)
     {
         return new MPLoginError
         {
@@ -27,7 +29,8 @@ public class MPLoginError
             message = message,
             retryable = retryable,
             serviceErrorCode = serviceErrorCode,
-            exception = exception
+            exception = exception,
+            isTemporary = isTemporary
         };
     }
 }

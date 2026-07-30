@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class MPLauncher : MonoBehaviour
 {
+    /// <summary>
+    /// 是否已经进入游戏主流程，避免登录页回调和启动协程重复进入。
+    /// </summary>
+    private bool m_hasEnteredGame;
+
     void Start()
     {
         StartCoroutine(LaunchAsync());
@@ -19,12 +24,40 @@ public class MPLauncher : MonoBehaviour
         // 初始化UI管理器
         UIManager.Inst.Init();
 
-        // 默认使用游客模式登录。
+        // 执行登录启动策略：优先恢复历史会话，真正首次安装时才自动匿名登录。
         yield return MPLoginManager.Instance.Initialize();
-        if (!MPLoginManager.Instance.IsLoggedIn)
+
+        MPLoginStartupResult startupResult = MPLoginManager.Instance.LastStartupResult;
+        //Debug.LogError((startupResult != null) + " " + (startupResult.action != MPLoginStartupAction.EnterGame) + " " + (!MPLoginManager.Instance.IsLoggedIn));
+        if (startupResult != null && startupResult.action != MPLoginStartupAction.EnterGame && !MPLoginManager.Instance.IsLoggedIn)
         {
-            Debug.LogWarning($"[MPLauncher] 游客登录失败，将以本地数据继续启动。{MPLoginManager.Instance.LastError}");
+            Debug.LogWarning($"[MPLauncher] 登录启动流程需要用户处理：{startupResult.action}，{startupResult.message}");
+            UIManager.Inst.ShowWindow<MPLoginView>(new MPLoginViewUIMsgData(startupResult, OnLoginViewSucceeded), true, UILayer.Top);
+            yield break;
         }
+
+        EnterGame();
+    }
+
+    /// <summary>
+    /// 临时登录页登录成功后的回调。
+    /// </summary>
+    private void OnLoginViewSucceeded(MPLoginResult result)
+    {
+        EnterGame();
+    }
+
+    /// <summary>
+    /// 进入游戏主流程。
+    /// </summary>
+    private void EnterGame()
+    {
+        if (m_hasEnteredGame)
+        {
+            return;
+        }
+
+        m_hasEnteredGame = true;
 
         // 数据管理器初始化
         MPDataManager.Instance.Initialize();
@@ -32,8 +65,6 @@ public class MPLauncher : MonoBehaviour
         // 用户缓存数据初始化
         MPUser.instance.Initialization();
 
-
-        MPMainBlockInfo blockInfo = MPDataManager.Instance.m_mainLevelModel.blockInfos[0];
         //UIManager.Inst.ShowWindow<MPGameView>(new UIMsgDataGeneric(blockInfo));
         UIManager.Inst.ShowWindow<MPHomeView>();
     }
