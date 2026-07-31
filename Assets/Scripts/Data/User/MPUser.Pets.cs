@@ -356,6 +356,7 @@ public partial class MPUser
 
         m_selected_pet_id = id;
         ES3.Save(m_key_selected_pet_id, m_selected_pet_id);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Pets);
     }
 
     public bool PetRewardIsReady(MPPetConfig config)
@@ -539,11 +540,13 @@ public partial class MPUser
     private void SavePetsRuntime()
     {
         ES3.Save(m_key_pets_json, JsonConvert.SerializeObject(m_pet_runtime_list));
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Pets);
     }
 
     private void SavePetCareRuntime()
     {
         ES3.Save(m_key_pet_care_items_json, JsonConvert.SerializeObject(m_pet_care_runtime_list));
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Pets);
     }
 
     public int GetPetRewardInventoryCount(string rewardType)
@@ -576,6 +579,7 @@ public partial class MPUser
 
         m_pet_reward_inventory[rewardType] += count;
         ES3.Save(m_key_pet_reward_inventory, m_pet_reward_inventory);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Pets);
     }
 
     private List<MPPetRuntimeData> DeserializePetRuntimeList(string json)

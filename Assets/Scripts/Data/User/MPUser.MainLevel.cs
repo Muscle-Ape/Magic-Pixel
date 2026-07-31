@@ -58,6 +58,7 @@ public partial class MPUser
         m_mainlevel_pass_index = index;
 
         ES3.Save(m_key_mainlevel_pass_index, m_mainlevel_pass_index);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.MainLevel);
     }
 
     /// <summary>
@@ -80,6 +81,7 @@ public partial class MPUser
             m_mainlevel_unlocklist.Add(id);
 
             ES3.Save(m_key_mainlevel_unlocklist, m_mainlevel_unlocklist);
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.MainLevel);
         }
     }
 
@@ -109,11 +111,13 @@ public partial class MPUser
     /// <param name="stars">本次通关剩余生命对应的星数。</param>
     public void MainLevelPass(string id, int stars)
     {
+        bool changed = false;
         if (!m_mainlevel_passlist.Contains(id))
         {
             m_mainlevel_passlist.Add(id);
 
             ES3.Save(m_key_mainlevel_passlist, m_mainlevel_passlist);
+            changed = true;
         }
 
         stars = Mathf.Max(0, stars);
@@ -122,6 +126,12 @@ public partial class MPUser
             m_mainlevel_stars[id] = stars;
 
             ES3.Save(m_key_mainlevel_stars, m_mainlevel_stars);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.MainLevel);
         }
     }
 

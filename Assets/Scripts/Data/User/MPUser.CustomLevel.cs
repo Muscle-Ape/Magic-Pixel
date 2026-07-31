@@ -160,6 +160,10 @@ public partial class MPUser
         if (levelInfo == null)
             return;
 
+        levelInfo = NormalizeCustomLevel(levelInfo);
+        if (levelInfo == null)
+            return;
+
         List<MPCustomLevelInfo> levels = GetCustomLevels();
         int index = levels.FindIndex(item => item.ID == levelInfo.ID);
         if (index >= 0)
@@ -199,6 +203,7 @@ public partial class MPUser
         if (m_customlevel_passlist.Remove(id))
         {
             ES3.Save(m_key_customlevel_passlist, m_customlevel_passlist);
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.CustomLevel);
         }
 
         DeleteCustomLevelFile(GetCustomLevelImagePath(id));
@@ -223,6 +228,7 @@ public partial class MPUser
         {
             m_customlevel_passlist.Add(id);
             ES3.Save(m_key_customlevel_passlist, m_customlevel_passlist);
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.CustomLevel);
         }
     }
 
@@ -246,7 +252,117 @@ public partial class MPUser
     /// </summary>
     private void SaveCustomLevelsJson()
     {
+        m_customlevel_list = NormalizeCustomLevels(m_customlevel_list);
         ES3.Save(m_key_customlevel_json, JsonConvert.SerializeObject(m_customlevel_list));
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.CustomLevel);
+    }
+
+    /// <summary>
+    /// 清洗自定义关卡列表，去掉空数据和重复索引，避免本地存档与云端快照不断放大。
+    /// </summary>
+    private static List<MPCustomLevelInfo> NormalizeCustomLevels(List<MPCustomLevelInfo> levels)
+    {
+        List<MPCustomLevelInfo> result = new List<MPCustomLevelInfo>();
+        if (levels == null)
+        {
+            return result;
+        }
+
+        HashSet<string> levelIds = new HashSet<string>();
+        for (int i = 0; i < levels.Count; i++)
+        {
+            MPCustomLevelInfo level = NormalizeCustomLevel(levels[i]);
+            if (level == null || string.IsNullOrEmpty(level.ID) || levelIds.Contains(level.ID))
+            {
+                continue;
+            }
+
+            levelIds.Add(level.ID);
+            result.Add(level);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 清洗单个自定义关卡，保证 block 和 colors 中同一个格子索引只出现一次。
+    /// </summary>
+    private static MPCustomLevelInfo NormalizeCustomLevel(MPCustomLevelInfo level)
+    {
+        if (level == null || string.IsNullOrEmpty(level.ID))
+        {
+            return null;
+        }
+
+        int size = Mathf.Max(1, level.Size);
+        int cellCount = size * size;
+        List<int> blocks = NormalizeCustomBlockIndexes(level.Block, cellCount);
+        List<MPCustomLevelColorInfo> colors = NormalizeCustomColors(level.Colors, cellCount);
+        string title = string.IsNullOrEmpty(level.Title) ? "Undefined" : level.Title;
+
+        return new MPCustomLevelInfo(level.ID, title, size, blocks, colors);
+    }
+
+    /// <summary>
+    /// 清洗填充格索引，过滤越界值并去重。
+    /// </summary>
+    private static List<int> NormalizeCustomBlockIndexes(List<int> source, int cellCount)
+    {
+        List<int> result = new List<int>();
+        if (source == null)
+        {
+            return result;
+        }
+
+        HashSet<int> indexes = new HashSet<int>();
+        for (int i = 0; i < source.Count; i++)
+        {
+            int index = source[i];
+            if (index < 0 || index >= cellCount || indexes.Contains(index))
+            {
+                continue;
+            }
+
+            indexes.Add(index);
+            result.Add(index);
+        }
+
+        result.Sort();
+        return result;
+    }
+
+    /// <summary>
+    /// 清洗颜色格索引，过滤越界值并按索引去重；同索引重复时保留最后一次颜色。
+    /// </summary>
+    private static List<MPCustomLevelColorInfo> NormalizeCustomColors(List<MPCustomLevelColorInfo> source, int cellCount)
+    {
+        List<MPCustomLevelColorInfo> result = new List<MPCustomLevelColorInfo>();
+        if (source == null)
+        {
+            return result;
+        }
+
+        Dictionary<int, string> colorByIndex = new Dictionary<int, string>();
+        for (int i = 0; i < source.Count; i++)
+        {
+            MPCustomLevelColorInfo colorInfo = source[i];
+            if (colorInfo == null || colorInfo.Index < 0 || colorInfo.Index >= cellCount || string.IsNullOrEmpty(colorInfo.Color))
+            {
+                continue;
+            }
+
+            colorByIndex[colorInfo.Index] = colorInfo.Color;
+        }
+
+        List<int> indexes = new List<int>(colorByIndex.Keys);
+        indexes.Sort();
+        for (int i = 0; i < indexes.Count; i++)
+        {
+            int index = indexes[i];
+            result.Add(new MPCustomLevelColorInfo(index, colorByIndex[index]));
+        }
+
+        return result;
     }
 
 
@@ -365,7 +481,7 @@ public partial class MPUser
 
         try
         {
-            return JsonConvert.DeserializeObject<List<MPCustomLevelInfo>>(json) ?? new List<MPCustomLevelInfo>();
+            return NormalizeCustomLevels(JsonConvert.DeserializeObject<List<MPCustomLevelInfo>>(json));
         }
         catch (Exception)
         {

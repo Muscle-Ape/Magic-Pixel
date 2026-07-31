@@ -65,6 +65,7 @@ public partial class MPUser
         m_largeimagelevel_pass_index = index;
 
         ES3.Save(m_key_largeimagelevel_pass_index, m_largeimagelevel_pass_index);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.LargeImageLevel);
     }
 
     /// <summary>
@@ -87,6 +88,7 @@ public partial class MPUser
             m_largeimagelevel_unlocklist.Add(id);
 
             ES3.Save(m_key_largeimagelevel_unlocklist, m_largeimagelevel_unlocklist);
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.LargeImageLevel);
         }
     }
 
@@ -116,11 +118,13 @@ public partial class MPUser
     /// <param name="stars">本次通关剩余生命对应的星数。</param>
     public void LargeImageLevelPass(string id, int stars)
     {
+        bool changed = false;
         if (!m_largeimagelevel_passlist.Contains(id))
         {
             m_largeimagelevel_passlist.Add(id);
 
             ES3.Save(m_key_largeimagelevel_passlist, m_largeimagelevel_passlist);
+            changed = true;
         }
 
         stars = Mathf.Max(0, stars);
@@ -129,6 +133,12 @@ public partial class MPUser
             m_largeimagelevel_stars[id] = stars;
 
             ES3.Save(m_key_largeimagelevel_stars, m_largeimagelevel_stars);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.LargeImageLevel);
         }
     }
 
@@ -176,6 +186,7 @@ public partial class MPUser
 
         m_largeimagelevel_coin_award_claimed.Add(levelInfo.ID);
         ES3.Save(m_key_largeimagelevel_coin_award_claimed, m_largeimagelevel_coin_award_claimed);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.LargeImageLevel);
         AddCoins(levelInfo.AwardCoin);
         return true;
     }

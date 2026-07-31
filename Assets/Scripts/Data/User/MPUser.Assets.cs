@@ -66,6 +66,7 @@ public partial class MPUser
         m_coins += count;
 
         ES3.Save(m_key_coins, m_coins);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
     public void UseCoins(int count)
@@ -73,6 +74,7 @@ public partial class MPUser
         m_coins = Mathf.Max(m_coins - count, 0);
 
         ES3.Save(m_key_coins, m_coins);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
     public int GetCoins()
@@ -86,6 +88,7 @@ public partial class MPUser
         m_diamond += count;
 
         ES3.Save(m_ket_diamond, m_diamond);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
     public void UseDiamond(int count)
@@ -93,6 +96,7 @@ public partial class MPUser
         m_diamond = Mathf.Max(m_diamond - count, 0);
 
         ES3.Save(m_ket_diamond, m_diamond);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
     public int GetDiamond()
@@ -112,6 +116,7 @@ public partial class MPUser
         m_hintProps += count;
 
         ES3.Save(m_key_hint_props, m_hintProps);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
     /// <summary>
@@ -126,6 +131,7 @@ public partial class MPUser
         m_hintProps--;
 
         ES3.Save(m_key_hint_props, m_hintProps);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
 
         return true;
     }
@@ -151,6 +157,7 @@ public partial class MPUser
         m_loveRecoverProps += count;
 
         ES3.Save(m_key_love_recover_props, m_loveRecoverProps);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
     /// <summary>
@@ -165,6 +172,7 @@ public partial class MPUser
         m_loveRecoverProps--;
 
         ES3.Save(m_key_love_recover_props, m_loveRecoverProps);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
 
         return true;
     }

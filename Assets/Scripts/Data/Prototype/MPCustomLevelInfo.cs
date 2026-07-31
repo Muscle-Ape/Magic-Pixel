@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 
 [Serializable]
+[JsonObject(MemberSerialization.OptIn)]
 public class MPCustomLevelInfo
 {
     /// <summary>
@@ -35,10 +36,34 @@ public class MPCustomLevelInfo
     [JsonProperty]
     private List<MPCustomLevelColorInfo> colors;
 
+    /// <summary>
+    /// 自定义关卡唯一ID。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 id 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public string ID => id;
+
+    /// <summary>
+    /// 自定义关卡标题。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 title 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public string Title => title;
+
+    /// <summary>
+    /// 自定义关卡网格尺寸。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 size 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public int Size => size;
+
+    /// <summary>
+    /// 需要填充的方块索引列表。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 block 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public List<int> Block => block;
+
+    /// <summary>
+    /// 自定义关卡颜色信息列表。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 colors 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public List<MPCustomLevelColorInfo> Colors => colors;
 
     /// <summary>
@@ -70,6 +95,7 @@ public class MPCustomLevelInfo
 }
 
 [Serializable]
+[JsonObject(MemberSerialization.OptIn)]
 public class MPCustomLevelColorInfo
 {
     /// <summary>
@@ -84,7 +110,16 @@ public class MPCustomLevelColorInfo
     [JsonProperty]
     private string color;
 
+    /// <summary>
+    /// 颜色所在的方块索引。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 index 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public int Index => index;
+
+    /// <summary>
+    /// Html格式颜色字符串。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 color 重复写入。
+    /// </summary>
+    [JsonIgnore]
     public string Color => color;
 
     /// <summary>

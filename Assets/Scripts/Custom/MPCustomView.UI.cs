@@ -3,6 +3,7 @@ using DG.Tweening;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public partial class MPCustomView
@@ -152,7 +153,13 @@ public partial class MPCustomView
     /// </summary>
     private void OnSaveClick()
     {
-        for (int i = 0; i < m_blocks.Count; i++)
+        int cellCount = m_currentSize * m_currentSize;
+        if (m_blocks == null || m_blocks.Count < cellCount)
+        {
+            return;
+        }
+
+        for (int i = 0; i < cellCount; i++)
         {
             if (!m_blocks[i].isColor)
                 return;
@@ -166,7 +173,7 @@ public partial class MPCustomView
 
         List<int> blocks = new List<int>();
         List<MPCustomLevelColorInfo> colors = new List<MPCustomLevelColorInfo>();
-        for (int i = 0; i < m_blocks.Count; i++)
+        for (int i = 0; i < cellCount; i++)
         {
             MPCustomBlock block = m_blocks[i];
             if (block.isFill)
@@ -195,11 +202,12 @@ public partial class MPCustomView
             colors);
 
         MPUser.instance.SaveCustomLevel(levelInfo);
+        UploadCustomLevelImages(id);
         m_refreshAction?.Invoke();
         PlaySaveAnimation(id);
 
         // 清空当前格子的状态
-        for (int i = 0; i < m_blocks.Count; i++)
+        for (int i = 0; i < cellCount; i++)
         {
             m_blocks[i].Fill(false);
             m_blocks[i].ClearColor();
@@ -247,6 +255,48 @@ public partial class MPCustomView
         }
     }
 
+    /// <summary>
+    /// 异步上传自定义关卡图片到 Cloud Save Files。
+    /// 上传失败不影响本地保存和结构化云快照同步。
+    /// </summary>
+    private void UploadCustomLevelImages(string id)
+    {
+        if (string.IsNullOrEmpty(id) || !MPLoginManager.Instance.IsLoggedIn)
+        {
+            return;
+        }
+
+        _ = UploadCustomLevelImagesAsync(id);
+    }
+
+    /// <summary>
+    /// 上传自定义关卡完整图片和列表图标。
+    /// </summary>
+    private async Task UploadCustomLevelImagesAsync(string id)
+    {
+        await UploadCustomLevelFileAsync(
+            MPCloudSaveConstants.CUSTOM_LEVEL_IMAGE_FILE_PREFIX + id,
+            MPUser.instance.GetCustomLevelImagePath(id));
+
+        await UploadCustomLevelFileAsync(
+            MPCloudSaveConstants.CUSTOM_LEVEL_ICON_FILE_PREFIX + id,
+            MPUser.instance.GetCustomLevelIconImagePath(id));
+    }
+
+    /// <summary>
+    /// 上传单个自定义关卡图片文件。
+    /// </summary>
+    private static async Task UploadCustomLevelFileAsync(string key, string path)
+    {
+        if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            return;
+        }
+
+        byte[] bytes = File.ReadAllBytes(path);
+        await MPCloudSaveManager.Instance.SavePlayerFileAsync(key, bytes);
+    }
+
 
     /// <summary>
     /// 根据当前网格创建5x5或10x10的像素颜色图片。
@@ -257,7 +307,16 @@ public partial class MPCustomView
         texture.filterMode = FilterMode.Point;
         texture.wrapMode = TextureWrapMode.Clamp;
 
-        for (int i = 0; i < m_blocks.Count; i++)
+        Color[] pixels = new Color[m_currentSize * m_currentSize];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = Color.white;
+        }
+        texture.SetPixels(pixels);
+
+        int cellCount = m_currentSize * m_currentSize;
+        int blockCount = m_blocks == null ? 0 : Mathf.Min(m_blocks.Count, cellCount);
+        for (int i = 0; i < blockCount; i++)
         {
             int x = i % m_currentSize;
             int y = m_currentSize - 1 - i / m_currentSize;

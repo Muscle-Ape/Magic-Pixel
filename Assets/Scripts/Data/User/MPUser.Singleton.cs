@@ -1,7 +1,9 @@
 public partial class MPUser
 {
     private static MPUser m_instance;
+
     private MPUser() { }
+
     public static MPUser instance
     {
         get
@@ -17,24 +19,19 @@ public partial class MPUser
 
     public void Initialization()
     {
-        InitSetting();
-        InitAssets();
-        InitMainLevel();
-        InitLargeImageLevel();
-        InitCustomLevel();
-        // 初始化宠物存档数据，并和当前 pets_config 配置做一次同步。
-        InitPets();
+        m_isInitializingUserData = true;
+        try
+        {
+            InitSetting();
+            InitAssets();
+            InitMainLevel();
+            InitLargeImageLevel();
+            InitCustomLevel();
+            InitPets();
+        }
+        finally
+        {
+            m_isInitializingUserData = false;
+        }
     }
-
-    #region Key
-
-    #endregion
-
-    #region Fields
-
-    #endregion
-
-    #region Method
-
-    #endregion
 }

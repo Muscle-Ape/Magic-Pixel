@@ -1,5 +1,6 @@
 using HQ.UIManager;
 using System.Collections;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class MPLauncher : MonoBehaviour
@@ -9,26 +10,24 @@ public class MPLauncher : MonoBehaviour
     /// </summary>
     private bool m_hasEnteredGame;
 
-    void Start()
+    private void Start()
     {
         StartCoroutine(LaunchAsync());
     }
 
-
     private IEnumerator LaunchAsync()
     {
-        // 初始化资源管理器
+        // 初始化资源管理器。
         MPLaunchYoo yoo = new MPLaunchYoo();
         yield return yoo.Initialize();
 
-        // 初始化UI管理器
+        // 初始化 UI 管理器。
         UIManager.Inst.Init();
 
         // 执行登录启动策略：优先恢复历史会话，真正首次安装时才自动匿名登录。
         yield return MPLoginManager.Instance.Initialize();
 
         MPLoginStartupResult startupResult = MPLoginManager.Instance.LastStartupResult;
-        //Debug.LogError((startupResult != null) + " " + (startupResult.action != MPLoginStartupAction.EnterGame) + " " + (!MPLoginManager.Instance.IsLoggedIn));
         if (startupResult != null && startupResult.action != MPLoginStartupAction.EnterGame && !MPLoginManager.Instance.IsLoggedIn)
         {
             Debug.LogWarning($"[MPLauncher] 登录启动流程需要用户处理：{startupResult.action}，{startupResult.message}");
@@ -40,7 +39,7 @@ public class MPLauncher : MonoBehaviour
     }
 
     /// <summary>
-    /// 临时登录页登录成功后的回调。
+    /// 登录页登录成功后的回调。
     /// </summary>
     private void OnLoginViewSucceeded(MPLoginResult result)
     {
@@ -58,14 +57,28 @@ public class MPLauncher : MonoBehaviour
         }
 
         m_hasEnteredGame = true;
+        StartCoroutine(EnterGameRoutine());
+    }
 
-        // 数据管理器初始化
+    /// <summary>
+    /// 初始化本地用户数据并执行一次 Cloud Save 同步。
+    /// </summary>
+    private IEnumerator EnterGameRoutine()
+    {
         MPDataManager.Instance.Initialize();
-
-        // 用户缓存数据初始化
         MPUser.instance.Initialization();
 
-        //UIManager.Inst.ShowWindow<MPGameView>(new UIMsgDataGeneric(blockInfo));
+        Task<bool> cloudSaveTask = MPCloudSaveManager.Instance.InitializeAfterUserLoadedAsync();
+        while (!cloudSaveTask.IsCompleted)
+        {
+            yield return null;
+        }
+
+        if (cloudSaveTask.IsFaulted)
+        {
+            Debug.LogWarning($"[MPLauncher] Cloud Save initialize failed: {cloudSaveTask.Exception}");
+        }
+
         UIManager.Inst.ShowWindow<MPHomeView>();
     }
 }

@@ -49,6 +49,7 @@ public partial class MPUser
         m_isMusic = isOpen;
 
         ES3.Save(m_key_isMusic, m_isMusic);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Settings);
     }
 
     public void SetSoundStatus(bool isOpen)
@@ -56,6 +57,7 @@ public partial class MPUser
         m_isSound = isOpen;
 
         ES3.Save(m_key_isSound, m_isSound);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Settings);
     }
 
     public void SetVibrationStatus(bool isOpen)
@@ -63,6 +65,7 @@ public partial class MPUser
         m_isVibration = isOpen;
 
         ES3.Save(m_key_isVibration, m_isVibration);
+        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Settings);
     }
     #endregion
 }

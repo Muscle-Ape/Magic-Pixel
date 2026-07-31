@@ -343,6 +343,7 @@ public class MPSettingPop : AWindow
         try
         {
             MPLocalLoginProfile profile = await MPLoginManager.Instance.LoadLocalProfileAsync(cancellation.Token);
+            await MPCloudSaveManager.Instance.FlushAsync(cancellation.Token);
             await MPLoginManager.Instance.LogoutAsync(clearCredentials: true, cancellationToken: cancellation.Token);
 
             if (IsDestoried || cancellation.IsCancellationRequested)
