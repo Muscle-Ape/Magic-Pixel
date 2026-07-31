@@ -3,14 +3,18 @@ using DG.Tweening;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public partial class MPCustomView
 {
     private void RegisterUI()
     {
         m_titleInput.text = MPUser.instance.GetDefaultCustomLevelTitle();
+        InitializePublishButton();
 
         // 添加按钮回调
         m_fillModeBtn.onClick.AddListener(OnFillModeClick);
@@ -22,6 +26,10 @@ public partial class MPCustomView
         if (m_saveBtn != null)
         {
             m_saveBtn.onClick.AddListener(OnSaveClick);
+        }
+        if (m_publishBtn != null)
+        {
+            m_publishBtn.onClick.AddListener(OnUploadClick);
         }
         if (m_warehouseBtn != null)
         {
@@ -37,8 +45,88 @@ public partial class MPCustomView
 
         RefreshModeState();
         RefreshSizeState();
+        RefreshPublishButtonState();
         InitializeSaveAnimation();
     }
+
+    /// <summary>
+    /// 初始化公开上传按钮。当前 Prefab 没有 UploadBtn 时，运行时从 SaveBtn 克隆一个简单按钮。
+    /// </summary>
+    private void InitializePublishButton()
+    {
+        Transform publishTransform = transform.Find("View/UploadBtn");
+        if (publishTransform != null)
+        {
+            m_publishBtn = publishTransform.GetComponent<Button>();
+        }
+
+        if (m_publishBtn == null && m_saveBtn != null)
+        {
+            GameObject publishObject = Instantiate(m_saveBtn.gameObject, m_saveBtn.transform.parent);
+            publishObject.name = "UploadBtn";
+
+            RectTransform publishRect = publishObject.GetComponent<RectTransform>();
+            RectTransform saveRect = m_saveBtn.GetComponent<RectTransform>();
+            if (publishRect != null && saveRect != null)
+            {
+                Vector2 position = saveRect.anchoredPosition;
+                position.x = Mathf.Abs(position.x) > 1f ? -position.x : position.x + saveRect.sizeDelta.x + 30f;
+                publishRect.anchoredPosition = position;
+                publishRect.sizeDelta = saveRect.sizeDelta;
+            }
+
+            m_publishBtn = publishObject.GetComponent<Button>();
+        }
+
+        m_publishText = m_publishBtn == null ? null : m_publishBtn.GetComponentInChildren<TMP_Text>(true);
+        if (m_publishText != null)
+        {
+            m_publishText.text = "Upload";
+        }
+    }
+
+    /// <summary>
+    /// 判断当前是否满足公开上传条件。
+    /// </summary>
+    private static bool CanUseCloudPublish()
+    {
+        return MPLoginManager.Instance != null && MPLoginManager.Instance.IsLoggedIn;
+    }
+
+    /// <summary>
+    /// 刷新编辑页公开上传按钮的交互和文本状态。
+    /// </summary>
+    private void RefreshPublishButtonState()
+    {
+        if (m_publishBtn == null)
+        {
+            return;
+        }
+
+        m_publishBtn.interactable = !m_isPublishActionRunning && CanUseCloudPublish();
+        if (m_publishText == null)
+        {
+            return;
+        }
+
+        m_publishText.text = m_isPublishActionRunning ? "..." : "Upload";
+    }
+
+    /// <summary>
+    /// 取消当前编辑页正在等待的公开上传操作。
+    /// </summary>
+    private void CancelPublishOperation()
+    {
+        if (m_publishCancellation == null)
+        {
+            return;
+        }
+
+        m_publishCancellation.Cancel();
+        m_publishCancellation.Dispose();
+        m_publishCancellation = null;
+    }
+
     private void SetColor(Color color)
     {
         m_currentColor = color;
@@ -153,16 +241,90 @@ public partial class MPCustomView
     /// </summary>
     private void OnSaveClick()
     {
+        SaveCurrentCustomLevel();
+    }
+
+    /// <summary>
+    /// 上传当前编辑中的自定义关卡到公开关卡池。
+    /// </summary>
+    private async void OnUploadClick()
+    {
+        if (m_isPublishActionRunning)
+        {
+            return;
+        }
+
+        if (!CanUseCloudPublish())
+        {
+            Debug.LogWarning("[MPCustomView] 请先登录后再上传公开自定义关卡。");
+            RefreshPublishButtonState();
+            return;
+        }
+
+        m_isPublishActionRunning = true;
+        RefreshPublishButtonState();
+        CancelPublishOperation();
+        m_publishCancellation = new CancellationTokenSource();
+        CancellationTokenSource cancellation = m_publishCancellation;
+
+        try
+        {
+            MPCustomLevelInfo levelInfo = SaveCurrentCustomLevel();
+            if (levelInfo == null)
+            {
+                Debug.LogWarning("[MPCustomView] 当前自定义关卡未完成，无法上传。");
+                return;
+            }
+
+            MPCustomLevelPublishResult publishResult = await MPCustomLevelPublishManager.Instance.PublishAsync(levelInfo, cancellation.Token);
+            if (publishResult == null || !publishResult.success)
+            {
+                Debug.LogWarning($"[MPCustomView] 上传公开关卡失败：{publishResult?.message}");
+            }
+            else
+            {
+                Debug.Log($"[MPCustomView] 已上传公开关卡：{publishResult.publicLevelId}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 界面关闭时取消异步流程，不需要额外提示。
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"[MPCustomView] 上传公开关卡异常：{MPCustomLevelPublishManager.FormatExceptionForLog(exception)}");
+        }
+        finally
+        {
+            if (m_publishCancellation == cancellation)
+            {
+                m_publishCancellation = null;
+                cancellation.Dispose();
+            }
+
+            if (this != null)
+            {
+                m_isPublishActionRunning = false;
+                RefreshPublishButtonState();
+            }
+        }
+    }
+
+    /// <summary>
+    /// 保存当前编辑中的自定义关卡并返回保存后的关卡数据。
+    /// </summary>
+    private MPCustomLevelInfo SaveCurrentCustomLevel()
+    {
         int cellCount = m_currentSize * m_currentSize;
         if (m_blocks == null || m_blocks.Count < cellCount)
         {
-            return;
+            return null;
         }
 
         for (int i = 0; i < cellCount; i++)
         {
             if (!m_blocks[i].isColor)
-                return;
+                return null;
         }
 
         string title = m_titleInput != null ? m_titleInput.text : string.Empty;
@@ -191,7 +353,7 @@ public partial class MPCustomView
         string id = MPUser.instance.CreateCustomLevelImageID();
         if (!SaveCustomLevelImages(id))
         {
-            return;
+            return null;
         }
 
         MPCustomLevelInfo levelInfo = new MPCustomLevelInfo(
@@ -205,8 +367,21 @@ public partial class MPCustomView
         UploadCustomLevelImages(id);
         m_refreshAction?.Invoke();
         PlaySaveAnimation(id);
+        ClearCurrentCustomGrid(cellCount);
 
-        // 清空当前格子的状态
+        return levelInfo;
+    }
+
+    /// <summary>
+    /// 清空当前编辑网格，保存或上传完成后让玩家可以继续绘制下一张图。
+    /// </summary>
+    private void ClearCurrentCustomGrid(int cellCount)
+    {
+        if (m_blocks == null)
+        {
+            return;
+        }
+
         for (int i = 0; i < cellCount; i++)
         {
             m_blocks[i].Fill(false);
@@ -517,6 +692,7 @@ public partial class MPCustomView
     /// </summary>
     private void OnDestroy()
     {
+        CancelPublishOperation();
         ClearSaveAnimation();
     }
 }

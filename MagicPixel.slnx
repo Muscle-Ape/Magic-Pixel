@@ -7,8 +7,10 @@
   <Project Path="Google.Play.Games.csproj" />
   <Project Path="spine-unity-editor.csproj" />
   <Project Path="com.Brogrammist.JSAM.Editor.csproj" />
+  <Project Path="Unity.Services.CloudCode.GeneratedBindings.csproj" />
   <Project Path="HQ.UIManager.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
   <Project Path="Google.Play.Games.Editor.csproj" />
+  <Project Path="MagicPixel.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

@@ -1,6 +1,7 @@
 ﻿using HQ.UIManager;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -85,6 +86,18 @@ public partial class MPCustomView : AWindow
     /// </summary>
     [TransformPath("View/SaveBtn")]
     private Button m_saveBtn;
+
+    /// <summary>
+    /// 当前编辑页面的公开上传按钮。Prefab 没有配置时会在运行时根据 SaveBtn 克隆创建。
+    /// </summary>
+    [TransformPath("View/PublishBtn")]
+    private Button m_publishBtn;
+
+    /// <summary>
+    /// 公开上传按钮文本，用于显示 Upload 和等待状态。
+    /// </summary>
+    [TransformPath("View/PublishBtn/Text")]
+    private TMP_Text m_publishText;
 
     /// <summary>
     /// 自定义关卡标题输入框。
@@ -208,6 +221,16 @@ public partial class MPCustomView : AWindow
     /// </summary>
     private Sprite m_saveAnimationSprite;
 
+    /// <summary>
+    /// 当前编辑页公开上传操作取消源，界面关闭时用于阻止异步回写已销毁 UI。
+    /// </summary>
+    private CancellationTokenSource m_publishCancellation;
+
+    /// <summary>
+    /// 当前编辑页是否正在执行公开上传，避免连续点击重复发布同一份关卡。
+    /// </summary>
+    private bool m_isPublishActionRunning;
+
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
@@ -232,6 +255,7 @@ public partial class MPCustomView : AWindow
         if(focus)
         {
             RefreshUI();
+            RefreshPublishButtonState();
         }
     }
 

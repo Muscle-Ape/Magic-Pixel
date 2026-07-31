@@ -39,10 +39,12 @@ MonoBehaviour:
     - Google.Play.Games
     - Google.Play.Games.Editor
     - HQ.UIManager
+    - MagicPixel.Editor
     - PsdPlugin
     - spine-csharp
     - spine-unity
     - spine-unity-editor
+    - unity-websocket-sharp
     - YooAsset
     - YooAsset.Editor
     showAdvancedSettings: 0
