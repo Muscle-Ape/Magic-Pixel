@@ -235,10 +235,11 @@ public partial class MPCustomView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPLoad.ReleaseAll(this);
         MPCustomViewUIMsgData data = uiMsg as MPCustomViewUIMsgData;
         m_refreshAction = data?.refresh;
 
-        m_blockPrefab = MPLoad.Load<GameObject>("MPCustomBlock").GetComponent<MPCustomBlock>();
+        m_blockPrefab = MPLoad.Load<GameObject>("MPCustomBlock", this).GetComponent<MPCustomBlock>();
 
         m_blockPool = new ObjectPool<MPCustomBlock>(PoolCreate, PoolGet, PoolRelease, defaultCapacity: 25, maxSize: 100);
 
@@ -276,5 +277,4 @@ public class MPCustomViewUIMsgData : UIMsgData
     /// </summary>
     public Action refresh;
 }
-
 

@@ -13,6 +13,8 @@
 *.csproj
 *.unityproj
 *.sln
+!CloudCodeModules/**/*.csproj
+!CloudCodeModules/**/*.sln
 *.userprefs
 Bundles/
 Assets/StreamingAssets/yoo/

@@ -64,10 +64,13 @@ public class MPLargeImageLevelModel
             return Vector2Int.zero;
         }
 
-        Texture2D pixel = MPLoad.Load<Texture2D>(levelInfo.ID);
-        if (pixel != null)
+        using (MPAssetLoadLease<Texture2D> lease = MPLoad.LoadLease<Texture2D>(levelInfo.ID))
         {
-            return new Vector2Int(pixel.width, pixel.height);
+            Texture2D pixel = lease.Asset;
+            if (pixel != null)
+            {
+                return new Vector2Int(pixel.width, pixel.height);
+            }
         }
 
         int size = GetFallbackLevelSize(levelInfo);

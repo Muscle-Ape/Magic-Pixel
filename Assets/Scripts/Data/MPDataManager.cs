@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
-using YooAsset;
 
 public class MPDataManager
 {
@@ -49,11 +48,11 @@ public class MPDataManager
 
     private void MainLevel()
     {
-        // Json 配置
-        TextAsset json = YooAssets.LoadAssetSync<TextAsset>("block_info_main_config").AssetObject as TextAsset;
-
-        // 反序列化
-        List<MPMainBlockInfo> mainBlockInfo = JsonConvert.DeserializeObject<List<MPMainBlockInfo>>(json.text);
+        List<MPMainBlockInfo> mainBlockInfo;
+        using (MPAssetLoadLease<TextAsset> lease = MPLoad.LoadLease<TextAsset>("block_info_main_config"))
+        {
+            mainBlockInfo = JsonConvert.DeserializeObject<List<MPMainBlockInfo>>(lease.Asset.text);
+        }
 
         m_mainLevelModel = new MPMainLevelModel();
         m_mainLevelModel.blockInfos = mainBlockInfo;
@@ -61,11 +60,11 @@ public class MPDataManager
 
     private void LargeImageLevel()
     {
-        // Json 配置
-        TextAsset json = YooAssets.LoadAssetSync<TextAsset>("block_info_largeimage_config").AssetObject as TextAsset;
-
-        // 反序列化
-        List<MPLargeImageBlockInfo> largeImageBlockInfo = JsonConvert.DeserializeObject<List<MPLargeImageBlockInfo>>(json.text);
+        List<MPLargeImageBlockInfo> largeImageBlockInfo;
+        using (MPAssetLoadLease<TextAsset> lease = MPLoad.LoadLease<TextAsset>("block_info_largeimage_config"))
+        {
+            largeImageBlockInfo = JsonConvert.DeserializeObject<List<MPLargeImageBlockInfo>>(lease.Asset.text);
+        }
 
         m_largeImageModel = new MPLargeImageLevelModel();
         m_largeImageModel.blockInfos = largeImageBlockInfo;
@@ -84,12 +83,15 @@ public class MPDataManager
 
     private List<T> LoadConfigList<T>(string location)
     {
-        TextAsset json = YooAssets.LoadAssetSync<TextAsset>(location).AssetObject as TextAsset;
-        if (json == null || string.IsNullOrEmpty(json.text))
+        using (MPAssetLoadLease<TextAsset> lease = MPLoad.LoadLease<TextAsset>(location))
         {
-            return new List<T>();
-        }
+            TextAsset json = lease.Asset;
+            if (json == null || string.IsNullOrEmpty(json.text))
+            {
+                return new List<T>();
+            }
 
-        return JsonConvert.DeserializeObject<List<T>>(json.text) ?? new List<T>();
+            return JsonConvert.DeserializeObject<List<T>>(json.text) ?? new List<T>();
+        }
     }
 }

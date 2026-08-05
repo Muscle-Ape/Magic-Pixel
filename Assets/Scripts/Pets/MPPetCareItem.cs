@@ -217,6 +217,11 @@ public class MPPetCareItem : MonoBehaviour
     public void Refresh(MPPetCareItemConfig config, MPPetCareRuntimeData runtimeData, bool selected, bool canUse)
     {
         bool configChanged = m_config == null || config == null || m_config.ID != config.ID;
+        if (configChanged)
+        {
+            MPLoad.ReleaseAll(this);
+        }
+
         m_config = config;
 
         bool unlocked = runtimeData != null && runtimeData.unlocked;
@@ -445,6 +450,7 @@ public class MPPetCareItem : MonoBehaviour
     private void OnDestroy()
     {
         KillLayoutTween();
+        MPLoad.ReleaseAll(this);
     }
 
     /// <summary>
@@ -457,7 +463,7 @@ public class MPPetCareItem : MonoBehaviour
 
         try
         {
-            Sprite sprite = MPLoad.Load<Sprite>(config.Icon);
+            Sprite sprite = MPLoad.Load<Sprite>(config.Icon, this);
             if (sprite != null)
             {
                 m_icon.sprite = sprite;

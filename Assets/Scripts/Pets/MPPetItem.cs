@@ -134,6 +134,7 @@ public class MPPetItem : MonoBehaviour
     /// </summary>
     public void Refresh(MPPetConfig config, MPPetRuntimeData runtimeData, bool selected)
     {
+        MPLoad.ReleaseAll(this);
         m_config = config;
         m_runtimeData = runtimeData;
         m_timerRefreshElapsed = 0f;
@@ -377,7 +378,7 @@ public class MPPetItem : MonoBehaviour
 
         try
         {
-            return MPLoad.Load<Sprite>(location);
+            return MPLoad.Load<Sprite>(location, this);
         }
         catch (Exception)
         {
@@ -421,5 +422,15 @@ public class MPPetItem : MonoBehaviour
                 return rewardType;
         }
 
+    }
+
+    private void OnDestroy()
+    {
+        if (m_button != null)
+        {
+            m_button.onClick.RemoveListener(OnClick);
+        }
+
+        MPLoad.ReleaseAll(this);
     }
 }

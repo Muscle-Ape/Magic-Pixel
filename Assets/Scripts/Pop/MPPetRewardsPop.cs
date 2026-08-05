@@ -32,6 +32,7 @@ public class MPPetRewardsPop : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPLoad.ReleaseAll(this);
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
 
         MPPetRewardsPopUIMsgData data = uiMsg as MPPetRewardsPopUIMsgData;
@@ -47,6 +48,8 @@ public class MPPetRewardsPop : AWindow
         {
             m_claimBtn.onClick.RemoveListener(OnClaimClick);
         }
+
+        MPLoad.ReleaseAll(this);
     }
 
     /// <summary>
@@ -193,7 +196,7 @@ public class MPPetRewardsPop : AWindow
 
         try
         {
-            Sprite sprite = MPLoad.Load<Sprite>(location);
+            Sprite sprite = MPLoad.Load<Sprite>(location, this);
             if (sprite != null)
             {
                 image.sprite = sprite;

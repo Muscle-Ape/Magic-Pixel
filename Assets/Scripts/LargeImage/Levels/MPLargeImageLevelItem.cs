@@ -152,6 +152,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
     /// </summary>
     public void Refresh(MPLargeImageBlockInfo data, int index)
     {
+        MPLoad.ReleaseAll(this);
         m_data = data;
         m_index = index;
 
@@ -248,7 +249,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
 
         if (m_completedPixel != null)
         {
-            m_completedPixel.sprite = MPLoad.Load<Sprite>("icon_" + m_data.ID);
+            m_completedPixel.sprite = MPLoad.Load<Sprite>("icon_" + m_data.ID, this);
         }
     }
 
@@ -375,5 +376,15 @@ public class MPLargeImageLevelItem : MonoBehaviour
             refresh = m_refresh,
         };
         MPTransitionView.OpenWindow<MPLargeImageGameView>(data, GetComponentInParent<AWindow>());
+    }
+
+    private void OnDestroy()
+    {
+        if (m_levelBtn != null)
+        {
+            m_levelBtn.onClick.RemoveListener(OnLevelClick);
+        }
+
+        MPLoad.ReleaseAll(this);
     }
 }

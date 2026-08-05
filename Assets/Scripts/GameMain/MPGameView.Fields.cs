@@ -304,6 +304,7 @@ public partial class MPGameView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPLoad.ReleaseAll(this);
         MPGameViewUIMsgData data = uiMsg as MPGameViewUIMsgData;
         m_isCustomLevel = data.isCustomLevel;
         m_customLevelInfo = m_isCustomLevel ? data.customLevelInfo : null;
@@ -311,11 +312,11 @@ public partial class MPGameView : AWindow
         m_index = data.index;
         m_refreshAction = data.refresh;
 
-        m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock").GetComponent<MPGameBlock>();
+        m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock", this).GetComponent<MPGameBlock>();
 
-        m_numberHorizontalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameHorizontal");
+        m_numberHorizontalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameHorizontal", this);
 
-        m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical");
+        m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical", this);
 
         // 初始化生命值
         Transform lovesNode = m_lovesNode == null ? transform.Find("View/Loves") : m_lovesNode;
@@ -337,7 +338,7 @@ public partial class MPGameView : AWindow
         }
         else
         {
-            m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID);
+            m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID, this);
             m_isRuntimePixelTexture = false;
             m_size = m_pixel.height;
             m_props.gameObject.SetActive(true);
@@ -387,4 +388,3 @@ public class MPGameViewUIMsgData : UIMsgData
 
     public Action refresh;
 }
-

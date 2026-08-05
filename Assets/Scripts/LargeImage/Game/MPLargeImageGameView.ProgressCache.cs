@@ -167,6 +167,7 @@ public partial class MPLargeImageGameView
     {
         SaveProgressCache();
         m_modeSwitchTween?.Kill();
+        MPLoad.ReleaseAll(this);
     }
 
     /// <summary>

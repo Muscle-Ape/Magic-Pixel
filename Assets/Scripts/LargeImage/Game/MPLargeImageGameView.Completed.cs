@@ -57,9 +57,6 @@ public partial class MPLargeImageGameView
             MPUser.instance.LargeImageLevelUnlock(blockList[newIndex].ID);
         }
 
-        // 3、添加通关金币奖励
-        MPUser.instance.AddCoins(m_blockInfo.AwardCoin);
-
         m_refreshAction?.Invoke();
     }
 

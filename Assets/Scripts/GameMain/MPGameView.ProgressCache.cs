@@ -129,6 +129,7 @@ public partial class MPGameView
         SaveProgressCache();
         m_modeSwitchTween?.Kill();
         ReleaseRuntimePixelTexture();
+        MPLoad.ReleaseAll(this);
     }
 
     /// <summary>

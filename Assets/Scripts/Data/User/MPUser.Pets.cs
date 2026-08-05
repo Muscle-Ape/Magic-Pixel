@@ -405,13 +405,9 @@ public partial class MPUser
             {
                 changedCareItemIds.Add(changedCareItemId);
             }
-
-            // 金币接入项目已有资产系统，其它奖励先进入宠物临时背包。
-            AddCoins(reward.Count);
         }
 
         // 领取成功后重置本轮奖励倒计时。
-        data.rewardStartTicks = DateTime.UtcNow.Ticks;
         data.rewardStartTicks = DateTime.UtcNow.Ticks;
         SavePetsRuntime();
         return true;

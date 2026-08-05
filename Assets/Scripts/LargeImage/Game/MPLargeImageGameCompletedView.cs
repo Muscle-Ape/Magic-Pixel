@@ -207,6 +207,7 @@ public class MPLargeImageGameCompletedView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPLoad.ReleaseAll(this);
         MPLargeImageGameCompletedViewUIMsgData data = uiMsg as MPLargeImageGameCompletedViewUIMsgData;
         if (data == null)
         {
@@ -457,7 +458,7 @@ public class MPLargeImageGameCompletedView : AWindow
         if (m_picture == null || m_blockInfo == null)
             return;
 
-        m_picture.sprite = MPLoad.Load<Sprite>("icon_" + m_blockInfo.ID);
+        m_picture.sprite = MPLoad.Load<Sprite>("icon_" + m_blockInfo.ID, this);
     }
 
     /// <summary>
@@ -678,6 +679,7 @@ public class MPLargeImageGameCompletedView : AWindow
     private void OnDestroy()
     {
         m_enterSequence?.Kill();
+        MPLoad.ReleaseAll(this);
     }
 }
 

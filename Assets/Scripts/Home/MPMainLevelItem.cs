@@ -123,6 +123,7 @@ public class MPMainLevelItem : MonoBehaviour
     /// </summary>
     public void Refresh(MPMainBlockInfo data, int index)
     {
+        MPLoad.ReleaseAll(this);
         m_data = data;
         m_index = index;
 
@@ -153,7 +154,7 @@ public class MPMainLevelItem : MonoBehaviour
                 m_unlock.SetActive(false);
                 m_lock.SetActive(false);
 
-                m_pixel.sprite = MPLoad.Load<Sprite>("icon_" + m_data.ID);
+                m_pixel.sprite = MPLoad.Load<Sprite>("icon_" + m_data.ID, this);
                 RefreshStars(true, MPUser.instance.GetMainLevelStars(m_data.ID));
             }
             else
@@ -211,5 +212,15 @@ public class MPMainLevelItem : MonoBehaviour
             refresh = m_refresh,
         };
         UIManager.Inst.ShowWindow<MPLevelUnlockPop>(unlockData, true, UILayer.Top);
+    }
+
+    private void OnDestroy()
+    {
+        if (m_levelBtn != null)
+        {
+            m_levelBtn.onClick.RemoveListener(OnLevelClick);
+        }
+
+        MPLoad.ReleaseAll(this);
     }
 }

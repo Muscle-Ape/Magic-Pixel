@@ -353,16 +353,17 @@ public partial class MPLargeImageGameView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPLoad.ReleaseAll(this);
         MPLargeImageGameViewUIMsgData data = uiMsg as MPLargeImageGameViewUIMsgData;
         m_blockInfo = data.blockInfo;
         m_index = data.index;
         m_refreshAction = data.refresh;
 
-        m_blockPrefab = MPLoad.Load<GameObject>("MPLargeImageGameBlock").GetComponent<MPLargeImageGameBlock>();
+        m_blockPrefab = MPLoad.Load<GameObject>("MPLargeImageGameBlock", this).GetComponent<MPLargeImageGameBlock>();
 
-        m_numberHorizontalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameHorizontal");
+        m_numberHorizontalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameHorizontal", this);
 
-        m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical");
+        m_numberVerticalPrefab = MPLoad.Load<GameObject>("MPGameNumberFrameVertical", this);
 
         // 初始化生命值
         Transform lovesNode = transform.Find("View/Loves");
@@ -377,7 +378,7 @@ public partial class MPLargeImageGameView : AWindow
             m_props.gameObject.SetActive(true);
         }
 
-        m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID);
+        m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID, this);
 
         m_size = m_pixel.height;
 

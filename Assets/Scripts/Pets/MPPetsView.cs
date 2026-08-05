@@ -201,6 +201,7 @@ public class MPPetsView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPLoad.ReleaseAll(this);
         MPPetsModel petsModel = MPDataManager.Instance.m_petsModel;
         m_petConfigs = petsModel?.petConfigs ?? new List<MPPetConfig>();
         m_foodConfigs = petsModel?.foodConfigs ?? new List<MPPetCareItemConfig>();
@@ -241,6 +242,8 @@ public class MPPetsView : AWindow
             m_toysTabBtn.onClick.RemoveListener(OnToysTabClick);
         if (m_producingBtn != null)
             m_producingBtn.onClick.RemoveListener(OnProducingClick);
+
+        MPLoad.ReleaseAll(this);
     }
 
     private void Update()
@@ -1018,7 +1021,7 @@ public class MPPetsView : AWindow
 
         try
         {
-            Sprite sprite = MPLoad.Load<Sprite>(location);
+            Sprite sprite = MPLoad.Load<Sprite>(location, this);
             if (sprite != null)
             {
                 image.sprite = sprite;

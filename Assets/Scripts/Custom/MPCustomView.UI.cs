@@ -694,9 +694,9 @@ public partial class MPCustomView
     {
         CancelPublishOperation();
         ClearSaveAnimation();
+        MPLoad.ReleaseAll(this);
     }
 }
-
 
 
 
