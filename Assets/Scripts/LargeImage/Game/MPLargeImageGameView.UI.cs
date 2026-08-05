@@ -1,89 +1,24 @@
-using DG.Tweening;
 using HQ.UIManager;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 using static UnityEngine.EventSystems.EventTrigger;
 
 public partial class MPLargeImageGameView
 {
 
     /// <summary>
-    /// 切换模式移动的距离
-    /// </summary>
-    private float m_modeSwitchDistance;
-
-    /// <summary>
     /// 数字栏拖拽移动一格需要累计的屏幕距离。
     /// </summary>
     private const float NUMBER_FRAME_DRAG_STEP_DISTANCE = 60f;
 
-    private void RegisterUI()
+    /// <summary>
+    /// 注册大图模式专属的数字栏拖拽事件，用于移动完整大图的可视窗口。
+    /// </summary>
+    protected override void RegisterModeSpecificUI()
     {
-
-        m_modeSwitchDistance = (m_modeSwitchFrame.transform as RectTransform).rect.width / 4;
-
-        m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
-
-        HideMoveButtons();
         RegisterNumberFrameMove(m_numberVertical, true);
         RegisterNumberFrameMove(m_numberHorizontal, false);
-
-        m_backBtn.onClick.AddListener(OnBackClick);
-        if (m_settingBtn != null)
-        {
-            m_settingBtn.onClick.AddListener(OnSettingClick);
-        }
-
-        if (m_hintPropBtn != null)
-        {
-            m_hintPropBtn.onClick.AddListener(OnHintPropClick);
-        }
-
-        if (m_loveRecoverPropBtn != null)
-        {
-            m_loveRecoverPropBtn.onClick.AddListener(OnLoveRecoverPropClick);
-        }
-
-        RefreshPropButtons();
-
-        RefreshUI();
-
-        m_titleText.text = "Big Level " + (m_index + 1).ToString();
-    }
-
-    private void RefreshUI()
-    {
-        m_coinText.text = MPUser.instance.GetCoins().ToString();
-        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
-    }
-
-    /// <summary>
-    /// 刷新提示道具和生命恢复道具的数量显示。
-    /// </summary>
-    private void RefreshPropButtons()
-    {
-        if (m_hintPropBtn == null || m_hintPropCountText == null || m_loveRecoverPropBtn == null || m_loveRecoverPropCountText == null)
-            return;
-
-        m_hintPropCountText.text = MPUser.instance.GetHintProps().ToString();
-        m_loveRecoverPropCountText.text = MPUser.instance.GetLoveRecoverProps().ToString();
-    }
-
-
-    /// <summary>
-    /// 隐藏旧的方向移动按钮。
-    /// </summary>
-    private void HideMoveButtons()
-    {
-        if (m_moveUp != null && m_moveUp.parent != null)
-        {
-            m_moveUp.parent.gameObject.SetActive(false);
-        }
     }
 
     /// <summary>
@@ -129,7 +64,6 @@ public partial class MPLargeImageGameView
     private void OnNumberFrameBeginDrag(PointerEventData pointerEvent)
     {
         m_numberFrameDragOffset = Vector2.zero;
-        StopMoveCoroutine();
     }
 
     /// <summary>
@@ -161,7 +95,6 @@ public partial class MPLargeImageGameView
     private void OnNumberFrameEndDrag(PointerEventData pointerEvent)
     {
         m_numberFrameDragOffset = Vector2.zero;
-        StopMoveCoroutine();
     }
 
     /// <summary>
@@ -195,83 +128,10 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
-    /// 注册移动按钮的回调
-    /// </summary>
-    /// <param name="target">注册对象</param>
-    /// <param name="pointerDown">按下</param>
-    /// <param name="pointerUp">抬起</param>
-    /// </summary>
-    private void RegisterMove(RectTransform target, Action<PointerEventData> pointerDown, Action<PointerEventData> pointerUp)
-    {
-        target.GetComponent<Image>().alphaHitTestMinimumThreshold = 0.1f;
-
-        EventTrigger et = target.AddComponent<EventTrigger>();
-
-        Entry down = new Entry();
-        down.eventID = EventTriggerType.PointerDown;
-        down.callback.AddListener(data =>
-        {
-            pointerDown.Invoke(data as PointerEventData);
-        });
-
-        Entry up = new Entry();
-        up.eventID = EventTriggerType.PointerUp;
-        up.callback.AddListener(data =>
-        {
-            pointerUp.Invoke(data as PointerEventData);
-        });
-
-        et.triggers.Add(down);
-        et.triggers.Add(up);
-    }
-
-    /// <summary>
-    /// 扣除生命值
-    /// </summary>
-    private void SubLoves()
-    {
-        m_lovesCount = Mathf.Max(0, m_lovesCount - 1);
-
-        GameObject love = m_loves[m_lovesCount];
-        love.transform.DOKill();
-        love.transform.localScale = Vector3.one;
-        love.SetActive(false);
-
-        SaveProgressCache();
-        RefreshPropButtons();
-
-        if (m_lovesCount <= 0)
-        {
-            OpenFailPop();
-        }
-    }
-
-    /// <summary>
-    /// 恢复生命值
-    /// </summary>
-    private void AddLoves()
-    {
-        if (m_lovesCount == m_loves.Count)
-            return;
-
-        GameObject love = m_loves[m_lovesCount];
-        love.transform.DOKill();
-        love.transform.localScale = Vector3.zero;
-        love.SetActive(true);
-        love.transform.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack).SetLink(love);
-
-        m_lovesCount++;
-
-        SaveProgressCache();
-        RefreshPropButtons();
-    }
-
-
-    /// <summary>
     /// 判断当前展示范围内是否还有未完成的格子。
     /// </summary>
     /// <returns>当前展示范围内存在未完成格子返回true，否则返回false。</returns>
-    private bool HasVisibleUncompletedBlock()
+    protected override bool HasHintTarget()
     {
         return GetVisibleHintBlock() != null;
     }
@@ -279,7 +139,7 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 在当前展示范围内自动完成一个格子，并同步触发行列完成检查。
     /// </summary>
-    private void AutoCompleteOneVisibleBlock()
+    protected override void CompleteHintTarget()
     {
         MPLargeImageGameBlock block = GetVisibleHintBlock();
         if (block == null)
@@ -336,153 +196,6 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
-    /// 点击提示道具按钮，在当前展示范围内自动完成一个格子。
-    /// </summary>
-    private void OnHintPropClick()
-    {
-        if (!HasVisibleUncompletedBlock())
-        {
-            RefreshPropButtons();
-            return;
-        }
-
-        if (!MPUser.instance.UseHintProp())
-        {
-            RefreshPropButtons();
-            return;
-        }
-
-        AutoCompleteOneVisibleBlock();
-        SaveProgressCache();
-        RefreshPropButtons();
-    }
-
-    /// <summary>
-    /// 点击生命恢复道具按钮，消耗一个恢复道具并恢复一颗生命。
-    /// </summary>
-    private void OnLoveRecoverPropClick()
-    {
-        if (m_lovesCount >= m_loves.Count)
-        {
-            RefreshPropButtons();
-            return;
-        }
-
-        if (!MPUser.instance.UseLoveRecoverProp())
-        {
-            RefreshPropButtons();
-            return;
-        }
-
-        AddLoves();
-    }
-
-    /// <summary>
-    /// 打开游戏失败弹窗。
-    /// </summary>
-    private void OpenFailPop()
-    {
-        if (m_isFailPopShowing || m_hasCompleted)
-            return;
-
-        m_isFailPopShowing = true;
-        MPGameFailPopUIMsgData data = new MPGameFailPopUIMsgData()
-        {
-            exitAction = OnFailExitClick,
-            replayAction = OnFailReplayClick,
-            restoreLifeAction = OnFailRestoreLifeClick,
-        };
-
-        UIManager.Inst.ShowWindow<MPGameFailPop>(data, true, UILayer.Top);
-    }
-
-    /// <summary>
-    /// 失败弹窗中点击退出当前游戏。
-    /// </summary>
-    private void OnFailExitClick()
-    {
-        m_isFailPopShowing = false;
-        m_hasCompleted = true;
-        ClearProgressCache();
-        DestroyWindow();
-    }
-
-    /// <summary>
-    /// 失败弹窗中点击重玩当前关卡。
-    /// </summary>
-    private void OnFailReplayClick()
-    {
-        m_isFailPopShowing = false;
-        m_hasCompleted = true;
-        ClearProgressCache();
-
-        MPLargeImageGameViewUIMsgData data = new MPLargeImageGameViewUIMsgData()
-        {
-            blockInfo = m_blockInfo,
-            index = m_index,
-            refresh = m_refreshAction,
-        };
-
-        MPTransitionView.Play(() =>
-        {
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
-        });
-    }
-
-    /// <summary>
-    /// 失败弹窗中点击恢复一点生命值。
-    /// </summary>
-    /// <returns>成功恢复生命值返回true，弹窗会关闭。</returns>
-    private bool OnFailRestoreLifeClick()
-    {
-        if (m_lovesCount >= m_loves.Count)
-        {
-            RefreshPropButtons();
-            return false;
-        }
-
-        if (!MPUser.instance.UseLoveRecoverProp())
-        {
-            RefreshPropButtons();
-            return false;
-        }
-
-        AddLoves();
-        m_isFailPopShowing = false;
-        return true;
-    }
-
-    private IEnumerator StartMove(Vector2Int dir)
-    {
-        // 1、计算是是否还可以移动
-        if (!TryMoveContent(dir))
-        {
-            yield break;
-        }
-
-        // 2、进行移动，每一次移动都需要对游戏区域进行更新
-        float delayTime = 0.3f;
-        while (true)
-        {
-            yield return new WaitForSeconds(delayTime);
-            delayTime = 0.1f;
-
-            if (!TryMoveContent(dir))
-            {
-                yield break;
-            }
-
-            // 3、判断是否还可以继续移动
-
-            // 4、等待继续移动
-        }
-    }
-
-    /// <summary>
-    /// 刷新游戏区域内容
-    /// </summary>
-    /// <summary>
     /// 尝试按指定方向移动中心区域展示范围。
     /// </summary>
     /// <param name="dir">移动方向。</param>
@@ -501,6 +214,9 @@ public partial class MPLargeImageGameView
         return true;
     }
 
+    /// <summary>
+    /// 根据可视窗口坐标刷新 10×10 格子、数字提示和行列完成状态。
+    /// </summary>
     private void RefreshContent()
     {
         // 更新中心区域
@@ -664,69 +380,17 @@ public partial class MPLargeImageGameView
         }
     }
 
-    private void OnMoveUpPointerDown(PointerEventData pointerEvent)
+    /// <summary>切换大图模式的填充/标记状态。</summary>
+    protected override void ToggleInputMode()
     {
-        if (m_moveCoroutine == null)
-        {
-            m_moveCoroutine = StartCoroutine(StartMove(new Vector2Int(-1, 0)));
-        }
-    }
-
-    private void OnMoveDownPointerDown(PointerEventData pointerEvent)
-    {
-        if (m_moveCoroutine == null)
-        {
-            m_moveCoroutine = StartCoroutine(StartMove(new Vector2Int(1, 0)));
-        }
-    }
-
-    private void OnMoveLeftPointerDown(PointerEventData pointerEvent)
-    {
-        if (m_moveCoroutine == null)
-        {
-            m_moveCoroutine = StartCoroutine(StartMove(new Vector2Int(0, -1)));
-        }
-    }
-
-    private void OnMoveRightPointerDown(PointerEventData pointerEvent)
-    {
-        if (m_moveCoroutine == null)
-        {
-            m_moveCoroutine = StartCoroutine(StartMove(new Vector2Int(0, 1)));
-        }
-    }
-
-    private void OnMovePointerUp(PointerEventData pointerEvent)
-    {
-        StopMoveCoroutine();
-    }
-
-    /// <summary>
-    /// 停止中心区域连续移动协程。
-    /// </summary>
-    private void StopMoveCoroutine()
-    {
-        if (m_moveCoroutine != null)
-        {
-            StopCoroutine(m_moveCoroutine);
-            m_moveCoroutine = null;
-        }
-    }
-
-    /// <summary>
-    /// 切换模式
-    /// </summary>
-    private void OnModeSwitchClick()
-    {
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
-
         m_isFill = !m_isFill;
+    }
 
-        m_modeSwitchTween?.Kill();
-        m_modeSwitchTween = (m_modeSwitchBtn.transform as RectTransform).DOAnchorPosX(m_isFill ? m_modeSwitchDistance : -m_modeSwitchDistance, 0.1f).SetEase(Ease.Linear);
-
-        m_modeSwitchFill.gameObject.SetActive(m_isFill);
-        m_modeSwitchBlank.gameObject.SetActive(!m_isFill);
+    /// <summary>把当前输入模式同步到可视区域的全部格子。</summary>
+    protected override void ApplyInputModeToBlocks()
+    {
+        if (m_blocks == null)
+            return;
 
         for (int i = 0; i < m_blocks.Count; i++)
         {
@@ -734,25 +398,26 @@ public partial class MPLargeImageGameView
         }
     }
 
-    /// <summary>
-    /// 返回按钮回调
-    /// </summary>
-    private void OnSettingClick()
+    /// <summary>使用当前大图关卡数据重新打开本关。</summary>
+    protected override void RestartLevel()
     {
-        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
-    }
-
-    private void OnBackClick()
-    {
-        SaveProgressCache();
+        MPLargeImageGameViewUIMsgData data = new MPLargeImageGameViewUIMsgData()
+        {
+            blockInfo = m_blockInfo,
+            index = m_index,
+            refresh = m_refreshAction,
+        };
 
         MPTransitionView.Play(() =>
         {
             DestroyWindow();
-
-            m_refreshAction?.Invoke();
-
-            MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
+            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
         });
+    }
+
+    /// <summary>返回后刷新大图关卡列表。</summary>
+    protected override void OnReturnedToLevelList()
+    {
+        m_refreshAction?.Invoke();
     }
 }

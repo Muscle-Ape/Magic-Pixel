@@ -12,7 +12,7 @@ public partial class MPGameView
     /// <summary>
     /// 注册控制输入的节点
     /// </summary>
-    private void RegisterInput()
+    protected override void RegisterInput()
     {
         EventTrigger trigger = m_input.GetOrAddComponent<EventTrigger>();
         // 存放要注册的事件

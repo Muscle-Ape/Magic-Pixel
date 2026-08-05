@@ -13,7 +13,7 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 注册控制输入的节点
     /// </summary>
-    private void RegisterInput()
+    protected override void RegisterInput()
     {
         EventTrigger trigger = m_input.GetOrAddComponent<EventTrigger>();
         // 存放要注册的事件
@@ -243,7 +243,7 @@ public partial class MPLargeImageGameView
                 StartCoroutine(PlayCompletedAnimation());
             }
         }
-        // StartCoroutine(PlayCompletedAnimation());
+        //StartCoroutine(PlayCompletedAnimation());
     }
 
     #region EventSystem

@@ -12,7 +12,7 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 创建Block网格
     /// </summary>
-    private void CreateGrid()
+    protected override void CreateGrid()
     {
         // 计算Grid单个格子大小
         float singleSize = GRID_SIZE / (float)FIXED_SIZE;
@@ -44,7 +44,7 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 创建顶部的数字提示
     /// </summary>
-    private void CreateHorizontalNumber()
+    protected override void CreateHorizontalNumber()
     {
         // 计算列分布情况
         Dictionary<int, List<int>> numbers = new Dictionary<int, List<int>>();
@@ -95,7 +95,7 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 创建左侧的数字提示
     /// </summary>
-    private void CreateVerticalNumver()
+    protected override void CreateVerticalNumber()
     {
         // 计算行分布情况
         Dictionary<int, List<int>> numbers = new Dictionary<int, List<int>>();
@@ -146,7 +146,7 @@ public partial class MPLargeImageGameView
     /// <summary>
     /// 创建分隔线段
     /// </summary>
-    private void CreateLine()
+    protected override void CreateLine()
     {
         //if (FIXED_SIZE == 5)
         //    return;

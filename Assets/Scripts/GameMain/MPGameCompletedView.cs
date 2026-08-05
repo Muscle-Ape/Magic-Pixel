@@ -91,6 +91,11 @@ public class MPGameCompletedView : AWindow
     private MPMainBlockInfo m_blockInfo;
 
     /// <summary>
+    /// 当前完成的大图关卡配置。
+    /// </summary>
+    private MPLargeImageBlockInfo m_largeImageBlockInfo;
+
+    /// <summary>
     /// 当前完成的自定义关卡数据。
     /// </summary>
     private MPCustomLevelInfo m_customLevelInfo;
@@ -101,7 +106,12 @@ public class MPGameCompletedView : AWindow
     private bool m_isCustomLevel;
 
     /// <summary>
-    /// 当前完成的主线关卡下标。
+    /// 当前完成页是否来自大图模式。
+    /// </summary>
+    private bool m_isLargeImageLevel;
+
+    /// <summary>
+    /// 当前完成的关卡下标。
     /// </summary>
     private int m_index;
 
@@ -181,8 +191,10 @@ public class MPGameCompletedView : AWindow
         }
 
         m_blockInfo = data.blockInfo;
+        m_largeImageBlockInfo = data.largeImageBlockInfo;
         m_customLevelInfo = data.customLevelInfo;
         m_isCustomLevel = data.isCustomLevel;
+        m_isLargeImageLevel = data.isLargeImageLevel && !m_isCustomLevel;
         m_index = data.index;
         m_lovesCount = data.lovesCount;
         m_pictureStartPosition = ResolvePictureStartPosition(data);
@@ -348,7 +360,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 刷新主线关卡完成图。
+    /// 刷新主线、自定义或大图关卡完成图。
     /// </summary>
     private void RefreshPicture()
     {
@@ -359,6 +371,16 @@ public class MPGameCompletedView : AWindow
         if (m_isCustomLevel)
         {
             RefreshCustomLevelPicture();
+            return;
+        }
+
+        if (m_isLargeImageLevel)
+        {
+            if (m_largeImageBlockInfo == null)
+                return;
+
+            m_picture.sprite = MPLoad.Load<Sprite>("icon_" + m_largeImageBlockInfo.ID, this);
+            m_picture.preserveAspect = true;
             return;
         }
 
@@ -491,7 +513,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 点击重玩按钮，重新打开当前主线关卡。
+    /// 点击重玩按钮，重新打开当前关卡。
     /// </summary>
     private void OnReplayClick()
     {
@@ -501,17 +523,29 @@ public class MPGameCompletedView : AWindow
             return;
         }
 
+        if (m_isLargeImageLevel)
+        {
+            OpenLargeImageLevel(m_largeImageBlockInfo, m_index);
+            return;
+        }
+
         OpenMainLevel(m_blockInfo, m_index);
     }
 
     /// <summary>
-    /// 点击下一关按钮，如果下一关不存在或尚未解锁，则返回主页。
+    /// 点击下一关按钮，如果下一关不存在或尚未解锁，则返回上一层关卡列表。
     /// </summary>
     private void OnNextLevelClick()
     {
         if (m_isCustomLevel)
         {
             ReturnHome();
+            return;
+        }
+
+        if (m_isLargeImageLevel)
+        {
+            OpenNextLargeImageLevel();
             return;
         }
 
@@ -532,6 +566,30 @@ public class MPGameCompletedView : AWindow
         }
 
         OpenMainLevel(nextLevel, nextIndex);
+    }
+
+    /// <summary>
+    /// 打开下一张大图关卡；不存在或尚未解锁时返回大图关卡列表。
+    /// </summary>
+    private void OpenNextLargeImageLevel()
+    {
+        List<MPLargeImageBlockInfo> levels = MPDataManager.Instance.m_largeImageModel.blockInfos;
+        int nextIndex = m_index + 1;
+
+        if (levels == null || nextIndex >= levels.Count)
+        {
+            ReturnHome();
+            return;
+        }
+
+        MPLargeImageBlockInfo nextLevel = levels[nextIndex];
+        if (nextLevel == null || !MPUser.instance.LargeImageLevelIsUnlock(nextLevel.ID))
+        {
+            ReturnHome();
+            return;
+        }
+
+        OpenLargeImageLevel(nextLevel, nextIndex);
     }
 
     /// <summary>
@@ -568,6 +626,31 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
+    /// 打开指定大图关卡。
+    /// </summary>
+    private void OpenLargeImageLevel(MPLargeImageBlockInfo blockInfo, int index)
+    {
+        if (blockInfo == null)
+        {
+            ReturnHome();
+            return;
+        }
+
+        MPLargeImageGameViewUIMsgData data = new MPLargeImageGameViewUIMsgData()
+        {
+            blockInfo = blockInfo,
+            index = index,
+            refresh = m_refreshAction,
+        };
+
+        MPTransitionView.Play(() =>
+        {
+            DestroyWindow();
+            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
+        });
+    }
+
+    /// <summary>
     /// 重新打开当前自定义关卡。
     /// </summary>
     private void OpenCustomLevel()
@@ -594,7 +677,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 返回主页，并触发关卡列表刷新。
+    /// 返回上一层关卡列表，并触发列表刷新。
     /// </summary>
     private void ReturnHome()
     {
@@ -646,6 +729,11 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     public MPMainBlockInfo blockInfo;
 
     /// <summary>
+    /// 当前完成的大图关卡配置。
+    /// </summary>
+    public MPLargeImageBlockInfo largeImageBlockInfo;
+
+    /// <summary>
     /// 当前完成的自定义关卡数据。
     /// </summary>
     public MPCustomLevelInfo customLevelInfo;
@@ -656,7 +744,12 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     public bool isCustomLevel;
 
     /// <summary>
-    /// 当前完成的主线关卡下标。
+    /// 当前完成页是否来自大图模式。
+    /// </summary>
+    public bool isLargeImageLevel;
+
+    /// <summary>
+    /// 当前完成的关卡下标。
     /// </summary>
     public int index;
 
@@ -681,7 +774,7 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     public bool hasPictureStartScreenPosition;
 
     /// <summary>
-    /// 页面返回主页时刷新主界面关卡列表的回调。
+    /// 页面返回上一层时刷新对应关卡列表的回调。
     /// </summary>
     public Action refresh;
 }

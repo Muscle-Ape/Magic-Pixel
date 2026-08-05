@@ -128,7 +128,7 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
-    /// 打开大图模式结算界面并关闭当前游戏界面。
+    /// 使用主游戏结算界面展示大图模式结算，并关闭当前游戏界面。
     /// </summary>
     private void OpenCompletedView()
     {
@@ -136,21 +136,19 @@ public partial class MPLargeImageGameView
         Canvas gridCanvas = gridTransform == null ? null : gridTransform.GetComponentInParent<Canvas>();
         Camera gridCamera = gridCanvas != null && gridCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? gridCanvas.worldCamera : null;
 
-        MPLargeImageGameCompletedViewUIMsgData data = new MPLargeImageGameCompletedViewUIMsgData()
+        MPGameCompletedViewUIMsgData data = new MPGameCompletedViewUIMsgData()
         {
-            blockInfo = m_blockInfo,
+            largeImageBlockInfo = m_blockInfo,
+            isLargeImageLevel = true,
             index = m_index,
             lovesCount = m_lovesCount,
-            viewHead = m_blockStatueHead,
-            imageSize = m_size,
-            visibleSize = FIXED_SIZE,
             pictureStartAnchoredPosition = gridTransform == null ? Vector2.zero : gridTransform.anchoredPosition,
             pictureStartScreenPosition = gridTransform == null ? Vector2.zero : RectTransformUtility.WorldToScreenPoint(gridCamera, gridTransform.position),
             hasPictureStartScreenPosition = gridTransform != null,
             refresh = m_refreshAction,
         };
 
-        UIManager.Inst.ShowWindow<MPLargeImageGameCompletedView>(data);
+        UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
         DestroyWindow();
     }
 
@@ -159,8 +157,6 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void LockCompletedInteraction()
     {
-        StopMoveCoroutine();
-
         SetNumberFrameInteractable(m_numberHorizontal, false);
         SetNumberFrameInteractable(m_numberVertical, false);
 
