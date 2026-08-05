@@ -15,6 +15,11 @@ public class MPGameCompletedView : AWindow
     private const float PICTURE_MOVE_DURATION = 0.45f;
 
     /// <summary>
+    /// 大图从当前局部放大状态缩回完整图片的动画时长。
+    /// </summary>
+    private const float LARGE_IMAGE_ZOOM_BACK_DURATION = 0.5f;
+
+    /// <summary>
     /// 底部按钮、标题和星星缩放显示的动画时长。
     /// </summary>
     private const float ELEMENT_SHOW_DURATION = 0.28f;
@@ -66,6 +71,16 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     [TransformPath("View/PictureNode/Picture")]
     private Image m_picture;
+
+    /// <summary>
+    /// 完成图片的 RectTransform。大图模式会单独控制它的位置和缩放。
+    /// </summary>
+    private RectTransform m_pictureTransform;
+
+    /// <summary>
+    /// 大图模式运行时创建的裁剪区域，保持与旧大图结算页相同的局部展示范围。
+    /// </summary>
+    private RectTransform m_largeImagePictureMask;
 
     /// <summary>
     /// 星星父节点。
@@ -121,6 +136,21 @@ public class MPGameCompletedView : AWindow
     private int m_lovesCount;
 
     /// <summary>
+    /// 大图通关时可视区域左上角在完整图片中的行列坐标。
+    /// </summary>
+    private Vector2Int m_largeImageViewHead;
+
+    /// <summary>
+    /// 完整大图的行列尺寸。
+    /// </summary>
+    private int m_largeImageSize;
+
+    /// <summary>
+    /// 大图模式可视区域的行列尺寸。
+    /// </summary>
+    private int m_largeImageVisibleSize;
+
+    /// <summary>
     /// 返回主页或重开关卡时用于刷新关卡列表的回调。
     /// </summary>
     private Action m_refreshAction;
@@ -134,6 +164,26 @@ public class MPGameCompletedView : AWindow
     /// 图片节点进入结算页时的起始位置，对齐游戏页的CompletedFrame。
     /// </summary>
     private Vector2 m_pictureStartPosition;
+
+    /// <summary>
+    /// 大图完成图片在结算页中心的原始位置。
+    /// </summary>
+    private Vector2 m_largeImageTargetPosition;
+
+    /// <summary>
+    /// 大图完成图片放大到通关可视区域时的起始位置。
+    /// </summary>
+    private Vector2 m_largeImageStartPosition;
+
+    /// <summary>
+    /// 大图完成图片在结算页中的原始缩放。
+    /// </summary>
+    private Vector3 m_largeImageTargetScale;
+
+    /// <summary>
+    /// 大图完成图片覆盖通关可视区域时的起始缩放。
+    /// </summary>
+    private Vector3 m_largeImageStartScale;
 
     /// <summary>
     /// 每颗星星的节点。
@@ -197,6 +247,9 @@ public class MPGameCompletedView : AWindow
         m_isLargeImageLevel = data.isLargeImageLevel && !m_isCustomLevel;
         m_index = data.index;
         m_lovesCount = data.lovesCount;
+        m_largeImageViewHead = data.largeImageViewHead;
+        m_largeImageSize = data.largeImageSize;
+        m_largeImageVisibleSize = data.largeImageVisibleSize;
         m_pictureStartPosition = ResolvePictureStartPosition(data);
         m_refreshAction = data.refresh;
 
@@ -218,6 +271,18 @@ public class MPGameCompletedView : AWindow
         if (m_pictureNode != null)
         {
             m_pictureTargetPosition = m_pictureNode.anchoredPosition;
+        }
+
+        m_pictureTransform = m_picture == null ? null : m_picture.rectTransform;
+        if (m_isLargeImageLevel)
+        {
+            CreateLargeImagePictureMask();
+            if (m_pictureTransform != null)
+            {
+                m_largeImageTargetPosition = m_pictureTransform.anchoredPosition;
+                m_largeImageTargetScale = m_pictureTransform.localScale;
+                CalculateLargeImageStartState();
+            }
         }
 
         m_replayOriginalScale = m_replayBtn == null ? Vector3.one : m_replayBtn.transform.localScale;
@@ -246,10 +311,91 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 将游戏页CompletedFrame的屏幕坐标转换到当前PictureNode父节点的本地坐标。
+    /// 为统一结算页动态创建大图裁剪区域。
+    /// 旧大图结算 Prefab 使用 800×800 Mask 包裹图片，这里运行时复原相同结构，
+    /// 不修改主关卡结算 Prefab，也不会影响主关卡和自定义关卡。
     /// </summary>
-    /// <param name="data">游戏结算页打开时传入的数据。</param>
-    /// <returns>PictureNode入场动画的起始锚点位置。</returns>
+    private void CreateLargeImagePictureMask()
+    {
+        if (m_pictureNode == null || m_pictureTransform == null || m_largeImagePictureMask != null)
+            return;
+
+        Vector2 originalPosition = m_pictureTransform.anchoredPosition;
+        Vector3 originalScale = m_pictureTransform.localScale;
+        Vector2 pictureSize = m_pictureTransform.rect.size;
+        int originalSiblingIndex = m_pictureTransform.GetSiblingIndex();
+
+        GameObject maskObject = new GameObject(
+            "LargeImagePictureMask",
+            typeof(RectTransform),
+            typeof(RectMask2D));
+        maskObject.layer = m_picture.gameObject.layer;
+
+        m_largeImagePictureMask = maskObject.GetComponent<RectTransform>();
+        m_largeImagePictureMask.SetParent(m_pictureNode, false);
+        m_largeImagePictureMask.SetSiblingIndex(originalSiblingIndex);
+        m_largeImagePictureMask.anchorMin = new Vector2(0.5f, 0.5f);
+        m_largeImagePictureMask.anchorMax = new Vector2(0.5f, 0.5f);
+        m_largeImagePictureMask.pivot = new Vector2(0.5f, 0.5f);
+        m_largeImagePictureMask.anchoredPosition = originalPosition;
+        m_largeImagePictureMask.sizeDelta = pictureSize;
+        m_largeImagePictureMask.localScale = Vector3.one;
+
+        m_pictureTransform.SetParent(m_largeImagePictureMask, false);
+        m_pictureTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        m_pictureTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        m_pictureTransform.pivot = new Vector2(0.5f, 0.5f);
+        m_pictureTransform.anchoredPosition = Vector2.zero;
+        m_pictureTransform.localScale = originalScale;
+    }
+
+    /// <summary>
+    /// 按照旧大图结算算法计算内部图片的放大倍数和偏移位置，
+    /// 使动画开始时展示的局部内容与通关时的 10×10 可视区域一致。
+    /// </summary>
+    private void CalculateLargeImageStartState()
+    {
+        int imageSize = Mathf.Max(1, m_largeImageSize);
+        int visibleSize = Mathf.Clamp(m_largeImageVisibleSize, 1, imageSize);
+        float zoomScale = Mathf.Max(1f, imageSize / (float)visibleSize);
+
+        Vector2 contentSize = GetLargeImagePictureSize();
+        float centerColumn = Mathf.Clamp(m_largeImageViewHead.y + visibleSize * 0.5f, 0f, imageSize);
+        float centerRow = Mathf.Clamp(m_largeImageViewHead.x + visibleSize * 0.5f, 0f, imageSize);
+        float columnPercent = centerColumn / imageSize;
+        float rowPercent = centerRow / imageSize;
+
+        Vector2 offset = new Vector2(
+            (0.5f - columnPercent) * contentSize.x * zoomScale,
+            (rowPercent - 0.5f) * contentSize.y * zoomScale);
+
+        m_largeImageStartPosition = m_largeImageTargetPosition + offset;
+        m_largeImageStartScale = new Vector3(
+            m_largeImageTargetScale.x * zoomScale,
+            m_largeImageTargetScale.y * zoomScale,
+            m_largeImageTargetScale.z);
+    }
+
+    /// <summary>获取大图完成图片的实际显示尺寸。</summary>
+    private Vector2 GetLargeImagePictureSize()
+    {
+        if (m_pictureTransform != null)
+        {
+            Vector2 size = m_pictureTransform.rect.size;
+            if (size.x > 0f && size.y > 0f)
+            {
+                return size;
+            }
+        }
+
+        if (m_largeImagePictureMask != null)
+        {
+            return m_largeImagePictureMask.rect.size;
+        }
+
+        return Vector2.one;
+    }
+
     /// <summary>
     /// 自定义关卡没有下一关按钮，重玩按钮需要居中显示。
     /// </summary>
@@ -275,6 +421,11 @@ public class MPGameCompletedView : AWindow
         }
     }
 
+    /// <summary>
+    /// 将游戏页完成图片的屏幕坐标转换到当前 PictureNode 父节点的本地坐标。
+    /// </summary>
+    /// <param name="data">游戏结算页打开时传入的数据。</param>
+    /// <returns>PictureNode 入场动画的起始锚点位置。</returns>
     private Vector2 ResolvePictureStartPosition(MPGameCompletedViewUIMsgData data)
     {
         if (m_pictureNode == null || !data.hasPictureStartScreenPosition)
@@ -419,6 +570,12 @@ public class MPGameCompletedView : AWindow
             m_pictureNode.anchoredPosition = m_pictureStartPosition;
         }
 
+        if (m_isLargeImageLevel && m_pictureTransform != null)
+        {
+            m_pictureTransform.anchoredPosition = m_largeImageStartPosition;
+            m_pictureTransform.localScale = m_largeImageStartScale;
+        }
+
         if (m_replayBtn != null)
         {
             m_replayBtn.transform.localScale = Vector3.zero;
@@ -451,7 +608,9 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 播放结算页入场动画，先移动完成图，再显示标题、星星和底部按钮。
+    /// 播放结算页入场动画。
+    /// 主关卡直接移动完成图；大图模式会先移动放大的局部图，再缩回完整图片，
+    /// 最后统一显示标题、星星和底部按钮。
     /// </summary>
     private void PlayEnterAnimation()
     {
@@ -464,9 +623,37 @@ public class MPGameCompletedView : AWindow
             m_enterSequence.Append(m_pictureNode.DOAnchorPos(m_pictureTargetPosition, PICTURE_MOVE_DURATION).SetEase(Ease.Linear));
         }
 
+        if (m_isLargeImageLevel)
+        {
+            Tween zoomBackTween = CreateLargeImageZoomBackTween();
+            if (zoomBackTween != null)
+            {
+                m_enterSequence.Append(zoomBackTween);
+            }
+        }
+
         m_enterSequence.Append(CreateElementShowTween());
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
+    }
+
+    /// <summary>创建大图从放大局部区域缩回原始大小和中心位置的动画。</summary>
+    private Tween CreateLargeImageZoomBackTween()
+    {
+        if (m_pictureTransform == null)
+        {
+            return null;
+        }
+
+        m_pictureTransform.DOKill();
+        Sequence sequence = DOTween.Sequence();
+        sequence.Join(m_pictureTransform
+            .DOAnchorPos(m_largeImageTargetPosition, LARGE_IMAGE_ZOOM_BACK_DURATION)
+            .SetEase(Ease.Linear));
+        sequence.Join(m_pictureTransform
+            .DOScale(m_largeImageTargetScale, LARGE_IMAGE_ZOOM_BACK_DURATION)
+            .SetEase(Ease.Linear));
+        return sequence;
     }
 
     /// <summary>
@@ -757,6 +944,21 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     /// 通关时剩余生命值，用于显示星星数量。
     /// </summary>
     public int lovesCount;
+
+    /// <summary>
+    /// 大图通关时可视区域左上角坐标，仅大图模式使用。
+    /// </summary>
+    public Vector2Int largeImageViewHead;
+
+    /// <summary>
+    /// 完整大图行列尺寸，仅大图模式使用。
+    /// </summary>
+    public int largeImageSize;
+
+    /// <summary>
+    /// 大图可视区域行列尺寸，仅大图模式使用。
+    /// </summary>
+    public int largeImageVisibleSize;
 
     /// <summary>
     /// 完成图片入场动画的起始锚点位置，对齐MPGameView中的CompletedFrame。
