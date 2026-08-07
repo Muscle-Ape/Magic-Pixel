@@ -1,0 +1,14 @@
+{
+  "name": "com.ao.unity.ads",
+  "displayName": "AOAds",
+  "version": "2.0.8",
+  "unity": "2019.4",
+  "description": "Ads",
+  "samples": [
+    {
+      "displayName": "Example Sample",
+      "description": "暂时没有例子",
+      "path": "Samples~/Example"
+    }
+  ]
+}

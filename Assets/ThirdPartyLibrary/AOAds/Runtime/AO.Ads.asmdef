@@ -1,0 +1,19 @@
+{
+    "name": "AO.Ads",
+    "rootNamespace": "",
+    "references": [
+        "ThinkingAnalytics",
+        "AppsFlyer",
+        "MaxSdk.Scripts",
+        "Joy.Unity.GlobalSettings"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

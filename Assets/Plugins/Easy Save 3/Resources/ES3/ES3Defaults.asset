@@ -30,6 +30,7 @@ MonoBehaviour:
     referenceMode: 2
     serializationDepthLimit: 64
     assemblyNames:
+    - AO.Ads
     - AppleAuth
     - AppleAuth.Editor
     - Assembly-CSharp
@@ -39,7 +40,10 @@ MonoBehaviour:
     - Google.Play.Games
     - Google.Play.Games.Editor
     - HQ.UIManager
+    - joy.unity.editor.ads
     - MagicPixel.Editor
+    - MaxSdk.Scripts
+    - MaxSdk.Scripts.IntegrationManager.Editor
     - PsdPlugin
     - spine-csharp
     - spine-unity
