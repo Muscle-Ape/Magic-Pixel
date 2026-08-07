@@ -1,0 +1,65 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78b2425a2284af743826c689403a4924, type: 3}
+  m_Name: UISoftMask
+  m_EditorClassIdentifier: 
+  m_functionInfo: "// Made with Amplify Shader Editor v1.9.8.1\n// Available at the
+    Unity Asset Store - http://u3d.as/y3X \n/*ASEBEGIN\nVersion=19801\nNode;AmplifyShaderEditor.FunctionInput;44;93.01519,-22.0599;Inherit;False;alpha;1;0;False;1;0;FLOAT;1;False;1;FLOAT;0\nNode;AmplifyShaderEditor.SimpleMultiplyOpNode;79;-436.0064,-411.0739;Inherit;False;2;2;0;FLOAT4x4;0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1;False;1;FLOAT4;0,0,0,0;False;1;FLOAT4;0\nNode;AmplifyShaderEditor.ObjectToWorldMatrixNode;78;-680.0064,-411.0739;Inherit;False;0;1;FLOAT4x4;0\nNode;AmplifyShaderEditor.PosVertexDataNode;76;-641.0064,-313.0738;Inherit;False;1;0;5;FLOAT4;0;FLOAT;1;FLOAT;2;FLOAT;3;FLOAT;4\nNode;AmplifyShaderEditor.VertexToFragmentNode;67;35.24458,-412.1645;Inherit;False;False;False;1;0;FLOAT2;0,0;False;1;FLOAT2;0\nNode;AmplifyShaderEditor.CustomExpressionNode;74;-203.7601,-411.0578;Inherit;False;#if
+    USING_SOFT_MASK$return MaskUV(wPos)@$#else$return 0@$#endif;2;Create;1;True;wPos;FLOAT4;0,0,0,0;In;;Inherit;False;ASE_SoftMaskUV;False;True;0;8aa7260cb81bf884a8cbd00cc2014af0;False;1;0;FLOAT4;0,0,0,0;False;1;FLOAT2;0\nNode;AmplifyShaderEditor.TexturePropertyNode;40;11.79411,-229.9723;Inherit;True;Property;_SoftMask;_SoftMask;0;1;[PerRendererData];Create;True;0;0;0;False;0;False;None;None;False;white;Auto;Texture2D;-1;0;2;SAMPLER2D;0;SAMPLERSTATE;1\nNode;AmplifyShaderEditor.CustomExpressionNode;43;352.7041,-257.3314;Inherit;False;#if
+    USING_SOFT_MASK$return UISoftMask(maskData,maskSampler,alpha)@$#else$return alpha@$#endif;1;Create;3;True;maskData;FLOAT3;0,0,0;In;;Inherit;False;True;maskSampler;SAMPLER2D;_Sampler0118;In;;Inherit;False;True;alpha;FLOAT;0;In;;Inherit;False;ASE_UISoftMask;False;True;0;8aa7260cb81bf884a8cbd00cc2014af0;False;3;0;FLOAT3;0,0,0;False;1;SAMPLER2D;_Sampler0118;False;2;FLOAT;0;False;1;FLOAT;0\nNode;AmplifyShaderEditor.FunctionOutput;0;706.2385,-255.2632;Inherit;False;True;-1;softMask;0;False;1;0;FLOAT;0;False;1;FLOAT;0\nWireConnection;79;0;78;0\nWireConnection;79;1;76;0\nWireConnection;67;0;74;0\nWireConnection;74;0;79;0\nWireConnection;43;0;67;0\nWireConnection;43;1;40;0\nWireConnection;43;2;44;0\nWireConnection;0;0;43;0\nASEEND*/\n//CHKSM=F27C050C32F8EC1F16E2CE0CE2C2E7A6BC5E3C91"
+  m_functionName: 
+  m_description: 
+  m_additionalIncludes:
+    m_additionalIncludes: []
+    m_outsideIncludes: []
+  m_additionalPragmas:
+    m_additionalPragmas: []
+    m_outsidePragmas: []
+  m_additionalDirectives:
+    m_validData: 0
+    m_isDirty: 1
+    m_moduleName: ' Additional Directives'
+    m_independentModule: 1
+    m_customEdited: 0
+    m_additionalDirectives:
+    - {fileID: 0}
+    - {fileID: 0}
+    m_shaderFunctionDirectives: []
+    m_nativeDirectives: []
+    m_nativeDirectivesIndex: -1
+    m_nativeDirectivesFoldout: 0
+    m_directivesSaveItems:
+    - LineType: 2
+      LineValue: multi_compile_local _ USING_SOFT_MASK
+      GUIDToggle: 0
+      GUIDValue: 
+      ShowConditionals: 0
+      VersionMin: 0
+      VersionMax: 0
+      Passes: 
+      Origin: 2
+    - LineType: 0
+      LineValue: 
+      GUIDToggle: 1
+      GUIDValue: 8aa7260cb81bf884a8cbd00cc2014af0
+      ShowConditionals: 0
+      VersionMin: 0
+      VersionMax: 0
+      Passes: 
+      Origin: 2
+  m_nodeCategory: 3
+  m_headerStyle: 0
+  m_headerColor: {r: 1, g: 0.4, b: 0, a: 1}
+  m_customNodeCategory: 
+  m_previewPosition: 0
+  m_hidden: 0
+  m_url: 

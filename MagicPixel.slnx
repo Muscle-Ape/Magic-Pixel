@@ -12,6 +12,7 @@
   <Project Path="MagicPixel.Editor.csproj" />
   <Project Path="Unity.Services.CloudCode.GeneratedBindings.csproj" />
   <Project Path="HQ.UIManager.csproj" />
+  <Project Path="AMSUISoftMask.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
   <Project Path="MaxSdk.Scripts.IntegrationManager.Editor.csproj" />
   <Project Path="Google.Play.Games.Editor.csproj" />
