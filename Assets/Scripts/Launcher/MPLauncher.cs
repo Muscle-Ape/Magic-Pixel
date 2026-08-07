@@ -57,7 +57,17 @@ public class MPLauncher : MonoBehaviour
         }
 
         m_hasEnteredGame = true;
+        InitializeAds();
         StartCoroutine(EnterGameRoutine());
+    }
+
+    /// <summary>
+    /// 使用当前广告配置和登录玩家 ID 初始化广告模块。
+    /// </summary>
+    private void InitializeAds()
+    {
+        MPAdsManager.Instance.Initialize(
+            userId: MPLoginManager.Instance.PlayerId);
     }
 
     /// <summary>
