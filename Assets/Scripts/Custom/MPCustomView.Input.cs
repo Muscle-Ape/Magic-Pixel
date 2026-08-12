@@ -66,6 +66,8 @@ public partial class MPCustomView
         if (block == null)
             return;
 
+        BeginNewPublishDraft();
+
         // 根据当前模式对方块进行操作
         if (m_isFillMode)
         {

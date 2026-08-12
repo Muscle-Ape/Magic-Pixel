@@ -231,6 +231,12 @@ public partial class MPCustomView : AWindow
     /// </summary>
     private bool m_isPublishActionRunning;
 
+    /// <summary>
+    /// 当前编辑页已经保存并准备公开上传的关卡。
+    /// 上传失败时复用同一份数据重试，成功后用于锁定上传按钮。
+    /// </summary>
+    private MPCustomLevelInfo m_pendingPublishLevelInfo;
+
 
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
@@ -277,4 +283,3 @@ public class MPCustomViewUIMsgData : UIMsgData
     /// </summary>
     public Action refresh;
 }
-

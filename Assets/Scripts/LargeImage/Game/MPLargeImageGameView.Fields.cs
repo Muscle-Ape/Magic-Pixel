@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using YooAsset;
 
 /// <summary>
 /// 大图模式字段与关卡资源管理。
@@ -27,8 +28,19 @@ public partial class MPLargeImageGameView : MPGameViewBase
     /// <summary>当前大图关卡配置。</summary>
     private MPLargeImageBlockInfo m_blockInfo;
 
-    /// <summary>大图模式使用的格子预制体。</summary>
-    private MPLargeImageGameBlock m_blockPrefab;
+    /// <summary>主游戏与大图模式共用的格子预制体。</summary>
+    private GameObject m_blockPrefab;
+
+    /// <summary>游戏网格使用的四角外框图片。</summary>
+    private Sprite m_blockLeftTopSprite;
+    private Sprite m_blockRightTopSprite;
+    private Sprite m_blockLeftDownSprite;
+    private Sprite m_blockRightDownSprite;
+
+    /// <summary>数字提示框使用的角部外框图片。</summary>
+    private Sprite m_numberLeftTopSprite;
+    private Sprite m_numberRightTopSprite;
+    private Sprite m_numberLeftDownSprite;
 
     /// <summary>当前 10×10 可视区域中的格子列表。</summary>
     private List<MPLargeImageGameBlock> m_blocks;
@@ -96,7 +108,14 @@ public partial class MPLargeImageGameView : MPGameViewBase
     /// </summary>
     protected override void LoadLevelAssets()
     {
-        m_blockPrefab = MPLoad.Load<GameObject>("MPLargeImageGameBlock", this).GetComponent<MPLargeImageGameBlock>();
+        m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock", this);
+        m_blockLeftTopSprite = LoadOptionalFrameSprite("game_block_lt");
+        m_blockRightTopSprite = LoadOptionalFrameSprite("game_block_rt");
+        m_blockLeftDownSprite = LoadOptionalFrameSprite("game_block_ld");
+        m_blockRightDownSprite = LoadOptionalFrameSprite("game_block_rd");
+        m_numberLeftTopSprite = LoadOptionalFrameSprite("game_number_lt");
+        m_numberRightTopSprite = LoadOptionalFrameSprite("game_number_rt");
+        m_numberLeftDownSprite = LoadOptionalFrameSprite("game_number_ld");
         m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID, this);
         m_size = m_pixel == null ? 0 : m_pixel.height;
 
@@ -107,6 +126,20 @@ public partial class MPLargeImageGameView : MPGameViewBase
 
         m_blockStatues = Enumerable.Range(0, m_size).Select(_ => new BlockStatue[m_size]).ToArray();
         m_blockStatueHead = Vector2Int.zero;
+    }
+
+    /// <summary>
+    /// 加载可选外框图片。资源尚未加入 YooAsset 清单时保留预制体默认图片，避免阻断页面创建。
+    /// </summary>
+    private Sprite LoadOptionalFrameSprite(string location)
+    {
+        if (!YooAssets.CheckLocationValid(location))
+        {
+            Debug.LogWarning($"游戏外框资源不存在或尚未加入 YooAsset 清单：{location}");
+            return null;
+        }
+
+        return MPLoad.Load<Sprite>(location, this);
     }
 }
 

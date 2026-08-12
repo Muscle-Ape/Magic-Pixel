@@ -2,6 +2,7 @@ using HQ.UIManager;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using YooAsset;
 
 /// <summary>
 /// 主游戏模式页面实现。
@@ -28,7 +29,22 @@ public partial class MPGameView : MPGameViewBase
     /// <summary>
     /// 方块预制体
     /// </summary>
-    private MPGameBlock m_blockPrefab;
+    private GameObject m_blockPrefab;
+
+    /// <summary>
+    /// 游戏网格使用的四角外框图片。
+    /// </summary>
+    private Sprite m_blockLeftTopSprite;
+    private Sprite m_blockRightTopSprite;
+    private Sprite m_blockLeftDownSprite;
+    private Sprite m_blockRightDownSprite;
+
+    /// <summary>
+    /// 数字提示框使用的角部外框图片。
+    /// </summary>
+    private Sprite m_numberLeftTopSprite;
+    private Sprite m_numberRightTopSprite;
+    private Sprite m_numberLeftDownSprite;
 
     /// <summary>
     /// 当前像素图是否为运行时读取的本地自定义图片，页面释放时需要主动销毁。
@@ -118,7 +134,14 @@ public partial class MPGameView : MPGameViewBase
     /// <summary>加载主游戏方块预制体和当前关卡像素图。</summary>
     protected override void LoadLevelAssets()
     {
-        m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock", this).GetComponent<MPGameBlock>();
+        m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock", this);
+        m_blockLeftTopSprite = LoadOptionalFrameSprite("game_block_lt");
+        m_blockRightTopSprite = LoadOptionalFrameSprite("game_block_rt");
+        m_blockLeftDownSprite = LoadOptionalFrameSprite("game_block_ld");
+        m_blockRightDownSprite = LoadOptionalFrameSprite("game_block_rd");
+        m_numberLeftTopSprite = LoadOptionalFrameSprite("game_number_lt");
+        m_numberRightTopSprite = LoadOptionalFrameSprite("game_number_rt");
+        m_numberLeftDownSprite = LoadOptionalFrameSprite("game_number_ld");
 
         if (m_isCustomLevel)
         {
@@ -132,6 +155,20 @@ public partial class MPGameView : MPGameViewBase
             m_isRuntimePixelTexture = false;
             m_size = m_pixel == null ? 0 : m_pixel.height;
         }
+    }
+
+    /// <summary>
+    /// 加载可选外框图片。资源尚未加入 YooAsset 清单时保留预制体默认图片，避免阻断页面创建。
+    /// </summary>
+    private Sprite LoadOptionalFrameSprite(string location)
+    {
+        if (!YooAssets.CheckLocationValid(location))
+        {
+            Debug.LogWarning($"游戏外框资源不存在或尚未加入 YooAsset 清单：{location}");
+            return null;
+        }
+
+        return MPLoad.Load<Sprite>(location, this);
     }
 
     /// <summary>释放自定义关卡运行时创建的像素纹理。</summary>

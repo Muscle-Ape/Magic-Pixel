@@ -31,6 +31,11 @@ public partial class MPCustomView
         {
             m_publishBtn.onClick.AddListener(OnUploadClick);
         }
+
+        MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishStateChanged += OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged += OnPublishOperationChanged;
         if (m_warehouseBtn != null)
         {
             m_warehouseBtn.onClick.AddListener(OnWarehouseClick);
@@ -103,13 +108,59 @@ public partial class MPCustomView
             return;
         }
 
-        m_publishBtn.interactable = !m_isPublishActionRunning && CanUseCloudPublish();
+        bool isPublishPending = m_pendingPublishLevelInfo != null &&
+                                MPCustomLevelPublishManager.Instance.IsPublishPending(m_pendingPublishLevelInfo.ID);
+        bool isPublished = m_pendingPublishLevelInfo != null &&
+                           MPCustomLevelPublishManager.Instance.IsLocalLevelPublished(m_pendingPublishLevelInfo.ID);
+        bool isBusy = m_isPublishActionRunning || isPublishPending;
+        m_publishBtn.interactable = !isBusy && !isPublished && CanUseCloudPublish();
         if (m_publishText == null)
         {
             return;
         }
 
-        m_publishText.text = m_isPublishActionRunning ? "..." : "Upload";
+        m_publishText.text = isBusy ? "..." : isPublished ? "Uploaded" : "Upload";
+    }
+
+    /// <summary>
+    /// 当前待发布关卡状态变化时刷新编辑页上传按钮。
+    /// </summary>
+    private void OnPublishStateChanged(MPCustomLevelPublishLocalState state)
+    {
+        if (state == null || m_pendingPublishLevelInfo == null ||
+            state.sourceLocalLevelId != m_pendingPublishLevelInfo.ID)
+        {
+            return;
+        }
+
+        RefreshPublishButtonState();
+    }
+
+    /// <summary>
+    /// 当前待发布关卡的上传任务开始或结束时刷新按钮。
+    /// </summary>
+    private void OnPublishOperationChanged(string sourceLocalLevelId)
+    {
+        if (m_pendingPublishLevelInfo == null || sourceLocalLevelId != m_pendingPublishLevelInfo.ID)
+        {
+            return;
+        }
+
+        RefreshPublishButtonState();
+    }
+
+    /// <summary>
+    /// 用户开始编辑新内容后解除上一关卡的上传按钮状态。
+    /// </summary>
+    private void BeginNewPublishDraft()
+    {
+        if (m_pendingPublishLevelInfo == null)
+        {
+            return;
+        }
+
+        m_pendingPublishLevelInfo = null;
+        RefreshPublishButtonState();
     }
 
     /// <summary>
@@ -214,6 +265,7 @@ public partial class MPCustomView
             return;
         }
 
+        BeginNewPublishDraft();
         m_isTenSize = isTenSize;
         CreateGrid(m_isTenSize ? 10 : 5);
         RefreshSizeState();
@@ -269,10 +321,22 @@ public partial class MPCustomView
 
         try
         {
-            MPCustomLevelInfo levelInfo = SaveCurrentCustomLevel();
+            MPCustomLevelInfo levelInfo = m_pendingPublishLevelInfo;
+            if (levelInfo == null)
+            {
+                levelInfo = SaveCurrentCustomLevel();
+                m_pendingPublishLevelInfo = levelInfo;
+            }
+
             if (levelInfo == null)
             {
                 Debug.LogWarning("[MPCustomView] 当前自定义关卡未完成，无法上传。");
+                return;
+            }
+
+            if (MPCustomLevelPublishManager.Instance.IsLocalLevelPublished(levelInfo.ID))
+            {
+                Debug.LogWarning("[MPCustomView] 当前自定义关卡已经上传，不能重复上传。");
                 return;
             }
 
@@ -653,12 +717,13 @@ public partial class MPCustomView
     /// </summary>
     private void OnDestroy()
     {
+        MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
         CancelPublishOperation();
         ClearSaveAnimation();
         MPLoad.ReleaseAll(this);
     }
 }
-
 
 
 

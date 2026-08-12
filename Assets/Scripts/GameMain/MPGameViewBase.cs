@@ -78,9 +78,6 @@ public abstract class MPGameViewBase : AWindow
     protected TMP_Text m_loveRecoverPropCountText;
 
     [TransformPath("View/Title")]
-    protected RectTransform m_title;
-
-    [TransformPath("View/Title/Text")]
     protected TMP_Text m_titleText;
 
     [TransformPath("View/Up/Coin/Count")]
@@ -147,7 +144,7 @@ public abstract class MPGameViewBase : AWindow
     protected bool m_hasCompleted;
 
     /// <summary>模式切换滑块相对中心点的移动距离。</summary>
-    private float m_modeSwitchDistance;
+    private float m_modeSwitchDistance = 78;
 
     /// <summary>
     /// 当前模式是否使用生命值。自定义关卡会关闭生命与道具。
@@ -321,7 +318,7 @@ public abstract class MPGameViewBase : AWindow
         if (m_modeSwitchFrame != null)
         {
             RectTransform modeSwitchRect = m_modeSwitchFrame.transform as RectTransform;
-            m_modeSwitchDistance = modeSwitchRect == null ? 0f : modeSwitchRect.rect.width / 4f;
+            // m_modeSwitchDistance = modeSwitchRect == null ? 0f : modeSwitchRect.rect.width / 4f;
             m_modeSwitchFrame.onClick.RemoveListener(OnModeSwitchClick);
             m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
         }

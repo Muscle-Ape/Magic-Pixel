@@ -17,6 +17,11 @@ public class MPLargeImageGameBlock : MonoBehaviour
     private GameObject m_fill;
 
     /// <summary>
+    /// 格子外框。
+    /// </summary>
+    private Image m_frame;
+
+    /// <summary>
     /// 填充节点下用于普通游戏状态显示的颜色块。
     /// </summary>
     private GameObject m_fillColor;
@@ -83,6 +88,12 @@ public class MPLargeImageGameBlock : MonoBehaviour
 
     public void Init(int index)
     {
+        Transform frame = transform.Find("Frame");
+        if (frame != null)
+        {
+            m_frame = frame.GetComponent<Image>();
+        }
+
         m_fill = transform.Find("Fill").gameObject;
         Transform fillColor = transform.Find("Fill/Color");
         if (fillColor != null)
@@ -97,6 +108,17 @@ public class MPLargeImageGameBlock : MonoBehaviour
         m_blankHit = transform.Find("BlankHit").gameObject;
 
         m_index = index;
+    }
+
+    /// <summary>
+    /// 替换格子外框图片；未传入图片时保留预制体默认外框。
+    /// </summary>
+    public void SetFrameSprite(Sprite sprite)
+    {
+        if (m_frame == null || sprite == null)
+            return;
+
+        m_frame.sprite = sprite;
     }
 
     public void Refresh(bool isFill, bool completed, bool isFillMode = true)

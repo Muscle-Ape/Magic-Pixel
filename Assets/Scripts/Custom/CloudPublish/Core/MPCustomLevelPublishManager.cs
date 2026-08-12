@@ -148,10 +148,19 @@ public class MPCustomLevelPublishManager
     /// </summary>
     private async Task<MPCustomLevelPublishResult> PublishAndPersistAsync(MPCustomLevelInfo normalizedLevel)
     {
-        MPCustomLevelPublishResult result;
         try
         {
-            result = await m_publishApi.PublishAsync(normalizedLevel, CancellationToken.None);
+            MPCustomLevelPublishResult result = await m_publishApi.PublishAsync(normalizedLevel, CancellationToken.None);
+            if (result != null && result.success && !string.IsNullOrEmpty(result.publicLevelId))
+            {
+                UpsertLocalState(
+                    normalizedLevel.ID,
+                    result.publicLevelId,
+                    result.status,
+                    string.Empty);
+            }
+
+            return result;
         }
         finally
         {
@@ -162,17 +171,6 @@ public class MPCustomLevelPublishManager
 
             PublishOperationChanged?.Invoke(normalizedLevel.ID);
         }
-
-        if (result != null && result.success && !string.IsNullOrEmpty(result.publicLevelId))
-        {
-            UpsertLocalState(
-                normalizedLevel.ID,
-                result.publicLevelId,
-                result.status,
-                string.Empty);
-        }
-
-        return result;
     }
 
     /// <summary>

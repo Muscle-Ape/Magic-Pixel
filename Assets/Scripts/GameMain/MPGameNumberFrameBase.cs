@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MPGameNumberFrameBase : MonoBehaviour
 {
@@ -15,6 +16,11 @@ public class MPGameNumberFrameBase : MonoBehaviour
     /// 文本组件
     /// </summary>
     protected TMP_Text m_text;
+
+    /// <summary>
+    /// 数字提示框外框。
+    /// </summary>
+    private Image m_frame;
 
     protected CanvasGroup m_cg;
 
@@ -44,6 +50,23 @@ public class MPGameNumberFrameBase : MonoBehaviour
         m_number = number;
         m_text = transform.Find("Number").GetComponent<TMP_Text>();
         m_cg = transform.GetComponent<CanvasGroup>();
+
+        Transform frame = transform.Find("Frame");
+        if (frame != null)
+        {
+            m_frame = frame.GetComponent<Image>();
+        }
+    }
+
+    /// <summary>
+    /// 替换数字提示框外框图片；未传入图片时保留预制体默认外框。
+    /// </summary>
+    public void SetFrameSprite(Sprite sprite)
+    {
+        if (m_frame == null || sprite == null)
+            return;
+
+        m_frame.sprite = sprite;
     }
 
     /// <summary>

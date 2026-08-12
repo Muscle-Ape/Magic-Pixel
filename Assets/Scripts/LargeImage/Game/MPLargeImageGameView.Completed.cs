@@ -212,7 +212,7 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void FadeSettlementUI()
     {
-        FadeGraphics(m_title, SETTLEMENT_NUMBER_FADE_DURATION);
+        FadeGraphics(m_titleText.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
 
         if (m_modeSwitchFrame != null)

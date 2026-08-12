@@ -26,13 +26,19 @@ public partial class MPLargeImageGameView
         {
             for (int j = 0; j < FIXED_SIZE; j++)
             {
-                MPLargeImageGameBlock block = Instantiate(m_blockPrefab, m_blockGrid.transform);
+                GameObject blockObject = Instantiate(m_blockPrefab, m_blockGrid.transform);
+                MPLargeImageGameBlock block = blockObject.GetComponent<MPLargeImageGameBlock>();
+                if (block == null)
+                {
+                    block = blockObject.AddComponent<MPLargeImageGameBlock>();
+                }
 
                 // 是否需要填充
                 int convertIndex = i * m_size + j;
                 bool isFill = m_blockInfo.Block.Contains(convertIndex);
                 block.Init(index);
                 block.Refresh(isFill, false);
+                block.SetFrameSprite(GetGridCornerSprite(i, j));
 
                 m_blocks.Add(block);
                 m_blockGrid2Array[i][j] = block;
@@ -87,6 +93,7 @@ public partial class MPLargeImageGameView
             GameObject frame = Instantiate(m_numberHorizontalPrefab, m_numberHorizontal);
             MPLargeImageGameNumberFrameHorizontal sprite = frame.AddComponent<MPLargeImageGameNumberFrameHorizontal>();
             sprite.Init(numbers[i], fontSize);
+            sprite.SetFrameSprite(GetHorizontalNumberFrameSprite(i));
 
             m_numberHorizontalList.Add(sprite);
         }
@@ -138,9 +145,58 @@ public partial class MPLargeImageGameView
             GameObject frame = Instantiate(m_numberVerticalPrefab, m_numberVertical);
             MPLargeImageGameNumberFrameVertical sprite = frame.AddComponent<MPLargeImageGameNumberFrameVertical>();
             sprite.Init(numbers[i], fontSize);
+            sprite.SetFrameSprite(GetVerticalNumberFrameSprite(i));
 
             m_numberVerticalList.Add(sprite);
         }
+    }
+
+    /// <summary>
+    /// 获取可视网格四角对应的外框图片，其余位置保留预制体默认图片。
+    /// </summary>
+    private Sprite GetGridCornerSprite(int row, int column)
+    {
+        bool isTop = row == 0;
+        bool isBottom = row == FIXED_SIZE - 1;
+        bool isLeft = column == 0;
+        bool isRight = column == FIXED_SIZE - 1;
+
+        if (isTop && isLeft)
+            return m_blockLeftTopSprite;
+        if (isTop && isRight)
+            return m_blockRightTopSprite;
+        if (isBottom && isLeft)
+            return m_blockLeftDownSprite;
+        if (isBottom && isRight)
+            return m_blockRightDownSprite;
+
+        return null;
+    }
+
+    /// <summary>
+    /// 顶部数字提示框仅替换最左和最右外框。
+    /// </summary>
+    private Sprite GetHorizontalNumberFrameSprite(int column)
+    {
+        if (column == 0)
+            return m_numberLeftTopSprite;
+        if (column == FIXED_SIZE - 1)
+            return m_numberRightTopSprite;
+
+        return null;
+    }
+
+    /// <summary>
+    /// 左侧数字提示框仅替换最上和最下外框。
+    /// </summary>
+    private Sprite GetVerticalNumberFrameSprite(int row)
+    {
+        if (row == 0)
+            return m_numberLeftTopSprite;
+        if (row == FIXED_SIZE - 1)
+            return m_numberLeftDownSprite;
+
+        return null;
     }
 
     /// <summary>
