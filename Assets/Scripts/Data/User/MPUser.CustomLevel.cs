@@ -109,19 +109,6 @@ public partial class MPUser
         return Path.Combine(CustomLevelImageDirectory, $"{id}.png");
     }
 
-
-    /// <summary>
-    /// 获取自定义关卡列表图标保存路径。
-    /// </summary>
-    public string GetCustomLevelIconImagePath(string id)
-    {
-        if (string.IsNullOrEmpty(id))
-            return string.Empty;
-
-        return Path.Combine(CustomLevelImageDirectory, $"icon_{id}.png");
-    }
-
-
     /// <summary>
     /// 读取自定义关卡完整像素图，调用方使用结束后需要自行销毁返回的Texture2D。
     /// </summary>
@@ -207,7 +194,6 @@ public partial class MPUser
         }
 
         DeleteCustomLevelFile(GetCustomLevelImagePath(id));
-        DeleteCustomLevelFile(GetCustomLevelIconImagePath(id));
     }
 
 
@@ -375,7 +361,7 @@ public partial class MPUser
         List<MPCustomLevelInfo> levels = GetCustomLevels();
         bool dataExists = levels.Exists(item => item != null && item.ID == id);
 
-        return dataExists || File.Exists(GetCustomLevelImagePath(id)) || File.Exists(GetCustomLevelIconImagePath(id));
+        return dataExists || File.Exists(GetCustomLevelImagePath(id));
     }
 
     /// <summary>
@@ -489,8 +475,6 @@ public partial class MPUser
         }
     }
 }
-
-
 
 
 

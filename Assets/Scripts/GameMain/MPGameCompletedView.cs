@@ -73,6 +73,13 @@ public class MPGameCompletedView : AWindow
     private Image m_picture;
 
     /// <summary>
+    /// 普通主关卡和自定义关卡的完成像素网格。
+    /// 大图模式仍使用 Picture 图片节点。
+    /// </summary>
+    [TransformPath("View/PictureNode/Grid")]
+    private GridLayoutGroup m_pictureGrid;
+
+    /// <summary>
     /// 完成图片的 RectTransform。大图模式会单独控制它的位置和缩放。
     /// </summary>
     private RectTransform m_pictureTransform;
@@ -221,14 +228,9 @@ public class MPGameCompletedView : AWindow
     private Sequence m_enterSequence;
 
     /// <summary>
-    /// 自定义关卡完成图运行时创建的贴图。
+    /// 当前完成页动态创建的像素格，页面刷新或销毁时统一清理。
     /// </summary>
-    private Texture2D m_runtimePictureTexture;
-
-    /// <summary>
-    /// 自定义关卡完成图运行时创建的精灵。
-    /// </summary>
-    private Sprite m_runtimePictureSprite;
+    private readonly List<GameObject> m_runtimePixelCells = new List<GameObject>();
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
@@ -515,19 +517,22 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void RefreshPicture()
     {
-        if (m_picture == null)
-            return;
+        ClearPixelGrid();
 
-        ClearRuntimePictureAsset();
-        if (m_isCustomLevel)
+        if (m_picture != null)
         {
-            RefreshCustomLevelPicture();
-            return;
+            m_picture.sprite = null;
+            m_picture.gameObject.SetActive(m_isLargeImageLevel);
+        }
+
+        if (m_pictureGrid != null)
+        {
+            m_pictureGrid.gameObject.SetActive(!m_isLargeImageLevel);
         }
 
         if (m_isLargeImageLevel)
         {
-            if (m_largeImageBlockInfo == null)
+            if (m_picture == null || m_largeImageBlockInfo == null)
                 return;
 
             m_picture.sprite = MPLoad.Load<Sprite>("icon_" + m_largeImageBlockInfo.ID, this);
@@ -535,29 +540,202 @@ public class MPGameCompletedView : AWindow
             return;
         }
 
-        if (m_blockInfo == null)
+        if (m_pictureGrid == null)
             return;
 
-        m_picture.sprite = MPLoad.Load<Sprite>("icon_" + m_blockInfo.ID, this);
+        if (m_isCustomLevel)
+        {
+            RefreshCustomLevelGrid();
+        }
+        else
+        {
+            RefreshMainLevelGrid();
+        }
     }
 
     /// <summary>
-    /// 读取自定义关卡本地缓存图片，并生成完成页使用的运行时Sprite。
+    /// 根据自定义关卡配置直接生成完成像素格，不再依赖本地缓存图片。
     /// </summary>
-    private void RefreshCustomLevelPicture()
+    private void RefreshCustomLevelGrid()
     {
-        m_picture.sprite = null;
-        m_runtimePictureTexture = MPUser.instance.LoadCustomLevelImageTexture(m_customLevelInfo);
-        if (m_runtimePictureTexture == null)
+        if (m_customLevelInfo == null || m_customLevelInfo.Size <= 0)
             return;
 
-        m_runtimePictureSprite = Sprite.Create(
-            m_runtimePictureTexture,
-            new Rect(0, 0, m_runtimePictureTexture.width, m_runtimePictureTexture.height),
-            new Vector2(0.5f, 0.5f),
-            100f);
-        m_picture.sprite = m_runtimePictureSprite;
-        m_picture.preserveAspect = true;
+        int size = m_customLevelInfo.Size;
+        int cellCount = size * size;
+        Color[] pixelColors = new Color[cellCount];
+        for (int i = 0; i < pixelColors.Length; i++)
+        {
+            pixelColors[i] = Color.white;
+        }
+
+        List<MPCustomLevelColorInfo> colors = m_customLevelInfo.Colors;
+        if (colors != null)
+        {
+            for (int i = 0; i < colors.Count; i++)
+            {
+                MPCustomLevelColorInfo colorInfo = colors[i];
+                if (colorInfo == null || colorInfo.Index < 0 || colorInfo.Index >= cellCount)
+                    continue;
+
+                if (!string.IsNullOrEmpty(colorInfo.Color) &&
+                    ColorUtility.TryParseHtmlString(colorInfo.Color, out Color color))
+                {
+                    pixelColors[colorInfo.Index] = NormalizePixelColor(color);
+                }
+            }
+        }
+
+        CreatePixelGrid(size, pixelColors);
+    }
+
+    /// <summary>
+    /// 读取主关卡原始像素纹理并按游戏网格尺寸采样生成Image格子。
+    /// </summary>
+    private void RefreshMainLevelGrid()
+    {
+        if (m_blockInfo == null)
+            return;
+
+        Texture2D sourceTexture = MPLoad.Load<Texture2D>(m_blockInfo.ID, this);
+        if (sourceTexture == null)
+            return;
+
+        int size = Mathf.Max(1, sourceTexture.height);
+        Texture2D readableTexture = CreateReadableTexture(sourceTexture);
+        if (readableTexture == null)
+            return;
+
+        try
+        {
+            Color[] pixelColors = new Color[size * size];
+            for (int row = 0; row < size; row++)
+            {
+                for (int column = 0; column < size; column++)
+                {
+                    int index = row * size + column;
+                    int x = Mathf.Clamp(column * readableTexture.width / size, 0, readableTexture.width - 1);
+                    int y = Mathf.Clamp(readableTexture.height - 1 - row * readableTexture.height / size, 0, readableTexture.height - 1);
+                    pixelColors[index] = NormalizePixelColor(readableTexture.GetPixel(x, y));
+                }
+            }
+
+            CreatePixelGrid(size, pixelColors);
+        }
+        finally
+        {
+            Destroy(readableTexture);
+        }
+    }
+
+    /// <summary>
+    /// 创建纯UGUI Image像素网格。
+    /// </summary>
+    private void CreatePixelGrid(int size, IReadOnlyList<Color> pixelColors)
+    {
+        if (m_pictureGrid == null || size <= 0 || pixelColors == null)
+            return;
+
+        RectTransform gridTransform = m_pictureGrid.transform as RectTransform;
+        if (gridTransform == null)
+            return;
+
+        float gridWidth = gridTransform.rect.width > 0f ? gridTransform.rect.width : gridTransform.sizeDelta.x;
+        float gridHeight = gridTransform.rect.height > 0f ? gridTransform.rect.height : gridTransform.sizeDelta.y;
+        float cellSize = Mathf.Min(gridWidth, gridHeight) / size;
+
+        m_pictureGrid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        m_pictureGrid.startAxis = GridLayoutGroup.Axis.Horizontal;
+        m_pictureGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        m_pictureGrid.constraintCount = size;
+        m_pictureGrid.spacing = Vector2.zero;
+        m_pictureGrid.cellSize = Vector2.one * cellSize;
+
+        int cellCount = Mathf.Min(size * size, pixelColors.Count);
+        for (int i = 0; i < cellCount; i++)
+        {
+            GameObject pixelObject = new GameObject(
+                $"Pixel_{i}",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            pixelObject.layer = m_pictureGrid.gameObject.layer;
+            pixelObject.transform.SetParent(m_pictureGrid.transform, false);
+
+            Image pixelImage = pixelObject.GetComponent<Image>();
+            pixelImage.color = pixelColors[i];
+            pixelImage.raycastTarget = false;
+            m_runtimePixelCells.Add(pixelObject);
+        }
+    }
+
+    /// <summary>
+    /// 将透明像素与白色背景合成，保持与主游戏结算动画一致的最终颜色。
+    /// </summary>
+    private static Color NormalizePixelColor(Color color)
+    {
+        Color result = Color.Lerp(Color.white, new Color(color.r, color.g, color.b, 1f), color.a);
+        result.a = 1f;
+        return result;
+    }
+
+    /// <summary>
+    /// 复制不可读纹理，避免为了结算页修改资源导入设置。
+    /// </summary>
+    private static Texture2D CreateReadableTexture(Texture2D source)
+    {
+        if (source == null)
+            return null;
+
+        RenderTexture previousActive = RenderTexture.active;
+        RenderTexture renderTexture = RenderTexture.GetTemporary(
+            source.width,
+            source.height,
+            0,
+            RenderTextureFormat.ARGB32);
+        Texture2D readableTexture = null;
+
+        try
+        {
+            Graphics.Blit(source, renderTexture);
+            RenderTexture.active = renderTexture;
+            readableTexture = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
+            readableTexture.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
+            readableTexture.Apply(false, false);
+            return readableTexture;
+        }
+        catch
+        {
+            if (readableTexture != null)
+            {
+                Destroy(readableTexture);
+            }
+
+            throw;
+        }
+        finally
+        {
+            RenderTexture.active = previousActive;
+            RenderTexture.ReleaseTemporary(renderTexture);
+        }
+    }
+
+    /// <summary>
+    /// 清理当前页面生成的像素格。
+    /// </summary>
+    private void ClearPixelGrid()
+    {
+        for (int i = 0; i < m_runtimePixelCells.Count; i++)
+        {
+            GameObject pixelCell = m_runtimePixelCells[i];
+            if (pixelCell == null)
+                continue;
+
+            pixelCell.SetActive(false);
+            Destroy(pixelCell);
+        }
+
+        m_runtimePixelCells.Clear();
     }
 
     /// <summary>
@@ -880,31 +1058,8 @@ public class MPGameCompletedView : AWindow
     private void OnDestroy()
     {
         m_enterSequence?.Kill();
-        ClearRuntimePictureAsset();
+        ClearPixelGrid();
         MPLoad.ReleaseAll(this);
-    }
-
-    /// <summary>
-    /// 释放自定义关卡完成页运行时创建的图片资源。
-    /// </summary>
-    private void ClearRuntimePictureAsset()
-    {
-        if (m_picture != null && m_picture.sprite == m_runtimePictureSprite)
-        {
-            m_picture.sprite = null;
-        }
-
-        if (m_runtimePictureSprite != null)
-        {
-            Destroy(m_runtimePictureSprite);
-            m_runtimePictureSprite = null;
-        }
-
-        if (m_runtimePictureTexture != null)
-        {
-            Destroy(m_runtimePictureTexture);
-            m_runtimePictureTexture = null;
-        }
     }
 }
 

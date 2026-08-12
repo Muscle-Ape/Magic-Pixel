@@ -2,6 +2,8 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Unity.Services.CloudCode.Apis;
 using Unity.Services.CloudCode.Core;
 using Unity.Services.CloudCode.Shared;
@@ -235,23 +237,35 @@ public class CustomLevelPublishModule
     {
         EnsureSignedIn(context);
 
-        return await UpdateRecordWithRetryAsync(context, gameApiClient, publicLevelId, record =>
+        var existingRecord = await GetRecordAsync(context, gameApiClient, publicLevelId);
+        if (existingRecord == null)
+        {
+            // 支持撤销请求重试：记录已经删除时，继续清理目录并按成功返回。
+            await RemoveCatalogAsync(context, gameApiClient, publicLevelId);
+            return CreateRevokeResult(publicLevelId);
+        }
+
+        if (existingRecord.ownerPlayerId != context.PlayerId)
+        {
+            throw new Exception("ONLY_OWNER_CAN_REVOKE");
+        }
+
+        var result = await UpdateRecordWithRetryAsync(context, gameApiClient, publicLevelId, record =>
         {
             if (record.ownerPlayerId != context.PlayerId)
             {
                 throw new Exception("ONLY_OWNER_CAN_REVOKE");
             }
 
+            // 先标记撤销，确保后续目录或删除操作短暂失败时，该关卡也不会继续公开展示。
             record.status = StatusRevoked;
             record.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
-            return new CustomLevelRevokeResult
-            {
-                success = true,
-                publicLevelId = record.publicLevelId,
-                status = record.status,
-                message = "Revoked"
-            };
+            return CreateRevokeResult(record.publicLevelId);
         });
+
+        await RemoveCatalogAsync(context, gameApiClient, publicLevelId);
+        await DeleteRecordAsync(context, gameApiClient, publicLevelId);
+        return result;
     }
 
     /// <summary>
@@ -295,7 +309,7 @@ public class CustomLevelPublishModule
         for (var i = 0; i < RetryCount; i++)
         {
             var item = await GetPrivateCustomItemAsync(context, gameApiClient, CatalogKey);
-            var catalog = DeserializeItemValue<CustomLevelCatalog>(item?.Value) ?? new CustomLevelCatalog();
+            var catalog = DeserializeCatalog(item?.Value);
             if (!catalog.publicLevelIds.Contains(publicLevelId))
             {
                 catalog.publicLevelIds.Insert(0, publicLevelId);
@@ -316,12 +330,47 @@ public class CustomLevelPublishModule
     }
 
     /// <summary>
+    /// 将关卡ID从公开目录移除。
+    /// </summary>
+    private async Task RemoveCatalogAsync(IExecutionContext context, IGameApiClient gameApiClient, string publicLevelId)
+    {
+        for (var i = 0; i < RetryCount; i++)
+        {
+            var item = await GetPrivateCustomItemAsync(context, gameApiClient, CatalogKey);
+            if (item == null)
+            {
+                return;
+            }
+
+            var catalog = DeserializeCatalog(item.Value);
+            var removedCount = catalog.publicLevelIds.RemoveAll(id =>
+                string.Equals(id, publicLevelId, StringComparison.Ordinal));
+            if (removedCount == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await SetPrivateCustomItemAsync(context, gameApiClient, CatalogKey, catalog, item.WriteLock);
+                return;
+            }
+            catch (ApiException exception) when (exception.Response.StatusCode == HttpStatusCode.Conflict && i < RetryCount - 1)
+            {
+                m_Logger.LogWarning("Catalog remove conflict, retrying. PublicLevelId={PublicLevelId}", publicLevelId);
+            }
+        }
+
+        throw new Exception("CATALOG_REMOVE_CONFLICT_RETRY_EXHAUSTED");
+    }
+
+    /// <summary>
     /// 获取公开目录。
     /// </summary>
     private async Task<CustomLevelCatalog> GetCatalogAsync(IExecutionContext context, IGameApiClient gameApiClient)
     {
         var item = await GetPrivateCustomItemAsync(context, gameApiClient, CatalogKey);
-        return DeserializeItemValue<CustomLevelCatalog>(item?.Value) ?? new CustomLevelCatalog();
+        return DeserializeCatalog(item?.Value);
     }
 
     /// <summary>
@@ -339,6 +388,50 @@ public class CustomLevelPublishModule
     private Task SetRecordAsync(IExecutionContext context, IGameApiClient gameApiClient, CustomLevelPublicRecord record, string? writeLock)
     {
         return SetPrivateCustomItemAsync(context, gameApiClient, RecordKey(record.publicLevelId), record, writeLock);
+    }
+
+    /// <summary>
+    /// 删除已经撤销的公开关卡记录，重复调用时保持幂等。
+    /// </summary>
+    private async Task DeleteRecordAsync(IExecutionContext context, IGameApiClient gameApiClient, string publicLevelId)
+    {
+        var key = RecordKey(publicLevelId);
+        for (var i = 0; i < RetryCount; i++)
+        {
+            var item = await GetPrivateCustomItemAsync(context, gameApiClient, key);
+            if (item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await gameApiClient.CloudSaveData.DeletePrivateCustomItemAsync(
+                    context,
+                    context.ServiceToken,
+                    context.ProjectId!,
+                    PublicCustomId,
+                    key,
+                    item.WriteLock,
+                    CancellationToken.None);
+                return;
+            }
+            catch (ApiException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return;
+            }
+            catch (ApiException exception) when (exception.Response.StatusCode == HttpStatusCode.Conflict && i < RetryCount - 1)
+            {
+                m_Logger.LogWarning("Record delete conflict, retrying. PublicLevelId={PublicLevelId}", publicLevelId);
+            }
+            catch (ApiException exception)
+            {
+                LogCloudSaveApiException(context, "DeletePrivateCustomItem", key, exception);
+                throw;
+            }
+        }
+
+        throw new Exception("RECORD_DELETE_CONFLICT_RETRY_EXHAUSTED");
     }
 
     /// <summary>
@@ -464,7 +557,9 @@ public class CustomLevelPublishModule
     }
 
     /// <summary>
-    /// 把 Cloud Save 返回的 object/JsonElement 转回目标 DTO。
+    /// 把 Cloud Save 返回的 object/JToken/JsonElement 转回目标 DTO。
+    /// Cloud Code APIs 使用 Newtonsoft.Json，不能直接用 System.Text.Json 再序列化 JToken，
+    /// 否则 JValue 会被序列化为对象并导致 List&lt;string&gt; 读取失败。
     /// </summary>
     private static T? DeserializeItemValue<T>(object? value)
     {
@@ -478,10 +573,43 @@ public class CustomLevelPublishModule
             return typed;
         }
 
-        return JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value), new JsonSerializerOptions
+        if (value is JToken token)
         {
-            PropertyNameCaseInsensitive = true
-        });
+            return token.ToObject<T>();
+        }
+
+        if (value is JsonElement element)
+        {
+            return JsonConvert.DeserializeObject<T>(element.GetRawText());
+        }
+
+        if (value is string json)
+        {
+            return string.IsNullOrWhiteSpace(json) ? default : JsonConvert.DeserializeObject<T>(json);
+        }
+
+        return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(value));
+    }
+
+    private static CustomLevelCatalog DeserializeCatalog(object? value)
+    {
+        var catalog = DeserializeItemValue<CustomLevelCatalog>(value) ?? new CustomLevelCatalog();
+        catalog.publicLevelIds = (catalog.publicLevelIds ?? new List<string>())
+            .Where(publicLevelId => !string.IsNullOrWhiteSpace(publicLevelId))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        return catalog;
+    }
+
+    private static CustomLevelRevokeResult CreateRevokeResult(string publicLevelId)
+    {
+        return new CustomLevelRevokeResult
+        {
+            success = true,
+            publicLevelId = publicLevelId,
+            status = StatusRevoked,
+            message = "Revoked"
+        };
     }
 
     /// <summary>

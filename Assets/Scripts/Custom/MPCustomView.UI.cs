@@ -351,7 +351,7 @@ public partial class MPCustomView
         }
 
         string id = MPUser.instance.CreateCustomLevelImageID();
-        if (!SaveCustomLevelImages(id))
+        if (!SaveCustomLevelImage(id))
         {
             return null;
         }
@@ -364,7 +364,7 @@ public partial class MPCustomView
             colors);
 
         MPUser.instance.SaveCustomLevel(levelInfo);
-        UploadCustomLevelImages(id);
+        UploadCustomLevelImage(id);
         m_refreshAction?.Invoke();
         PlaySaveAnimation(id);
         ClearCurrentCustomGrid(cellCount);
@@ -391,29 +391,25 @@ public partial class MPCustomView
 
 
     /// <summary>
-    /// 将当前自定义网格保存为像素图和关卡列表图标。
+    /// 将当前自定义网格保存为最小尺寸的像素数据图。
     /// </summary>
-    private bool SaveCustomLevelImages(string id)
+    private bool SaveCustomLevelImage(string id)
     {
         if (string.IsNullOrEmpty(id))
             return false;
 
         Texture2D levelTexture = null;
-        Texture2D iconTexture = null;
         try
         {
             MPUser.instance.EnsureCustomLevelImageDirectory();
 
             levelTexture = CreateCustomLevelTexture();
-            iconTexture = CreateCustomLevelIconTexture(levelTexture);
-
             File.WriteAllBytes(MPUser.instance.GetCustomLevelImagePath(id), levelTexture.EncodeToPNG());
-            File.WriteAllBytes(MPUser.instance.GetCustomLevelIconImagePath(id), iconTexture.EncodeToPNG());
             return true;
         }
         catch (Exception exception)
         {
-            Debug.LogError($"Save custom level images failed: {exception}");
+            Debug.LogError($"Save custom level image failed: {exception}");
             return false;
         }
         finally
@@ -422,11 +418,6 @@ public partial class MPCustomView
             {
                 UnityEngine.Object.Destroy(levelTexture);
             }
-
-            if (iconTexture != null)
-            {
-                UnityEngine.Object.Destroy(iconTexture);
-            }
         }
     }
 
@@ -434,28 +425,24 @@ public partial class MPCustomView
     /// 异步上传自定义关卡图片到 Cloud Save Files。
     /// 上传失败不影响本地保存和结构化云快照同步。
     /// </summary>
-    private void UploadCustomLevelImages(string id)
+    private void UploadCustomLevelImage(string id)
     {
         if (string.IsNullOrEmpty(id) || !MPLoginManager.Instance.IsLoggedIn)
         {
             return;
         }
 
-        _ = UploadCustomLevelImagesAsync(id);
+        _ = UploadCustomLevelImageAsync(id);
     }
 
     /// <summary>
-    /// 上传自定义关卡完整图片和列表图标。
+    /// 仅上传自定义关卡的最小尺寸像素数据图。
     /// </summary>
-    private async Task UploadCustomLevelImagesAsync(string id)
+    private async Task UploadCustomLevelImageAsync(string id)
     {
         await UploadCustomLevelFileAsync(
             MPCloudSaveConstants.CUSTOM_LEVEL_IMAGE_FILE_PREFIX + id,
             MPUser.instance.GetCustomLevelImagePath(id));
-
-        await UploadCustomLevelFileAsync(
-            MPCloudSaveConstants.CUSTOM_LEVEL_ICON_FILE_PREFIX + id,
-            MPUser.instance.GetCustomLevelIconImagePath(id));
     }
 
     /// <summary>
@@ -501,32 +488,6 @@ public partial class MPCustomView
         texture.Apply(false, false);
         return texture;
     }
-
-
-    /// <summary>
-    /// 根据像素颜色图片创建200x200的关卡列表图标。
-    /// </summary>
-    private Texture2D CreateCustomLevelIconTexture(Texture2D sourceTexture)
-    {
-        const int iconSize = 200;
-        Texture2D iconTexture = new Texture2D(iconSize, iconSize, TextureFormat.RGBA32, false);
-        iconTexture.filterMode = FilterMode.Point;
-        iconTexture.wrapMode = TextureWrapMode.Clamp;
-
-        for (int y = 0; y < iconSize; y++)
-        {
-            int sourceY = y * sourceTexture.height / iconSize;
-            for (int x = 0; x < iconSize; x++)
-            {
-                int sourceX = x * sourceTexture.width / iconSize;
-                iconTexture.SetPixel(x, y, sourceTexture.GetPixel(sourceX, sourceY));
-            }
-        }
-
-        iconTexture.Apply(false, false);
-        return iconTexture;
-    }
-
 
     /// <summary>
     /// 获取自定义格子在保存图片中使用的像素颜色。
@@ -594,7 +555,7 @@ public partial class MPCustomView
     {
         ClearSaveAnimationAsset();
 
-        string path = MPUser.instance.GetCustomLevelIconImagePath(id);
+        string path = MPUser.instance.GetCustomLevelImagePath(id);
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
             return false;
 
@@ -697,8 +658,6 @@ public partial class MPCustomView
         MPLoad.ReleaseAll(this);
     }
 }
-
-
 
 
 

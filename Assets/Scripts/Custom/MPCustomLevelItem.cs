@@ -1,6 +1,5 @@
 ﻿using HQ.UIManager;
 using System;
-using System.IO;
 using System.Threading;
 using TMPro;
 using UnityEngine;
@@ -59,14 +58,14 @@ public class MPCustomLevelItem : MonoBehaviour
     private Action m_refresh;
 
     /// <summary>
-    /// 当前列表图标使用的运行时贴图。
+    /// 当前列表像素预览使用的运行时贴图。
     /// </summary>
-    private Texture2D m_iconTexture;
+    private Texture2D m_pixelTexture;
 
     /// <summary>
-    /// 当前列表图标使用的运行时精灵。
+    /// 当前列表像素预览使用的运行时精灵。
     /// </summary>
-    private Sprite m_iconSprite;
+    private Sprite m_pixelSprite;
 
     /// <summary>
     /// 上传或撤销操作的取消源，列表项销毁时会取消异步请求后的 UI 回写。
@@ -99,6 +98,8 @@ public class MPCustomLevelItem : MonoBehaviour
 
         MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
         MPCustomLevelPublishManager.Instance.PublishStateChanged += OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged += OnPublishOperationChanged;
     }
 
 
@@ -112,59 +113,54 @@ public class MPCustomLevelItem : MonoBehaviour
 
         m_nameText.text = string.IsNullOrEmpty(m_data.Title) ? MPUser.instance.GetDefaultCustomLevelTitle() : m_data.Title;
         m_sizeText.text = $"{m_data.Size}x{m_data.Size}";
-        RefreshCustomLevelIcon();
+        RefreshCustomLevelPixel();
         RefreshUploadButtonState();
     }
 
 
     /// <summary>
-    /// 刷新自定义关卡列表项的图标图片。
+    /// 使用最小尺寸像素数据图刷新自定义关卡列表预览。
     /// </summary>
-    private void RefreshCustomLevelIcon()
+    private void RefreshCustomLevelPixel()
     {
-        ClearCustomLevelIconAsset();
+        ClearCustomLevelPixelAsset();
 
         if (m_data == null || m_pixel == null)
             return;
 
-        string path = MPUser.instance.GetCustomLevelIconImagePath(m_data.ID);
-        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        m_pixelTexture = MPUser.instance.LoadCustomLevelImageTexture(m_data);
+        if (m_pixelTexture == null)
         {
             m_pixel.sprite = null;
             return;
         }
 
-        byte[] bytes = File.ReadAllBytes(path);
-        m_iconTexture = new Texture2D(200, 200, TextureFormat.RGBA32, false);
-        if (!m_iconTexture.LoadImage(bytes))
-        {
-            ClearCustomLevelIconAsset();
-            m_pixel.sprite = null;
-            return;
-        }
-
-        m_iconTexture.filterMode = FilterMode.Point;
-        m_iconTexture.wrapMode = TextureWrapMode.Clamp;
-        m_iconSprite = Sprite.Create(m_iconTexture, new Rect(0, 0, m_iconTexture.width, m_iconTexture.height), new Vector2(0.5f, 0.5f), 100f);
-        m_pixel.sprite = m_iconSprite;
+        m_pixelTexture.filterMode = FilterMode.Point;
+        m_pixelTexture.wrapMode = TextureWrapMode.Clamp;
+        m_pixelSprite = Sprite.Create(
+            m_pixelTexture,
+            new Rect(0, 0, m_pixelTexture.width, m_pixelTexture.height),
+            new Vector2(0.5f, 0.5f),
+            100f);
+        m_pixel.sprite = m_pixelSprite;
     }
 
 
     /// <summary>
-    /// 清理列表项运行时创建的图标资源。
+    /// 清理列表项运行时创建的像素预览资源。
     /// </summary>
-    private void ClearCustomLevelIconAsset()
+    private void ClearCustomLevelPixelAsset()
     {
-        if (m_iconSprite != null)
+        if (m_pixelSprite != null)
         {
-            Destroy(m_iconSprite);
-            m_iconSprite = null;
+            Destroy(m_pixelSprite);
+            m_pixelSprite = null;
         }
 
-        if (m_iconTexture != null)
+        if (m_pixelTexture != null)
         {
-            Destroy(m_iconTexture);
-            m_iconTexture = null;
+            Destroy(m_pixelTexture);
+            m_pixelTexture = null;
         }
     }
 
@@ -190,8 +186,9 @@ public class MPCustomLevelItem : MonoBehaviour
         }
 
         MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
         CancelPublishOperation();
-        ClearCustomLevelIconAsset();
+        ClearCustomLevelPixelAsset();
     }
 
     /// <summary>
@@ -265,12 +262,67 @@ public class MPCustomLevelItem : MonoBehaviour
     /// <summary>
     /// 删除当前自定义关卡并刷新列表。
     /// </summary>
-    private void OnDeleteClick()
+    private async void OnDeleteClick()
     {
-        if (m_data == null)
+        if (m_data == null || m_isPublishActionRunning)
+        {
             return;
+        }
 
-        MPUser.instance.DeleteCustomLevel(m_data.ID);
+        MPCustomLevelInfo levelInfo = m_data;
+        m_isPublishActionRunning = true;
+        RefreshUploadButtonState();
+        CancelPublishOperation();
+        m_publishCancellation = new CancellationTokenSource();
+        CancellationTokenSource cancellation = m_publishCancellation;
+        bool canDeleteLocalLevel = false;
+
+        try
+        {
+            MPCustomLevelPublishLocalState state = MPCustomLevelPublishManager.Instance.GetLocalState(levelInfo.ID);
+            if (state != null && state.IsPublished && !string.IsNullOrEmpty(state.publicLevelId))
+            {
+                MPCustomLevelRevokeResult revokeResult = await MPCustomLevelPublishManager.Instance.RevokeLocalLevelAsync(
+                    levelInfo,
+                    cancellation.Token);
+                if (revokeResult == null || !revokeResult.success)
+                {
+                    Debug.LogWarning($"[MPCustomLevelItem] 删除前撤销公开关卡失败，已保留本地关卡：{revokeResult?.message}");
+                    return;
+                }
+            }
+
+            canDeleteLocalLevel = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // 列表项销毁时终止后续本地删除。
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"[MPCustomLevelItem] 删除前撤销公开关卡异常，已保留本地关卡：{MPCustomLevelPublishManager.FormatExceptionForLog(exception)}");
+        }
+        finally
+        {
+            if (m_publishCancellation == cancellation)
+            {
+                m_publishCancellation = null;
+                cancellation.Dispose();
+            }
+
+            if (this != null)
+            {
+                m_isPublishActionRunning = false;
+                RefreshUploadButtonState();
+            }
+        }
+
+        if (!canDeleteLocalLevel || this == null)
+        {
+            return;
+        }
+
+        MPUser.instance.DeleteCustomLevel(levelInfo.ID);
         m_refresh?.Invoke();
     }
 
@@ -303,6 +355,19 @@ public class MPCustomLevelItem : MonoBehaviour
     }
 
     /// <summary>
+    /// 跨页面上传任务状态变化时刷新对应关卡按钮。
+    /// </summary>
+    private void OnPublishOperationChanged(string sourceLocalLevelId)
+    {
+        if (m_data == null || sourceLocalLevelId != m_data.ID)
+        {
+            return;
+        }
+
+        RefreshUploadButtonState();
+    }
+
+    /// <summary>
     /// 刷新上传按钮的交互和文本状态。
     /// </summary>
     private void RefreshUploadButtonState()
@@ -313,14 +378,20 @@ public class MPCustomLevelItem : MonoBehaviour
         }
 
         bool canUseCloudPublish = MPLoginManager.Instance != null && MPLoginManager.Instance.IsLoggedIn;
-        m_uploadBtn.interactable = !m_isPublishActionRunning && canUseCloudPublish;
+        bool isPublishPending = m_data != null && MPCustomLevelPublishManager.Instance.IsPublishPending(m_data.ID);
+        bool isBusy = m_isPublishActionRunning || isPublishPending;
+        m_uploadBtn.interactable = !isBusy && canUseCloudPublish;
+        if (m_deleteBtn != null)
+        {
+            m_deleteBtn.interactable = !isBusy;
+        }
 
         if (m_uploadText == null)
         {
             return;
         }
 
-        if (m_isPublishActionRunning)
+        if (isBusy)
         {
             m_uploadText.text = "...";
             return;
@@ -345,8 +416,4 @@ public class MPCustomLevelItem : MonoBehaviour
         m_publishCancellation = null;
     }
 }
-
-
-
-
 

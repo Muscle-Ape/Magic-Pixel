@@ -16,8 +16,22 @@ public static class MPCustomLevelCloudCodeSetupTools
 {
     private const string DotnetPathEditorPrefsKey = "DotnetPath";
     private const string DefaultWindowsDotnetPath = @"C:\Program Files\dotnet\dotnet.exe";
+    private const string DefaultMacDotnetPath = "/usr/local/bin/dotnet";
+    private const string DefaultMacShareDotnetPath = "/usr/local/share/dotnet/dotnet";
+    private const string DefaultHomebrewDotnetPath = "/opt/homebrew/bin/dotnet";
+    private const string DefaultLinuxDotnetPath = "/usr/bin/dotnet";
     private const string ModuleReferencePath = "Assets/CloudCode/MagicPixelCustomLevelPublish.ccmr";
     private const string SolutionRelativePath = "CloudCodeModules/MagicPixelCustomLevelPublish/MagicPixelCustomLevelPublish.sln";
+
+    /// <summary>
+    /// Unity started from the macOS GUI may not inherit the shell PATH. Keep the
+    /// Cloud Code package preference on an absolute SDK executable path.
+    /// </summary>
+    [InitializeOnLoadMethod]
+    private static void ScheduleDotnetPathValidation()
+    {
+        EditorApplication.delayCall += EnsureDotnetPathConfigured;
+    }
 
     /// <summary>
     /// Writes the .NET path used by Unity's Cloud Code package.
@@ -79,14 +93,29 @@ public static class MPCustomLevelCloudCodeSetupTools
         EditorApplication.delayCall += DeployCustomLevelModuleAndExitDelayed;
     }
 
+    private static void EnsureDotnetPathConfigured()
+    {
+        try
+        {
+            string configuredPath = EditorPrefs.GetString(DotnetPathEditorPrefsKey, string.Empty);
+            string resolvedPath = ResolveDotnetPath(configuredPath);
+            if (string.Equals(configuredPath, resolvedPath, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            EditorPrefs.SetString(DotnetPathEditorPrefsKey, resolvedPath);
+            Debug.Log($"[MagicPixel] Cloud Code .NET path automatically fixed: {resolvedPath}");
+        }
+        catch (FileNotFoundException exception)
+        {
+            Debug.LogWarning($"[MagicPixel] {exception.Message}");
+        }
+    }
+
     private static void SetDotnetPath(string dotnetPath)
     {
-        dotnetPath = string.IsNullOrWhiteSpace(dotnetPath) ? ResolveDefaultDotnetPath() : dotnetPath;
-
-        if (!string.Equals(dotnetPath, "dotnet", StringComparison.OrdinalIgnoreCase) && !File.Exists(dotnetPath))
-        {
-            throw new FileNotFoundException("The configured .NET SDK executable was not found.", dotnetPath);
-        }
+        dotnetPath = ResolveDotnetPath(dotnetPath);
 
         EditorPrefs.SetString(DotnetPathEditorPrefsKey, dotnetPath);
         Debug.Log($"[MagicPixel] Cloud Code .NET path set to: {dotnetPath}");
@@ -94,7 +123,66 @@ public static class MPCustomLevelCloudCodeSetupTools
 
     private static string ResolveDefaultDotnetPath()
     {
-        return File.Exists(DefaultWindowsDotnetPath) ? DefaultWindowsDotnetPath : "dotnet";
+        return ResolveDotnetPath(EditorPrefs.GetString(DotnetPathEditorPrefsKey, string.Empty));
+    }
+
+    private static string ResolveDotnetPath(string configuredPath)
+    {
+        foreach (string candidate in GetDotnetPathCandidates(configuredPath))
+        {
+            if (string.IsNullOrWhiteSpace(candidate) || !File.Exists(candidate))
+            {
+                continue;
+            }
+
+            return Path.GetFullPath(candidate);
+        }
+
+        throw new FileNotFoundException(
+            "Failed to locate a .NET SDK executable. Install the .NET SDK, or configure its absolute path in Preferences > Cloud Code Modules > .NET development environment.");
+    }
+
+    private static IEnumerable<string> GetDotnetPathCandidates(string configuredPath)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredPath) &&
+            !string.Equals(configuredPath, "dotnet", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(configuredPath, "dotnet.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return configuredPath.Trim().Trim('"');
+        }
+
+        string executableName = Application.platform == RuntimePlatform.WindowsEditor ? "dotnet.exe" : "dotnet";
+        string dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (!string.IsNullOrWhiteSpace(dotnetRoot))
+        {
+            yield return Path.Combine(dotnetRoot.Trim().Trim('"'), executableName);
+        }
+
+#if UNITY_EDITOR_WIN
+        yield return DefaultWindowsDotnetPath;
+#elif UNITY_EDITOR_OSX
+        yield return DefaultMacDotnetPath;
+        yield return DefaultHomebrewDotnetPath;
+        yield return DefaultMacShareDotnetPath;
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet", executableName);
+#elif UNITY_EDITOR_LINUX
+        yield return DefaultLinuxDotnetPath;
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet", executableName);
+#endif
+
+        string pathValue = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(pathValue))
+        {
+            yield break;
+        }
+
+        foreach (string directory in pathValue.Split(Path.PathSeparator))
+        {
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                yield return Path.Combine(directory.Trim().Trim('"'), executableName);
+            }
+        }
     }
 
     private static string GetCommandLineValue(string key, string defaultValue)
@@ -114,7 +202,7 @@ public static class MPCustomLevelCloudCodeSetupTools
     private static void RunDotnetBuild()
     {
         string solutionPath = Path.GetFullPath(Path.Combine(GetProjectRoot(), SolutionRelativePath));
-        string dotnetPath = EditorPrefs.GetString(DotnetPathEditorPrefsKey, ResolveDefaultDotnetPath());
+        string dotnetPath = ResolveDefaultDotnetPath();
 
         if (!File.Exists(solutionPath))
         {

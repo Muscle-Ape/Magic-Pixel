@@ -30,6 +30,17 @@ public class MPCustomLevelPublishManager
     private readonly IMPCustomLevelPublishApi m_publishApi;
 
     /// <summary>
+    /// 当前正在执行的上传任务。按本地关卡ID去重，避免页面关闭并重新打开后重复提交。
+    /// </summary>
+    private readonly Dictionary<string, Task<MPCustomLevelPublishResult>> m_publishOperations =
+        new Dictionary<string, Task<MPCustomLevelPublishResult>>();
+
+    /// <summary>
+    /// 上传任务字典同步锁。
+    /// </summary>
+    private readonly object m_publishOperationsLock = new object();
+
+    /// <summary>
     /// 当前已加载缓存所属的 PlayerId。
     /// </summary>
     private string m_loadedPlayerId;
@@ -66,18 +77,92 @@ public class MPCustomLevelPublishManager
     public event Action<MPCustomLevelPublishLocalState> PublishStateChanged;
 
     /// <summary>
+    /// 某个本地关卡的上传任务开始或结束时触发，用于跨页面同步按钮状态。
+    /// </summary>
+    public event Action<string> PublishOperationChanged;
+
+    /// <summary>
     /// 将本地自定义关卡发布到公开云端目录。
     /// </summary>
-    public async Task<MPCustomLevelPublishResult> PublishAsync(MPCustomLevelInfo levelInfo, CancellationToken cancellationToken = default)
+    public Task<MPCustomLevelPublishResult> PublishAsync(MPCustomLevelInfo levelInfo, CancellationToken cancellationToken = default)
     {
         EnsureLoggedIn();
+        cancellationToken.ThrowIfCancellationRequested();
         MPCustomLevelInfo normalizedLevel = NormalizeLevel(levelInfo);
         if (normalizedLevel == null)
         {
             throw new ArgumentException("自定义关卡数据为空或不合法，无法上传。", nameof(levelInfo));
         }
 
-        MPCustomLevelPublishResult result = await m_publishApi.PublishAsync(normalizedLevel, cancellationToken);
+        MPCustomLevelPublishLocalState localState = GetLocalState(normalizedLevel.ID);
+        if (localState != null && localState.IsPublished && !string.IsNullOrEmpty(localState.publicLevelId))
+        {
+            return Task.FromResult(new MPCustomLevelPublishResult
+            {
+                success = true,
+                publicLevelId = localState.publicLevelId,
+                status = localState.status,
+                message = "AlreadyPublished"
+            });
+        }
+
+        Task<MPCustomLevelPublishResult> operation;
+        bool operationCreated = false;
+        lock (m_publishOperationsLock)
+        {
+            if (!m_publishOperations.TryGetValue(normalizedLevel.ID, out operation))
+            {
+                // 请求一旦提交给 Cloud Code，就不能再使用页面生命周期 Token 中断业务结果落盘。
+                operation = PublishAndPersistAsync(normalizedLevel);
+                m_publishOperations.Add(normalizedLevel.ID, operation);
+                operationCreated = true;
+            }
+        }
+
+        if (operationCreated)
+        {
+            PublishOperationChanged?.Invoke(normalizedLevel.ID);
+        }
+
+        return operation;
+    }
+
+    /// <summary>
+    /// 判断指定本地关卡是否正在上传。
+    /// </summary>
+    public bool IsPublishPending(string sourceLocalLevelId)
+    {
+        if (string.IsNullOrEmpty(sourceLocalLevelId))
+        {
+            return false;
+        }
+
+        lock (m_publishOperationsLock)
+        {
+            return m_publishOperations.ContainsKey(sourceLocalLevelId);
+        }
+    }
+
+    /// <summary>
+    /// 执行一次不可被页面关闭中断的上传，并在服务端返回后持久化本地发布状态。
+    /// </summary>
+    private async Task<MPCustomLevelPublishResult> PublishAndPersistAsync(MPCustomLevelInfo normalizedLevel)
+    {
+        MPCustomLevelPublishResult result;
+        try
+        {
+            result = await m_publishApi.PublishAsync(normalizedLevel, CancellationToken.None);
+        }
+        finally
+        {
+            lock (m_publishOperationsLock)
+            {
+                m_publishOperations.Remove(normalizedLevel.ID);
+            }
+
+            PublishOperationChanged?.Invoke(normalizedLevel.ID);
+        }
+
         if (result != null && result.success && !string.IsNullOrEmpty(result.publicLevelId))
         {
             UpsertLocalState(
@@ -136,7 +221,10 @@ public class MPCustomLevelPublishManager
     {
         EnsureLoggedIn();
         EnsurePublicLevelId(publicLevelId);
-        MPCustomLevelRevokeResult result = await m_publishApi.RevokeAsync(publicLevelId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // 撤销属于服务端状态变更，请求发出后必须接收结果并同步本地缓存，不能被页面关闭打断。
+        MPCustomLevelRevokeResult result = await m_publishApi.RevokeAsync(publicLevelId, CancellationToken.None);
         if (result != null && result.success)
         {
             MarkLocalStateRevoked(publicLevelId, string.Empty);

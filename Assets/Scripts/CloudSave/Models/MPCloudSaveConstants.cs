@@ -30,11 +30,6 @@ public static class MPCloudSaveConstants
     public const string CUSTOM_LEVEL_IMAGE_FILE_PREFIX = "mp_custom_level_image_";
 
     /// <summary>
-    /// 自定义关卡列表图标 Cloud Save Files Key 前缀。
-    /// </summary>
-    public const string CUSTOM_LEVEL_ICON_FILE_PREFIX = "mp_custom_level_icon_";
-
-    /// <summary>
     /// Editor 中使用的 Unity Services Environment 名称。
     /// </summary>
     public const string DEVELOPMENT_ENVIRONMENT = "development";
