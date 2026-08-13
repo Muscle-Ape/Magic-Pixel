@@ -46,7 +46,18 @@ internal sealed class MPLevelEditorSaveResult
 }
 
 /// <summary>
-/// 负责关卡 JSON、BlockPixel 和 Thumb 的读取与保存。
+/// 关卡删除结果。
+/// </summary>
+internal sealed class MPLevelEditorDeleteResult
+{
+    public string ConfigAssetPath;
+    public string PixelAssetPath;
+    public string ThumbAssetPath;
+    public bool ThumbDeleted;
+}
+
+/// <summary>
+/// 负责关卡 JSON、BlockPixel 和 Thumb 的读取、保存与删除。
 /// </summary>
 internal static class MPLevelEditorStorage
 {
@@ -60,7 +71,6 @@ internal static class MPLevelEditorStorage
 
     private const string MainIdPrefix = "level_main_";
     private const string LargeImageIdPrefix = "level_largeimage_";
-    private const int MainThumbSize = 200;
     private const int LargeImageThumbSize = 600;
 
     /// <summary>
@@ -241,7 +251,7 @@ internal static class MPLevelEditorStorage
     }
 
     /// <summary>
-    /// 保存关卡图片、缩略图和 JSON 配置。
+    /// 保存关卡图片和 JSON 配置；只有大图关卡会生成缩略图。
     /// 新关卡追加到配置末尾，已有区域只原位更新对应 ID。
     /// </summary>
     public static MPLevelEditorSaveResult Save(MPLevelEditorData data)
@@ -252,7 +262,8 @@ internal static class MPLevelEditorStorage
         }
 
         ValidateDataForSave(data);
-        EnsureAssetDirectories();
+        bool shouldCreateThumb = data.Mode == MPLevelEditorMode.LargeImage;
+        EnsureAssetDirectories(shouldCreateThumb);
         List<int> blockIndexes = GetBlockIndexes(data.Blocks);
         MPLevelEditorConfigUpdate configUpdate = data.Mode == MPLevelEditorMode.Main
             ? CreateMainConfigUpdate(data, blockIndexes)
@@ -261,7 +272,9 @@ internal static class MPLevelEditorStorage
 
         string configPath = configUpdate.AssetPath;
         string pixelAssetPath = $"{BlockPixelAssetDirectory}/{data.ID}.png";
-        string thumbAssetPath = $"{ThumbAssetDirectory}/icon_{data.ID}.png";
+        string thumbAssetPath = shouldCreateThumb
+            ? $"{ThumbAssetDirectory}/icon_{data.ID}.png"
+            : string.Empty;
         WriteFilesWithRollback(
             configUpdate,
             pixelAssetPath,
@@ -271,7 +284,10 @@ internal static class MPLevelEditorStorage
 
         AssetDatabase.ImportAsset(configPath, ImportAssetOptions.ForceUpdate);
         ImportAndConfigureTexture(pixelAssetPath, true);
-        ImportAndConfigureTexture(thumbAssetPath, false);
+        if (shouldCreateThumb)
+        {
+            ImportAndConfigureTexture(thumbAssetPath, false);
+        }
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
@@ -280,6 +296,30 @@ internal static class MPLevelEditorStorage
             ConfigAssetPath = configPath,
             PixelAssetPath = pixelAssetPath,
             ThumbAssetPath = thumbAssetPath,
+        };
+    }
+
+    /// <summary>
+    /// 删除已有的关卡配置和图片资源。
+    /// BlockPixel 必须存在；只有大图关卡会清理同 ID 的 Thumb。
+    /// </summary>
+    public static MPLevelEditorDeleteResult Delete(MPLevelEditorMode mode, string id)
+    {
+        ValidateId(mode, id);
+
+        MPLevelEditorConfigUpdate configUpdate = CreateConfigDeleteUpdate(mode, id);
+        string pixelAssetPath = $"{BlockPixelAssetDirectory}/{id}.png";
+        string thumbAssetPath = mode == MPLevelEditorMode.LargeImage
+            ? $"{ThumbAssetDirectory}/icon_{id}.png"
+            : string.Empty;
+        bool thumbDeleted = DeleteFilesWithRollback(configUpdate, pixelAssetPath, thumbAssetPath);
+
+        return new MPLevelEditorDeleteResult
+        {
+            ConfigAssetPath = configUpdate.AssetPath,
+            PixelAssetPath = pixelAssetPath,
+            ThumbAssetPath = thumbAssetPath,
+            ThumbDeleted = thumbDeleted,
         };
     }
 
@@ -355,6 +395,49 @@ internal static class MPLevelEditorStorage
         return CreateConfigUpdate(LargeImageConfigAssetPath, data.ID, updatedRecord, data.IsExisting);
     }
 
+    private static MPLevelEditorConfigUpdate CreateConfigDeleteUpdate(MPLevelEditorMode mode, string id)
+    {
+        string assetPath = GetConfigAssetPath(mode);
+        int matchedCount = mode == MPLevelEditorMode.Main
+            ? LoadMainRecords().Count(item => string.Equals(item.id, id, StringComparison.OrdinalIgnoreCase))
+            : LoadLargeImageRecords().Count(item => string.Equals(item.id, id, StringComparison.OrdinalIgnoreCase));
+        if (matchedCount != 1)
+        {
+            throw new InvalidOperationException(
+                $"{(mode == MPLevelEditorMode.Main ? "主关卡" : "大图关卡")}配置中 ID {id} 的记录数量为 {matchedCount}，必须且只能存在一条。");
+        }
+
+        string absolutePath = ToAbsolutePath(assetPath);
+        byte[] originalBytes = File.ReadAllBytes(absolutePath);
+        bool emitBom = HasUtf8Bom(originalBytes);
+        string originalJson = File.ReadAllText(absolutePath, Encoding.UTF8);
+        string updatedJson = RemoveExistingRecord(originalJson, id);
+
+        if (mode == MPLevelEditorMode.Main)
+        {
+            List<MPMainLevelEditorJsonRecord> records = JsonConvert.DeserializeObject<List<MPMainLevelEditorJsonRecord>>(updatedJson);
+            if (records == null || records.Any(item => string.Equals(item.id, id, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidDataException("删除后的主关卡配置无法通过 JSON 校验。");
+            }
+        }
+        else
+        {
+            List<MPLargeImageLevelEditorJsonRecord> records = JsonConvert.DeserializeObject<List<MPLargeImageLevelEditorJsonRecord>>(updatedJson);
+            if (records == null || records.Any(item => string.Equals(item.id, id, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidDataException("删除后的大图关卡配置无法通过 JSON 校验。");
+            }
+        }
+
+        return new MPLevelEditorConfigUpdate
+        {
+            AssetPath = assetPath,
+            Content = updatedJson,
+            Encoding = new UTF8Encoding(emitBom),
+        };
+    }
+
     private static List<int> GetBlockIndexes(bool[] blocks)
     {
         var result = new List<int>();
@@ -376,12 +459,7 @@ internal static class MPLevelEditorStorage
 
     private static void ValidateDataForSave(MPLevelEditorData data)
     {
-        string expectedPrefix = GetIdPrefix(data.Mode);
-        string idPattern = "^" + Regex.Escape(expectedPrefix) + "[A-Za-z0-9_-]+$";
-        if (string.IsNullOrWhiteSpace(data.ID) || !Regex.IsMatch(data.ID, idPattern))
-        {
-            throw new InvalidDataException($"关卡 ID 不合法，必须以 {expectedPrefix} 开头。");
-        }
+        ValidateId(data.Mode, data.ID);
 
         int minSize = data.Mode == MPLevelEditorMode.Main ? MinMainGridSize : MinLargeImageGridSize;
         if (data.Size < minSize || data.Size > MaxGridSize)
@@ -405,6 +483,16 @@ internal static class MPLevelEditorStorage
         if (data.Mode == MPLevelEditorMode.LargeImage && string.IsNullOrWhiteSpace(data.Name))
         {
             throw new InvalidDataException("大图关卡名称不能为空。");
+        }
+    }
+
+    private static void ValidateId(MPLevelEditorMode mode, string id)
+    {
+        string expectedPrefix = GetIdPrefix(mode);
+        string idPattern = "^" + Regex.Escape(expectedPrefix) + "[A-Za-z0-9_-]+$";
+        if (string.IsNullOrWhiteSpace(id) || !Regex.IsMatch(id, idPattern))
+        {
+            throw new InvalidDataException($"关卡 ID 不合法，必须以 {expectedPrefix} 开头。");
         }
     }
 
@@ -433,11 +521,16 @@ internal static class MPLevelEditorStorage
             pixelTexture.SetPixels32(sourcePixels);
             pixelTexture.Apply(false, false);
 
-            int thumbSize = data.Mode == MPLevelEditorMode.Main ? MainThumbSize : LargeImageThumbSize;
-            thumbTexture = CreateThumbTexture(sourcePixels, size, thumbSize);
-
             pixelBytes = pixelTexture.EncodeToPNG();
-            thumbBytes = thumbTexture.EncodeToPNG();
+            if (data.Mode == MPLevelEditorMode.LargeImage)
+            {
+                thumbTexture = CreateThumbTexture(sourcePixels, size, LargeImageThumbSize);
+                thumbBytes = thumbTexture.EncodeToPNG();
+            }
+            else
+            {
+                thumbBytes = null;
+            }
         }
         finally
         {
@@ -619,6 +712,43 @@ internal static class MPLevelEditorStorage
             + json.Substring(objectEnd + 1);
     }
 
+    private static string RemoveExistingRecord(string json, string id)
+    {
+        MatchCollection idMatches = Regex.Matches(
+            json,
+            $"\\\"id\\\"\\s*:\\s*\\\"{Regex.Escape(id)}\\\"",
+            RegexOptions.IgnoreCase);
+        if (idMatches.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"配置文本中 ID {id} 的记录数量为 {idMatches.Count}，必须且只能存在一条。");
+        }
+
+        int objectStart = FindObjectStart(json, idMatches[0].Index);
+        int objectEnd = FindObjectEnd(json, objectStart);
+        int previousIndex = FindPreviousNonWhitespace(json, objectStart - 1);
+        int nextIndex = FindNextNonWhitespace(json, objectEnd + 1);
+        int removalStart = objectStart;
+        int removalEnd = objectEnd + 1;
+
+        if (nextIndex < json.Length && json[nextIndex] == ',')
+        {
+            removalStart = GetIndentedLineStart(json, objectStart);
+            removalEnd = ConsumeFollowingLineBreak(json, nextIndex + 1);
+        }
+        else if (previousIndex >= 0 && json[previousIndex] == ',')
+        {
+            removalStart = previousIndex;
+        }
+        else
+        {
+            removalStart = GetIndentedLineStart(json, objectStart);
+            removalEnd = ConsumeFollowingLineBreak(json, objectEnd + 1);
+        }
+
+        return json.Remove(removalStart, removalEnd - removalStart);
+    }
+
     private static string AppendRecord(string json, string serializedRecord, string newLine)
     {
         int arrayEnd = json.LastIndexOf(']');
@@ -702,6 +832,61 @@ internal static class MPLevelEditorStorage
         throw new InvalidDataException("无法定位关卡 JSON 对象终点。");
     }
 
+    private static int FindPreviousNonWhitespace(string text, int index)
+    {
+        while (index >= 0 && char.IsWhiteSpace(text[index]))
+        {
+            index--;
+        }
+
+        return index;
+    }
+
+    private static int FindNextNonWhitespace(string text, int index)
+    {
+        while (index < text.Length && char.IsWhiteSpace(text[index]))
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private static int GetIndentedLineStart(string text, int index)
+    {
+        int lineStart = text.LastIndexOf('\n', Mathf.Max(0, index - 1));
+        lineStart = lineStart < 0 ? 0 : lineStart + 1;
+        for (int i = lineStart; i < index; i++)
+        {
+            if (text[i] != ' ' && text[i] != '\t' && text[i] != '\r')
+            {
+                return index;
+            }
+        }
+
+        return lineStart;
+    }
+
+    private static int ConsumeFollowingLineBreak(string text, int index)
+    {
+        while (index < text.Length && (text[index] == ' ' || text[index] == '\t'))
+        {
+            index++;
+        }
+
+        if (index < text.Length && text[index] == '\r')
+        {
+            index++;
+        }
+
+        if (index < text.Length && text[index] == '\n')
+        {
+            index++;
+        }
+
+        return index;
+    }
+
     private static string GetLineIndent(string text, int index)
     {
         int lineStart = text.LastIndexOf('\n', Mathf.Max(0, index - 1));
@@ -765,30 +950,108 @@ internal static class MPLevelEditorStorage
     {
         string configAbsolutePath = ToAbsolutePath(configUpdate.AssetPath);
         string pixelAbsolutePath = ToAbsolutePath(pixelAssetPath);
-        string thumbAbsolutePath = ToAbsolutePath(thumbAssetPath);
+        bool hasThumb = !string.IsNullOrEmpty(thumbAssetPath) && thumbBytes != null;
+        string thumbAbsolutePath = hasThumb ? ToAbsolutePath(thumbAssetPath) : string.Empty;
         var configBackup = MPLevelEditorFileBackup.Capture(configAbsolutePath);
         var pixelBackup = MPLevelEditorFileBackup.Capture(pixelAbsolutePath);
-        var thumbBackup = MPLevelEditorFileBackup.Capture(thumbAbsolutePath);
+        MPLevelEditorFileBackup thumbBackup = hasThumb
+            ? MPLevelEditorFileBackup.Capture(thumbAbsolutePath)
+            : null;
 
         try
         {
             File.WriteAllBytes(pixelAbsolutePath, pixelBytes);
-            File.WriteAllBytes(thumbAbsolutePath, thumbBytes);
+            if (hasThumb)
+            {
+                File.WriteAllBytes(thumbAbsolutePath, thumbBytes);
+            }
+
             File.WriteAllText(configAbsolutePath, configUpdate.Content, configUpdate.Encoding);
         }
         catch
         {
             configBackup.Restore();
             pixelBackup.Restore();
-            thumbBackup.Restore();
+            thumbBackup?.Restore();
             throw;
         }
     }
 
-    private static void EnsureAssetDirectories()
+    private static bool DeleteFilesWithRollback(
+        MPLevelEditorConfigUpdate configUpdate,
+        string pixelAssetPath,
+        string thumbAssetPath)
+    {
+        string configAbsolutePath = ToAbsolutePath(configUpdate.AssetPath);
+        string pixelAbsolutePath = ToAbsolutePath(pixelAssetPath);
+        string pixelMetaPath = pixelAbsolutePath + ".meta";
+        bool shouldDeleteThumb = !string.IsNullOrEmpty(thumbAssetPath);
+        string thumbAbsolutePath = shouldDeleteThumb ? ToAbsolutePath(thumbAssetPath) : string.Empty;
+        string thumbMetaPath = shouldDeleteThumb ? thumbAbsolutePath + ".meta" : string.Empty;
+        if (!File.Exists(pixelAbsolutePath))
+        {
+            throw new FileNotFoundException("关卡 BlockPixel 图片不存在，已取消删除。", pixelAssetPath);
+        }
+
+        bool thumbExists = shouldDeleteThumb && File.Exists(thumbAbsolutePath);
+        var backups = new List<MPLevelEditorFileBackup>
+        {
+            MPLevelEditorFileBackup.Capture(configAbsolutePath),
+            MPLevelEditorFileBackup.Capture(pixelAbsolutePath),
+            MPLevelEditorFileBackup.Capture(pixelMetaPath),
+        };
+        if (shouldDeleteThumb)
+        {
+            backups.Add(MPLevelEditorFileBackup.Capture(thumbAbsolutePath));
+            backups.Add(MPLevelEditorFileBackup.Capture(thumbMetaPath));
+        }
+
+        try
+        {
+            File.WriteAllText(configAbsolutePath, configUpdate.Content, configUpdate.Encoding);
+            File.Delete(pixelAbsolutePath);
+            File.Delete(pixelMetaPath);
+            if (shouldDeleteThumb)
+            {
+                File.Delete(thumbAbsolutePath);
+                File.Delete(thumbMetaPath);
+            }
+
+            AssetDatabase.ImportAsset(
+                configUpdate.AssetPath,
+                ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.SaveAssets();
+        }
+        catch
+        {
+            foreach (MPLevelEditorFileBackup backup in backups)
+            {
+                backup.Restore();
+            }
+
+            try
+            {
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
+            catch (Exception refreshException)
+            {
+                Debug.LogException(refreshException);
+            }
+
+            throw;
+        }
+
+        return thumbExists;
+    }
+
+    private static void EnsureAssetDirectories(bool includeThumb)
     {
         Directory.CreateDirectory(ToAbsolutePath(BlockPixelAssetDirectory));
-        Directory.CreateDirectory(ToAbsolutePath(ThumbAssetDirectory));
+        if (includeThumb)
+        {
+            Directory.CreateDirectory(ToAbsolutePath(ThumbAssetDirectory));
+        }
     }
 
     private static void ImportAndConfigureTexture(string assetPath, bool isBlockPixel)

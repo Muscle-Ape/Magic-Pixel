@@ -88,6 +88,11 @@ public sealed class MPLevelEditorWindow : EditorWindow
         DrawGridSection();
         EditorGUILayout.Space(8f);
         DrawSaveSection();
+        if (m_isExisting)
+        {
+            EditorGUILayout.Space(8f);
+            DrawDeleteSection();
+        }
         EditorGUILayout.Space(12f);
         EditorGUILayout.EndScrollView();
     }
@@ -194,7 +199,14 @@ public sealed class MPLevelEditorWindow : EditorWindow
 
         EditorGUILayout.LabelField("配置文件", MPLevelEditorStorage.GetConfigAssetPath(m_mode));
         EditorGUILayout.LabelField("原图输出", $"{MPLevelEditorStorage.BlockPixelAssetDirectory}/{m_id}.png");
-        EditorGUILayout.LabelField("缩略图输出", $"{MPLevelEditorStorage.ThumbAssetDirectory}/icon_{m_id}.png");
+        if (m_mode == MPLevelEditorMode.LargeImage)
+        {
+            EditorGUILayout.LabelField("缩略图输出", $"{MPLevelEditorStorage.ThumbAssetDirectory}/icon_{m_id}.png");
+        }
+        else
+        {
+            EditorGUILayout.LabelField("缩略图输出", "主关卡不生成或更新缩略图");
+        }
 
         if (m_mode == MPLevelEditorMode.Main && m_gridSize != 5 && m_gridSize != 10 && m_gridSize != 15)
         {
@@ -310,10 +322,13 @@ public sealed class MPLevelEditorWindow : EditorWindow
         }
         else
         {
+            string resourceDescription = m_mode == MPLevelEditorMode.Main
+                ? "BlockPixel"
+                : "BlockPixel、Thumb";
             EditorGUILayout.HelpBox(
                 m_isExisting
-                    ? "保存会覆盖当前 ID 的 BlockPixel、Thumb，并原位修改 JSON 中对应记录。"
-                    : "保存会创建 BlockPixel、Thumb，并把新记录追加到对应 JSON 末尾。",
+                    ? $"保存会覆盖当前 ID 的 {resourceDescription}，并原位修改 JSON 中对应记录。"
+                    : $"保存会创建 {resourceDescription}，并把新记录追加到对应 JSON 末尾。",
                 MessageType.Info);
 
             if (!m_blocks.Any(value => value))
@@ -329,6 +344,25 @@ public sealed class MPLevelEditorWindow : EditorWindow
                 SaveCurrentLevel();
             }
         }
+    }
+
+    private void DrawDeleteSection()
+    {
+        DrawSectionTitle("6. 删除关卡");
+        string deleteDescription = m_mode == MPLevelEditorMode.Main
+            ? "删除会移除当前主关卡在 JSON 中的配置和 BlockPixel 图片，不会删除同 ID 的 Thumb。该操作不支持在编辑器中撤销。"
+            : "删除会移除当前大图关卡在 JSON 中的配置、BlockPixel 图片和同 ID Thumb。该操作不支持在编辑器中撤销。";
+        EditorGUILayout.HelpBox(
+            deleteDescription,
+            MessageType.Warning);
+
+        Color previousBackgroundColor = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(1f, 0.45f, 0.45f);
+        if (GUILayout.Button($"删除关卡 {m_id}", GUILayout.Height(32f)))
+        {
+            DeleteCurrentLevel();
+        }
+        GUI.backgroundColor = previousBackgroundColor;
     }
 
     private void DrawGridCells(Rect gridRect)
@@ -728,7 +762,9 @@ public sealed class MPLevelEditorWindow : EditorWindow
 
         if (m_isExisting && !EditorUtility.DisplayDialog(
                 "保存已有改动",
-                $"将覆盖关卡 {m_id} 的原图、缩略图和 JSON 数据，是否继续？",
+                m_mode == MPLevelEditorMode.Main
+                    ? $"将覆盖关卡 {m_id} 的原图和 JSON 数据，是否继续？"
+                    : $"将覆盖关卡 {m_id} 的原图、缩略图和 JSON 数据，是否继续？",
                 "保存",
                 "取消"))
         {
@@ -767,15 +803,68 @@ public sealed class MPLevelEditorWindow : EditorWindow
                 Debug.LogWarning($"[MPLevelEditor] 保存成功，但重新载入校验失败：{loadError}");
             }
 
-            EditorUtility.DisplayDialog(
-                "保存成功",
-                $"配置：{result.ConfigAssetPath}\n原图：{result.PixelAssetPath}\n缩略图：{result.ThumbAssetPath}",
-                "确定");
+            string resultMessage = $"配置：{result.ConfigAssetPath}\n原图：{result.PixelAssetPath}";
+            if (!string.IsNullOrEmpty(result.ThumbAssetPath))
+            {
+                resultMessage += $"\n缩略图：{result.ThumbAssetPath}";
+            }
+
+            EditorUtility.DisplayDialog("保存成功", resultMessage, "确定");
         }
         catch (Exception exception)
         {
             Debug.LogException(exception);
             EditorUtility.DisplayDialog("保存失败", exception.Message, "确定");
+        }
+    }
+
+    private void DeleteCurrentLevel()
+    {
+        if (!m_isExisting)
+        {
+            return;
+        }
+
+        string deleteResourceList =
+            $"• {MPLevelEditorStorage.GetConfigAssetPath(m_mode)} 中对应的 JSON 记录\n" +
+            $"• {MPLevelEditorStorage.BlockPixelAssetDirectory}/{m_id}.png";
+        if (m_mode == MPLevelEditorMode.LargeImage)
+        {
+            deleteResourceList += $"\n• {MPLevelEditorStorage.ThumbAssetDirectory}/icon_{m_id}.png（如果存在）";
+        }
+
+        string deleteMessage =
+            $"确定删除关卡 {m_id} 吗？\n\n" +
+            $"将删除：\n" +
+            deleteResourceList + "\n\n" +
+            "该操作无法在编辑器中撤销。";
+        if (!EditorUtility.DisplayDialog("删除关卡", deleteMessage, "确认删除", "取消"))
+        {
+            return;
+        }
+
+        string deletedId = m_id;
+        MPLevelEditorMode deletedMode = m_mode;
+        try
+        {
+            MPLevelEditorDeleteResult result = MPLevelEditorStorage.Delete(deletedMode, deletedId);
+            CreateNewLevel(deletedMode, true);
+
+            string resultMessage =
+                $"已删除关卡：{deletedId}\n" +
+                $"已更新配置：{result.ConfigAssetPath}\n" +
+                $"已删除原图：{result.PixelAssetPath}";
+            if (result.ThumbDeleted)
+            {
+                resultMessage += $"\n已删除缩略图：{result.ThumbAssetPath}";
+            }
+
+            EditorUtility.DisplayDialog("删除成功", resultMessage, "确定");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            EditorUtility.DisplayDialog("删除失败", exception.Message, "确定");
         }
     }
 
