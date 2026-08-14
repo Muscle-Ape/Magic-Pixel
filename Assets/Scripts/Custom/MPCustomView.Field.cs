@@ -112,6 +112,12 @@ public partial class MPCustomView : AWindow
     private Button m_warehouseBtn;
 
     /// <summary>
+    /// 社区公开关卡入口按钮。
+    /// </summary>
+    [TransformPath("View/CommunityBtn")]
+    private Button m_communityBtn;
+
+    /// <summary>
     /// 关卡仓库按钮图标节点。
     /// </summary>
     [TransformPath("View/WarehouseBtn/Icon")]

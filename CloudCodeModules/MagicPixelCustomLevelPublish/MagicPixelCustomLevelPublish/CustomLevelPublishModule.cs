@@ -106,7 +106,8 @@ public class CustomLevelPublishModule
 
     /// <summary>
     /// 获取公开自定义关卡列表。
-    /// 开发期先通过目录 Key 分页，后续量大后可切换 Cloud Save Query 索引。
+    /// 最新列表按目录顺序先截取 ID，再批量读取当前页记录，避免分页前遍历全部公开关卡。
+    /// 后续需要热门排序时应单独维护热门索引或切换 Cloud Save Query。
     /// </summary>
     [CloudCodeFunction("GetPublishedCustomLevels")]
     public async Task<CustomLevelListResult> GetPublishedCustomLevels(
@@ -118,28 +119,48 @@ public class CustomLevelPublishModule
     {
         EnsureSignedIn(context);
 
-        var catalog = await GetCatalogAsync(context, gameApiClient);
-        var records = new List<CustomLevelPublicRecord>();
-        foreach (var publicLevelId in catalog.publicLevelIds)
+        if (string.Equals(sortType, "Popular", StringComparison.OrdinalIgnoreCase))
         {
-            var record = await GetRecordAsync(context, gameApiClient, publicLevelId);
-            if (record?.status == StatusPublished)
+            return new CustomLevelListResult
             {
-                records.Add(ToClientRecord(record, context.PlayerId));
-            }
+                success = false,
+                items = new List<CustomLevelPublicRecord>(),
+                nextCursor = string.Empty,
+                message = "POPULAR_SORT_NOT_SUPPORTED"
+            };
         }
 
-        records = SortRecords(records, sortType);
+        var catalog = await GetCatalogAsync(context, gameApiClient);
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
-        var offset = ParseCursor(cursor);
-        var items = records.Skip(offset).Take(pageSize).ToList();
-        var nextOffset = offset + items.Count;
+        var scanOffset = Math.Min(ParseCursor(cursor), catalog.publicLevelIds.Count);
+        var items = new List<CustomLevelPublicRecord>(pageSize);
+
+        while (scanOffset < catalog.publicLevelIds.Count && items.Count < pageSize)
+        {
+            var remainingCount = pageSize - items.Count;
+            var publicLevelIds = catalog.publicLevelIds
+                .Skip(scanOffset)
+                .Take(remainingCount)
+                .ToList();
+            scanOffset += publicLevelIds.Count;
+
+            var records = await GetRecordsAsync(context, gameApiClient, publicLevelIds);
+            foreach (var publicLevelId in publicLevelIds)
+            {
+                if (!records.TryGetValue(publicLevelId, out var record) || record.status != StatusPublished)
+                {
+                    continue;
+                }
+
+                items.Add(ToClientRecord(record, context.PlayerId));
+            }
+        }
 
         return new CustomLevelListResult
         {
             success = true,
             items = items,
-            nextCursor = nextOffset < records.Count ? nextOffset.ToString() : string.Empty,
+            nextCursor = scanOffset < catalog.publicLevelIds.Count ? scanOffset.ToString() : string.Empty,
             message = string.Empty
         };
     }
@@ -380,6 +401,63 @@ public class CustomLevelPublishModule
     {
         var item = await GetPrivateCustomItemAsync(context, gameApiClient, RecordKey(publicLevelId));
         return DeserializeItemValue<CustomLevelPublicRecord>(item?.Value);
+    }
+
+    /// <summary>
+    /// 一次读取当前页的多个公开关卡记录，并按公开关卡 ID 返回。
+    /// </summary>
+    private async Task<Dictionary<string, CustomLevelPublicRecord>> GetRecordsAsync(
+        IExecutionContext context,
+        IGameApiClient gameApiClient,
+        IReadOnlyList<string> publicLevelIds)
+    {
+        var records = new Dictionary<string, CustomLevelPublicRecord>(StringComparer.Ordinal);
+        if (publicLevelIds == null || publicLevelIds.Count == 0)
+        {
+            return records;
+        }
+
+        var keys = publicLevelIds
+            .Where(publicLevelId => !string.IsNullOrWhiteSpace(publicLevelId))
+            .Select(RecordKey)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (keys.Count == 0)
+        {
+            return records;
+        }
+
+        try
+        {
+            var result = await gameApiClient.CloudSaveData.GetPrivateCustomItemsAsync(
+                context,
+                context.ServiceToken,
+                context.ProjectId!,
+                PublicCustomId,
+                keys);
+
+            foreach (var item in result.Data.Results)
+            {
+                var record = DeserializeItemValue<CustomLevelPublicRecord>(item.Value);
+                if (record == null || string.IsNullOrWhiteSpace(record.publicLevelId))
+                {
+                    continue;
+                }
+
+                records[record.publicLevelId] = record;
+            }
+
+            return records;
+        }
+        catch (ApiException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return records;
+        }
+        catch (ApiException exception)
+        {
+            LogCloudSaveApiException(context, "GetPrivateCustomItems", $"PageSize={keys.Count}", exception);
+            throw;
+        }
     }
 
     /// <summary>
@@ -674,19 +752,6 @@ public class CustomLevelPublishModule
             .OrderBy(pair => pair.Key)
             .Select(pair => new CustomLevelColorInfo { index = pair.Key, color = pair.Value })
             .ToList();
-    }
-
-    private static List<CustomLevelPublicRecord> SortRecords(List<CustomLevelPublicRecord> records, string? sortType)
-    {
-        if (sortType == "Popular")
-        {
-            return records
-                .OrderByDescending(record => record.likeCount)
-                .ThenByDescending(record => record.createdAtUtcTicks)
-                .ToList();
-        }
-
-        return records.OrderByDescending(record => record.createdAtUtcTicks).ToList();
     }
 
     private static CustomLevelPublicRecord ToClientRecord(CustomLevelPublicRecord record, string? currentPlayerId)

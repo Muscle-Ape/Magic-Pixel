@@ -40,6 +40,11 @@ public partial class MPCustomView
         {
             m_warehouseBtn.onClick.AddListener(OnWarehouseClick);
         }
+        if (m_communityBtn != null)
+        {
+            m_communityBtn.onClick.RemoveListener(OnCommunityClick);
+            m_communityBtn.onClick.AddListener(OnCommunityClick);
+        }
 
         MPPalette palette = transform.Find("View/ColorFrame").GetComponent<MPPalette>();
         palette.Initialization(SetColor);
@@ -701,6 +706,14 @@ public partial class MPCustomView
         UIManager.Inst.ShowWindow<MPCustomLevelView>();
     }
 
+    /// <summary>
+    /// 打开社区公开自定义关卡页面。
+    /// </summary>
+    private void OnCommunityClick()
+    {
+        UIManager.Inst.ShowWindow<MPCommunityView>();
+    }
+
     private void OnBackClick()
     {
         ClearSaveAnimation();
@@ -717,6 +730,11 @@ public partial class MPCustomView
     /// </summary>
     private void OnDestroy()
     {
+        if (m_communityBtn != null)
+        {
+            m_communityBtn.onClick.RemoveListener(OnCommunityClick);
+        }
+
         MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
         MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
         CancelPublishOperation();
@@ -724,7 +742,6 @@ public partial class MPCustomView
         MPLoad.ReleaseAll(this);
     }
 }
-
 
 
 
