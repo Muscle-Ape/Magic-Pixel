@@ -43,6 +43,7 @@ MonoBehaviour:
     - HQ.UIManager
     - joy.unity.editor.ads
     - MagicPixel.Editor
+    - MagicPixel.ThreeD
     - MaxSdk.Scripts
     - MaxSdk.Scripts.IntegrationManager.Editor
     - PsdPlugin

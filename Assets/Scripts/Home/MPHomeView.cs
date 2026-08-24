@@ -554,6 +554,6 @@ public class MPHomeView : AWindow
     /// </summary>
     private void OnThreeDClick()
     {
-
+        MPThreeDIntegration.Open();
     }
 }
