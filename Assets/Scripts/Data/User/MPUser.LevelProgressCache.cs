@@ -18,6 +18,16 @@ public class MPLevelProgressCacheInfo
     public int UsedLoves;
 
     /// <summary>
+    /// 创建当前关卡进度时使用的宠物 ID。
+    /// </summary>
+    public string PetId;
+
+    /// <summary>
+    /// 当前关卡已经使用的宠物免费技能次数。
+    /// </summary>
+    public int UsedPetSkillCount;
+
+    /// <summary>
     /// 大图关卡当前窗口左上角所在行下标。
     /// </summary>
     public int ViewX;

@@ -39,14 +39,15 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
 
     public void Initialization(Action<Color> setColor)
     {
+        ClearRuntimeSaturationAsset();
         m_rectTransform = transform as RectTransform;
         m_tag = transform.Find("Tag") as RectTransform;
         m_saturationImg = transform.GetComponent<Image>();
 
         m_setColor = setColor;
 
-        m_width = (int)m_rectTransform.rect.width;
-        m_height = (int)m_rectTransform.rect.height;
+        m_width = Mathf.Max(1, Mathf.RoundToInt(m_rectTransform.rect.width));
+        m_height = Mathf.Max(1, Mathf.RoundToInt(m_rectTransform.rect.height));
         m_saturationSprite = Sprite.Create(new Texture2D(m_width, m_height), new Rect(0, 0, m_width, m_height), new Vector2(0, 0));
     }
 
@@ -132,5 +133,25 @@ public class MPStaurationPanel : MonoBehaviour, IPointerDownHandler, IDragHandle
         RectTransformUtility.ScreenPointToLocalPointInRectangle(m_rectTransform, eventData.position, Camera.main, out Vector2 localPoint);
 
         SetColor(localPoint);
+    }
+
+    private void OnDestroy()
+    {
+        ClearRuntimeSaturationAsset();
+    }
+
+    private void ClearRuntimeSaturationAsset()
+    {
+        if (m_saturationImg != null && m_saturationImg.sprite == m_saturationSprite)
+            m_saturationImg.sprite = null;
+
+        if (m_saturationSprite == null)
+            return;
+
+        Texture2D texture = m_saturationSprite.texture;
+        Destroy(m_saturationSprite);
+        m_saturationSprite = null;
+        if (texture != null)
+            Destroy(texture);
     }
 }

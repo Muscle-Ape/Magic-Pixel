@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.Services.CloudSave;
+using Unity.Services.CloudSave.Internal.Http;
 using Unity.Services.CloudSave.Models;
 
 /// <summary>
@@ -29,7 +30,12 @@ public class MPUnityCloudSaveApi : IMPCloudSaveApi
         return new MPCloudSaveLoadResult<T>
         {
             exists = true,
-            value = item.Value.GetAs<T>(),
+            // 云存档可能包含旧版本已经移除的字段。忽略未知成员可以保证
+            // DTO 精简或版本升级后仍能读取已有快照，字段类型错误仍会正常抛出。
+            value = item.Value.GetAs<T>(new DeserializationSettings
+            {
+                MissingMemberHandling = MissingMemberHandling.Ignore
+            }),
             writeLock = item.WriteLock,
             created = item.Created,
             modified = item.Modified

@@ -39,11 +39,15 @@ public class MPPickColor : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
     /// </summary>
     private MPCustomBlock RayInspection(PointerEventData eventData)
     {
+        if (EventSystem.current == null)
+            return null;
+
+        m_rayResults.Clear();
         EventSystem.current.RaycastAll(eventData, m_rayResults);
 
         foreach (var item in m_rayResults)
         {
-            if (item.gameObject.tag.Equals("Block"))
+            if (item.gameObject != null && item.gameObject.CompareTag("Block"))
             {
                 return item.gameObject.GetComponent<MPCustomBlock>();
             }

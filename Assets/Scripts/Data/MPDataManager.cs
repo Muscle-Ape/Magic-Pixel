@@ -71,14 +71,44 @@ public class MPDataManager
     }
 
     /// <summary>
-    /// 加载宠物、食物和玩具静态配置。
+    /// 加载主页宠物与局内技能静态配置。
     /// </summary>
     private void Pets()
     {
         m_petsModel = new MPPetsModel();
         m_petsModel.petConfigs = LoadConfigList<MPPetConfig>("pets_config");
-        m_petsModel.foodConfigs = LoadConfigList<MPPetCareItemConfig>("pet_foods_config");
-        m_petsModel.toyConfigs = LoadConfigList<MPPetCareItemConfig>("pet_toys_config");
+        RemoveInvalidOrDuplicatePets(m_petsModel.petConfigs);
+    }
+
+    /// <summary>
+    /// 宠物 ID 同时作为配置、存档和选中状态的唯一键。
+    /// 遇到重复项时保留配置文件中最先出现的一项。
+    /// </summary>
+    private static void RemoveInvalidOrDuplicatePets(List<MPPetConfig> configs)
+    {
+        if (configs == null)
+            return;
+
+        HashSet<string> ids = new HashSet<string>();
+        for (int i = 0; i < configs.Count;)
+        {
+            MPPetConfig config = configs[i];
+            if (config == null || string.IsNullOrWhiteSpace(config.ID))
+            {
+                Debug.LogWarning($"pets_config 第 {i + 1} 项缺少有效 id，已忽略。");
+                configs.RemoveAt(i);
+                continue;
+            }
+
+            if (!ids.Add(config.ID))
+            {
+                Debug.LogWarning($"pets_config 存在重复 id：{config.ID}，已忽略后续配置。");
+                configs.RemoveAt(i);
+                continue;
+            }
+
+            i++;
+        }
     }
 
     private List<T> LoadConfigList<T>(string location)

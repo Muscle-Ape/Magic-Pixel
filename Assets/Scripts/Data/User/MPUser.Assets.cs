@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -21,6 +22,9 @@ public partial class MPUser
     /// 生命恢复道具数量存档Key。
     /// </summary>
     private string m_key_love_recover_props = "key_love_recover_props";
+
+    /// <summary>主页定时奖励下一次可领取的 UTC ticks。</summary>
+    private string m_key_home_reward_ready_at_utc_ticks = "key_home_reward_ready_at_utc_ticks";
 
 
     #endregion
@@ -47,6 +51,12 @@ public partial class MPUser
     /// </summary>
     private int m_loveRecoverProps;
 
+    /// <summary>主页定时奖励下一次可领取的 UTC ticks。</summary>
+    private long m_homeRewardReadyAtUtcTicks;
+
+    public const int HOME_REWARD_COIN_AMOUNT = 300;
+    private const long HOME_REWARD_INTERVAL_TICKS = TimeSpan.TicksPerHour * 3;
+
 
     #endregion
 
@@ -57,6 +67,8 @@ public partial class MPUser
         m_diamond = ES3.Load<int>(m_ket_diamond, 0);
         m_hintProps = ES3.Load<int>(m_key_hint_props, 0);
         m_loveRecoverProps = ES3.Load<int>(m_key_love_recover_props, 0);
+        m_homeRewardReadyAtUtcTicks = ES3.Load<long>(m_key_home_reward_ready_at_utc_ticks, 0L);
+        EnsureHomeRewardCountdown();
     }
 
 
@@ -80,6 +92,48 @@ public partial class MPUser
     public int GetCoins()
     {
         return m_coins;
+    }
+
+    /// <summary>获取主页定时奖励的剩余时间。</summary>
+    public TimeSpan GetHomeRewardRemainingTime()
+    {
+        EnsureHomeRewardCountdown();
+        long remainingTicks = Math.Max(0L, m_homeRewardReadyAtUtcTicks - DateTime.UtcNow.Ticks);
+        return TimeSpan.FromTicks(remainingTicks);
+    }
+
+    /// <summary>
+    /// 到期后领取 300 金币，并立即开始下一轮三小时倒计时。
+    /// </summary>
+    public bool TryClaimHomeReward()
+    {
+        EnsureHomeRewardCountdown();
+        long nowTicks = DateTime.UtcNow.Ticks;
+        if (nowTicks < m_homeRewardReadyAtUtcTicks)
+            return false;
+
+        m_homeRewardReadyAtUtcTicks = nowTicks + HOME_REWARD_INTERVAL_TICKS;
+        ES3.Save(m_key_home_reward_ready_at_utc_ticks, m_homeRewardReadyAtUtcTicks);
+        AddCoins(HOME_REWARD_COIN_AMOUNT);
+        return true;
+    }
+
+    /// <summary>首次使用或读取到无效旧数据时，从当前时间开始一轮倒计时。</summary>
+    private void EnsureHomeRewardCountdown()
+    {
+        if (IsValidHomeRewardReadyAtUtcTicks(m_homeRewardReadyAtUtcTicks))
+            return;
+
+        m_homeRewardReadyAtUtcTicks = DateTime.UtcNow.Ticks + HOME_REWARD_INTERVAL_TICKS;
+        ES3.Save(m_key_home_reward_ready_at_utc_ticks, m_homeRewardReadyAtUtcTicks);
+    }
+
+    /// <summary>
+    /// 判断持久化的 UTC 时间点是否有效。时间已经到期仍然是有效数据，不能重新计时。
+    /// </summary>
+    private static bool IsValidHomeRewardReadyAtUtcTicks(long ticks)
+    {
+        return ticks > 0L && ticks <= DateTime.MaxValue.Ticks;
     }
 
 

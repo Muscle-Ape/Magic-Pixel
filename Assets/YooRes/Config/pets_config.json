@@ -3,148 +3,50 @@
     "id": "pet_dog",
     "name": "Dog",
     "icon": "pet_dog",
-    "defaultLevel": 3,
-    "defaultUnlocked": true,
-    "unlockLevel": 1,
-    "unlockText": "Unlocked",
-    "rewardIntervalSeconds": 5025,
-    "healthDecayPerHour": 4,
-    "moodDecayPerHour": 5,
-    "rewards": [
-      {
-        "type": "coin",
-        "icon": "pet_reward_coin",
-        "id": null,
-        "count": 120
-      },
-      {
-        "type": "hint",
-        "icon": "pet_reward_hint",
-        "id": null,
-        "count": 1
-      },
-      {
-        "type": "life",
-        "icon": "pet_reward_life",
-        "id": null,
-        "count": 1
-      }
-    ]
+    "option": "hint",
+    "optionText": "Complete one unfinished block per level",
+    "skillUseCount": 1,
+    "unlock": "default",
+    "unlockText": "Unlocked"
   },
   {
     "id": "pet_cat_black",
     "name": "Tuxedo Cat",
     "icon": "pet_cat_black",
-    "defaultLevel": 2,
-    "defaultUnlocked": true,
-    "unlockLevel": 1,
-    "unlockText": "Unlocked",
-    "rewardIntervalSeconds": 8140,
-    "healthDecayPerHour": 3,
-    "moodDecayPerHour": 4,
-    "rewards": [
-      {
-        "type": "coin",
-        "icon": "pet_reward_coin",
-        "id": null,
-        "count": 90
-      },
-      {
-        "type": "hint",
-        "icon": "pet_reward_hint",
-        "id": null,
-        "count": 1
-      },
-      {
-        "type": "life",
-        "icon": "pet_reward_life",
-        "id": null,
-        "count": 1
-      }
-    ]
+    "option": "hint",
+    "optionText": "Complete up to two unfinished blocks per level",
+    "skillUseCount": 2,
+    "unlock": "mainlevel 5",
+    "unlockText": "Complete Main Level 5 to unlock"
   },
   {
     "id": "pet_dog_tidy_white",
     "name": "White Tidy",
     "icon": "pet_dog_tidy_white",
-    "defaultLevel": 1,
-    "defaultUnlocked": false,
-    "unlockLevel": 1,
-    "unlockText": "Unlocked",
-    "rewardIntervalSeconds": 19810,
-    "healthDecayPerHour": 3,
-    "moodDecayPerHour": 3,
-    "rewards": [
-      {
-        "type": "coin",
-        "icon": "pet_reward_coin",
-        "id": null,
-        "count": 80
-      },
-      {
-        "type": "hint",
-        "icon": "pet_reward_hint",
-        "id": null,
-        "count": 1
-      }
-    ]
+    "option": "recover_life",
+    "optionText": "Recover one life per level",
+    "skillUseCount": 1,
+    "unlock": "mainlevel 10",
+    "unlockText": "Complete Main Level 10 to unlock"
   },
   {
     "id": "pet_dog_tidy_brown",
     "name": "Brown Tidy",
     "icon": "pet_dog_tidy_brown",
-    "defaultLevel": 2,
-    "defaultUnlocked": false,
-    "unlockLevel": 1,
-    "unlockText": "Unlocked",
-    "rewardIntervalSeconds": 6322,
-    "healthDecayPerHour": 5,
-    "moodDecayPerHour": 4,
-    "rewards": [
-      {
-        "type": "coin",
-        "icon": "pet_reward_coin",
-        "id": null,
-        "count": 100
-      },
-      {
-        "type": "food",
-        "icon": "pet_reward_food",
-        "id": "food_apple",
-        "count": 1
-      },
-      {
-        "type": "life",
-        "icon": "pet_reward_life",
-        "id": null,
-        "count": 1
-      }
-    ]
+    "option": "hint",
+    "optionText": "Complete up to three unfinished blocks per level",
+    "skillUseCount": 3,
+    "unlock": "mainlevel 15",
+    "unlockText": "Complete Main Level 15 to unlock"
   },
   {
     "id": "pet_rabbit",
     "name": "Rabbit",
     "icon": "pet_rabbit",
-    "defaultLevel": 1,
-    "defaultUnlocked": false,
-    "unlockLevel": 1,
-    "unlockText": "Unlock at Lv.25",
-    "rewardIntervalSeconds": 15605,
-    "healthDecayPerHour": 3,
-    "moodDecayPerHour": 5,
-    "rewards": [
-      {
-        "type": "coin",
-        "icon": "pet_reward_coin",
-        "id": null,
-        "count": 75
-      },
-      {
-        "type": "life",
-        "icon": "pet_reward_life",
-        "id": null,
-        "count": 1
-      }
-    ]
+    "option": "recover_life",
+    "optionText": "Recover up to two lives per level",
+    "skillUseCount": 2,
+    "unlock": "mainlevel 25",
+    "unlockText": "Complete Main Level 25 to unlock"
   }
 ]

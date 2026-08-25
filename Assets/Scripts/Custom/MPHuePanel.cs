@@ -10,6 +10,11 @@ public class MPHuePanel : MonoBehaviour, IPointerDownHandler, IDragHandler
     private Sprite m_hueSprite;
 
     /// <summary>
+    /// 色相条运行时生成的纹理。
+    /// </summary>
+    private Texture2D m_hueTexture;
+
+    /// <summary>
     /// 色相条RectTransform组件。
     /// </summary>
     private RectTransform m_rectTransform;
@@ -45,9 +50,11 @@ public class MPHuePanel : MonoBehaviour, IPointerDownHandler, IDragHandler
     /// </summary>
     private void UpdateHue()
     {
+        ClearRuntimeHueAsset();
+
         int width = Mathf.Max(1, Mathf.RoundToInt(m_rectTransform.rect.width));
         int height = Mathf.Max(1, Mathf.RoundToInt(m_rectTransform.rect.height));
-        Texture2D hueTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        m_hueTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
 
         for (int x = 0; x < width; x++)
         {
@@ -55,16 +62,16 @@ public class MPHuePanel : MonoBehaviour, IPointerDownHandler, IDragHandler
             Color pixColor = Color.HSVToRGB(hue, 1, 1);
             for (int y = 0; y < height; y++)
             {
-                hueTexture.SetPixel(x, y, pixColor);
+                m_hueTexture.SetPixel(x, y, pixColor);
             }
         }
 
-        hueTexture.Apply();
+        m_hueTexture.Apply();
 
-        m_hueSprite = Sprite.Create(hueTexture, new Rect(0, 0, width, height), new Vector2(0, 0));
+        m_hueSprite = Sprite.Create(m_hueTexture, new Rect(0, 0, width, height), new Vector2(0, 0));
         transform.GetComponent<Image>().sprite = m_hueSprite;
 
-        m_color = hueTexture.GetPixel(0, 0);
+        m_color = m_hueTexture.GetPixel(0, 0);
     }
 
     /// <summary>
@@ -113,5 +120,29 @@ public class MPHuePanel : MonoBehaviour, IPointerDownHandler, IDragHandler
         RectTransformUtility.ScreenPointToLocalPointInRectangle(m_rectTransform, eventData.position, Camera.main, out Vector2 localPoint);
 
         SetColor(localPoint);
+    }
+
+    private void OnDestroy()
+    {
+        ClearRuntimeHueAsset();
+    }
+
+    private void ClearRuntimeHueAsset()
+    {
+        Image image = GetComponent<Image>();
+        if (image != null && image.sprite == m_hueSprite)
+            image.sprite = null;
+
+        if (m_hueSprite != null)
+        {
+            Destroy(m_hueSprite);
+            m_hueSprite = null;
+        }
+
+        if (m_hueTexture != null)
+        {
+            Destroy(m_hueTexture);
+            m_hueTexture = null;
+        }
     }
 }

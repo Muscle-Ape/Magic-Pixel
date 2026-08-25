@@ -32,7 +32,8 @@ public partial class MPUser
                 coins = Mathf.Max(0, m_coins),
                 diamond = Mathf.Max(0, m_diamond),
                 hintProps = Mathf.Max(0, m_hintProps),
-                loveRecoverProps = Mathf.Max(0, m_loveRecoverProps)
+                loveRecoverProps = Mathf.Max(0, m_loveRecoverProps),
+                homeRewardReadyAtUtcTicks = m_homeRewardReadyAtUtcTicks
             },
             settings = new MPUserSettingsSnapshot
             {
@@ -57,9 +58,6 @@ public partial class MPUser
             },
             pets = new MPUserPetsSnapshot
             {
-                petRuntimeList = CloneByJson(GetPetRuntimeList()) ?? new List<MPPetRuntimeData>(),
-                petCareRuntimeList = CloneByJson(m_pet_care_runtime_list) ?? new List<MPPetCareRuntimeData>(),
-                petRewardInventory = CopyIntDictionary(m_pet_reward_inventory),
                 selectedPetId = m_selected_pet_id
             }
         };
@@ -153,10 +151,22 @@ public partial class MPUser
         m_hintProps = Mathf.Max(0, snapshot.hintProps);
         m_loveRecoverProps = Mathf.Max(0, snapshot.loveRecoverProps);
 
+        // 旧版云端快照没有该字段，反序列化后为 0。
+        // 此时必须保留 ES3 已加载的本地 UTC 时间，不能在每次登录同步时重新开始三小时倒计时。
+        if (IsValidHomeRewardReadyAtUtcTicks(snapshot.homeRewardReadyAtUtcTicks))
+        {
+            // 本地或其他设备领取后都会把时间向后推进，取较晚值可避免旧云快照把倒计时回退。
+            m_homeRewardReadyAtUtcTicks = IsValidHomeRewardReadyAtUtcTicks(m_homeRewardReadyAtUtcTicks)
+                ? Math.Max(m_homeRewardReadyAtUtcTicks, snapshot.homeRewardReadyAtUtcTicks)
+                : snapshot.homeRewardReadyAtUtcTicks;
+        }
+        EnsureHomeRewardCountdown();
+
         ES3.Save(m_key_coins, m_coins);
         ES3.Save(m_ket_diamond, m_diamond);
         ES3.Save(m_key_hint_props, m_hintProps);
         ES3.Save(m_key_love_recover_props, m_loveRecoverProps);
+        ES3.Save(m_key_home_reward_ready_at_utc_ticks, m_homeRewardReadyAtUtcTicks);
     }
 
     /// <summary>
@@ -239,14 +249,8 @@ public partial class MPUser
     private void ApplyPetsSnapshot(MPUserPetsSnapshot snapshot)
     {
         snapshot = snapshot ?? new MPUserPetsSnapshot();
-        m_pet_runtime_list = CloneByJson(snapshot.petRuntimeList) ?? new List<MPPetRuntimeData>();
-        m_pet_care_runtime_list = CloneByJson(snapshot.petCareRuntimeList) ?? new List<MPPetCareRuntimeData>();
-        m_pet_reward_inventory = CopyIntDictionary(snapshot.petRewardInventory);
         m_selected_pet_id = snapshot.selectedPetId;
 
-        ES3.Save(m_key_pets_json, JsonConvert.SerializeObject(m_pet_runtime_list));
-        ES3.Save(m_key_pet_care_items_json, JsonConvert.SerializeObject(m_pet_care_runtime_list));
-        ES3.Save(m_key_pet_reward_inventory, m_pet_reward_inventory);
         if (string.IsNullOrEmpty(m_selected_pet_id))
         {
             if (ES3.KeyExists(m_key_selected_pet_id))
@@ -260,9 +264,7 @@ public partial class MPUser
         }
 
         MPPetsModel petsModel = MPDataManager.Instance.m_petsModel;
-        SyncPetRuntimeConfigs(petsModel?.petConfigs);
-        SyncPetCareRuntimeConfigs(petsModel?.foodConfigs);
-        SyncPetCareRuntimeConfigs(petsModel?.toyConfigs);
+        SyncPetSelection(petsModel?.petConfigs);
     }
 
     /// <summary>

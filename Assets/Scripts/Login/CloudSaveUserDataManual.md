@@ -41,6 +41,7 @@ Cloud Save 玩家数据是挂在 Unity Authentication 玩家身份上的。也�
 | 模块 | 本地脚本 | 本地 ES3 Key | 数据内容 | 云同步建议 |
 | --- | --- | --- | --- | --- |
 | 资源 | `MPUser.Assets.cs` | `key_coins` | 金币，默认 200 | 需要同步，但正式上线前建议服务端校验或 Cloud Code 兜底 |
+| 资源 | `MPUser.Assets.cs` | `key_home_reward_ready_at_utc_ticks` | 主页三小时奖励下一次可领取的 UTC 时间 | 需要同步 |
 | 资源 | `MPUser.Assets.cs` | `m_ket_diamond` | 钻石 | 需要同步，属于高价值数据 |
 | 资源 | `MPUser.Assets.cs` | `key_hint_props` | 提示道具数量 | 需要同步 |
 | 资源 | `MPUser.Assets.cs` | `key_love_recover_props` | 生命恢复道具数量 | 需要同步 |
@@ -61,10 +62,7 @@ Cloud Save 玩家数据是挂在 Unity Authentication 玩家身份上的。也�
 | 自定义关卡图片 | `MPUser.CustomLevel.cs` | `Application.persistentDataPath/CustomLevels` | 自定义关卡 PNG/Icon 文件 | 建议使用 Cloud Save Files，不建议塞进 Player Data |
 | 关卡进度缓存 | `MPUser.LevelProgressCache.cs` | `key_mainlevel_progress_cache_{id}` | 主线未完成局内进度 | 可选同步，建议先不同步 |
 | 关卡进度缓存 | `MPUser.LevelProgressCache.cs` | `key_largeimagelevel_progress_cache_{id}` | 大图未完成局内进度 | 可选同步，建议先不同步 |
-| 宠物 | `MPUser.Pets.cs` | `key_pets_json` | 宠物运行时状态 | 需要同步 |
 | 宠物 | `MPUser.Pets.cs` | `key_selected_pet_id` | 当前选中宠物 ID | 需要同步 |
-| 宠物 | `MPUser.Pets.cs` | `key_pet_reward_inventory` | 宠物临时奖励背包 | 需要同步 |
-| 宠物 | `MPUser.Pets.cs` | `key_pet_care_items_json` | 食物/玩具解锁与数量 | 需要同步 |
 
 ## 4. 推荐 Cloud Save Key 设计
 
@@ -265,7 +263,7 @@ Cloud Save 提供 `writeLock`。读取和保存数据时都可以拿到新的写
 | 设置 | 使用当前设备设置，或让玩家选择是否跟随云端 |
 | 资源货币 | 不建议简单取最大值；初期可按更新时间选择，正式上线建议服务端校验 |
 | 自定义关卡 | 按关卡 ID 合并；同 ID 冲突时需要引入单关卡 `updatedAtUtcTicks` |
-| 宠物 | 优先使用更新时间较新的整块宠物数据；后续可按宠物 ID 拆分细粒度合并 |
+| 宠物 | 仅同步当前选中宠物 ID；冲突时使用更新时间较新的选择 |
 | 关卡进度缓存 | 建议不参与跨设备冲突合并，必要时按更新时间选择 |
 
 ## 10. 游客账号和数据安全说明

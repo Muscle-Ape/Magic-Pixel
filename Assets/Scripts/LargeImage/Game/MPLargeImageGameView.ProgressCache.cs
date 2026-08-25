@@ -15,6 +15,7 @@ public partial class MPLargeImageGameView
         m_isRestoringProgress = true;
 
         RestoreLoves(cacheInfo.UsedLoves);
+        RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
         RestoreBlockStatues(cacheInfo.CompletedBlocks);
         RestoreViewPosition(cacheInfo.ViewX, cacheInfo.ViewY);
         RefreshContent();
@@ -33,6 +34,7 @@ public partial class MPLargeImageGameView
 
         MPLevelProgressCacheInfo cacheInfo = new MPLevelProgressCacheInfo();
         cacheInfo.UsedLoves = Mathf.Clamp(m_loves.Count - m_lovesCount, 0, m_loves.Count);
+        WritePetSkillUsage(cacheInfo);
         cacheInfo.ViewX = m_blockStatueHead.x;
         cacheInfo.ViewY = m_blockStatueHead.y;
 

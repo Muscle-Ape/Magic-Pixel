@@ -18,6 +18,7 @@ public partial class MPGameView
         m_isRestoringProgress = true;
 
         RestoreLoves(cacheInfo.UsedLoves);
+        RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
         RestoreBlocks(cacheInfo.CompletedBlocks);
 
         m_isRestoringProgress = false;
@@ -33,6 +34,7 @@ public partial class MPGameView
 
         MPLevelProgressCacheInfo cacheInfo = new MPLevelProgressCacheInfo();
         cacheInfo.UsedLoves = Mathf.Clamp(m_loves.Count - m_lovesCount, 0, m_loves.Count);
+        WritePetSkillUsage(cacheInfo);
 
         for (int i = 0; i < m_blocks.Count; i++)
         {

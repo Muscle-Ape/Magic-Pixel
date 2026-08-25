@@ -77,6 +77,21 @@ public abstract class MPGameViewBase : AWindow
     [TransformPath("View/Props/RecoverBtn/CountFrame/Count")]
     protected TMP_Text m_loveRecoverPropCountText;
 
+    [TransformPath("View/PetSkillBtn")]
+    protected Button m_petSkillBtn;
+
+    [TransformPath("View/PetSkillBtn/Icon")]
+    protected Image m_petSkillIcon;
+
+    [TransformPath("View/PetSkillBtn/Count")]
+    protected TMP_Text m_petSkillCountText;
+
+    /// <summary>进入本关时选中的宠物配置。</summary>
+    protected MPPetConfig m_activePetConfig;
+
+    /// <summary>当前关卡剩余的宠物免费技能次数。</summary>
+    protected int m_petSkillRemainingUses;
+
     [TransformPath("View/Title")]
     protected TMP_Text m_titleText;
 
@@ -258,6 +273,7 @@ public abstract class MPGameViewBase : AWindow
         m_hvCompleted = 0;
 
         LoadLevelData(uiMsg);
+        InitializePetSkillSession();
         LoadSharedAssets();
         InitializeLives();
         LoadLevelAssets();
@@ -327,6 +343,7 @@ public abstract class MPGameViewBase : AWindow
         RegisterButton(m_settingBtn, OnSettingClick);
         RegisterButton(m_hintPropBtn, OnHintPropClick);
         RegisterButton(m_loveRecoverPropBtn, OnLoveRecoverPropClick);
+        RegisterButton(m_petSkillBtn, OnPetSkillClick);
 
         RefreshModeSpecificLayout();
         RegisterModeSpecificUI();
@@ -374,6 +391,113 @@ public abstract class MPGameViewBase : AWindow
         {
             m_loveRecoverPropCountText.text = MPUser.instance.GetLoveRecoverProps().ToString();
         }
+
+        RefreshPetSkillButton();
+    }
+
+    private void InitializePetSkillSession()
+    {
+        m_activePetConfig = MPUser.instance.GetSelectedPetConfig();
+        m_petSkillRemainingUses = m_activePetConfig == null
+            ? 0
+            : m_activePetConfig.SkillUseCount;
+
+        if (m_petSkillIcon != null)
+            m_petSkillIcon.sprite = null;
+    }
+
+    private void RefreshPetSkillButton()
+    {
+        if (m_petSkillBtn == null)
+            return;
+
+        bool hasSkill = m_activePetConfig != null
+            && !string.IsNullOrEmpty(m_activePetConfig.Option)
+            && m_activePetConfig.SkillUseCount > 0;
+        m_petSkillBtn.gameObject.SetActive(hasSkill);
+        if (!hasSkill)
+            return;
+
+        if (m_petSkillCountText != null)
+            m_petSkillCountText.text = Mathf.Max(0, m_petSkillRemainingUses).ToString();
+
+        m_petSkillBtn.interactable = !m_hasCompleted
+            && m_petSkillRemainingUses > 0
+            && CanExecutePetSkill();
+        if (m_petSkillIcon == null
+            || m_petSkillIcon.sprite != null
+            || string.IsNullOrWhiteSpace(m_activePetConfig.Icon))
+            return;
+
+        try
+        {
+            Sprite sprite = MPLoad.Load<Sprite>(m_activePetConfig.Icon, this);
+            if (sprite != null)
+            {
+                m_petSkillIcon.sprite = sprite;
+                m_petSkillIcon.preserveAspect = true;
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"局内宠物图标加载失败：{exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 消费当前宠物提供的本局技能次数。
+    /// </summary>
+    private bool TryConsumePetSkill()
+    {
+        if (m_activePetConfig == null || m_petSkillRemainingUses <= 0)
+            return false;
+
+        m_petSkillRemainingUses--;
+        return true;
+    }
+
+    private bool CanExecutePetSkill()
+    {
+        if (m_activePetConfig == null)
+            return false;
+
+        switch (m_activePetConfig.Option)
+        {
+            case MPPetSkillOption.Hint:
+                return HasHintTarget();
+            case MPPetSkillOption.RecoverLife:
+                return UsesLives && m_loves != null && m_lovesCount < m_loves.Count;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>从关卡缓存恢复本次游戏已经使用的宠物技能次数。</summary>
+    protected void RestorePetSkillUsage(string petId, int usedCount)
+    {
+        if (m_activePetConfig == null
+            || string.IsNullOrEmpty(petId)
+            || m_activePetConfig.ID != petId)
+        {
+            return;
+        }
+
+        int totalUses = m_activePetConfig.SkillUseCount;
+        m_petSkillRemainingUses = totalUses - Mathf.Clamp(usedCount, 0, totalUses);
+        RefreshPropButtons();
+    }
+
+    /// <summary>把当前宠物及已使用次数写入关卡缓存。</summary>
+    protected void WritePetSkillUsage(MPLevelProgressCacheInfo cacheInfo)
+    {
+        if (cacheInfo == null || m_activePetConfig == null)
+            return;
+
+        cacheInfo.PetId = m_activePetConfig.ID;
+        cacheInfo.UsedPetSkillCount = Mathf.Clamp(
+            m_activePetConfig.SkillUseCount - m_petSkillRemainingUses,
+            0,
+            m_activePetConfig.SkillUseCount);
     }
 
     /// <summary>扣除一点生命，并在生命耗尽时打开失败弹窗。</summary>
@@ -447,6 +571,49 @@ public abstract class MPGameViewBase : AWindow
 
         CompleteHintTarget();
         SaveProgressCache();
+        RefreshPropButtons();
+    }
+
+    /// <summary>
+    /// 独立宠物技能按钮。宠物次数与提示、生命恢复道具完全分开计算。
+    /// </summary>
+    private void OnPetSkillClick()
+    {
+        if (m_activePetConfig == null || m_petSkillRemainingUses <= 0 || m_hasCompleted)
+        {
+            RefreshPropButtons();
+            return;
+        }
+
+        switch (m_activePetConfig.Option)
+        {
+            case MPPetSkillOption.Hint:
+                if (!HasHintTarget() || !TryConsumePetSkill())
+                {
+                    RefreshPropButtons();
+                    return;
+                }
+
+                CompleteHintTarget();
+                SaveProgressCache();
+                break;
+            case MPPetSkillOption.RecoverLife:
+                if (!UsesLives
+                    || m_loves == null
+                    || m_lovesCount >= m_loves.Count
+                    || !TryConsumePetSkill())
+                {
+                    RefreshPropButtons();
+                    return;
+                }
+
+                AddLoves();
+                break;
+            default:
+                Debug.LogWarning($"未实现的宠物技能 option：{m_activePetConfig.Option}");
+                break;
+        }
+
         RefreshPropButtons();
     }
 

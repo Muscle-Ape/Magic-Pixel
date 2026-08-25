@@ -12,6 +12,16 @@ public class MPCustomBlock : MonoBehaviour
     private Image m_colorImg;
 
     /// <summary>
+    /// 格子外框。
+    /// </summary>
+    private Image m_frame;
+
+    /// <summary>
+    /// 预制体默认外框；对象池复用到普通位置时用于恢复。
+    /// </summary>
+    private Sprite m_defaultFrameSprite;
+
+    /// <summary>
     /// 用于填色的图片
     /// </summary>
     private GameObject m_fill;
@@ -42,7 +52,18 @@ public class MPCustomBlock : MonoBehaviour
     public void Init()
     {
         m_colorImg = transform.Find("Color").GetComponent<Image>();
+        m_frame = transform.Find("Frame")?.GetComponent<Image>();
+        m_defaultFrameSprite = m_frame == null ? null : m_frame.sprite;
         m_fill = transform.Find("Fill").gameObject;
+    }
+
+    /// <summary>
+    /// 设置四角外框；传空时恢复预制体默认外框，兼容对象池位置变化。
+    /// </summary>
+    public void SetFrameSprite(Sprite sprite)
+    {
+        if (m_frame != null)
+            m_frame.sprite = sprite != null ? sprite : m_defaultFrameSprite;
     }
 
     public bool ColorIsSame(Color color)
@@ -52,8 +73,10 @@ public class MPCustomBlock : MonoBehaviour
 
     public void SetColor(Color color)
     {
-        if (m_color != color)
+        if (!m_isColor || m_color != color)
         {
+            m_colorTween?.Kill();
+            m_colorTween = null;
             m_isColor = true;
             m_color = color;
             m_colorImg.color = color;
@@ -62,6 +85,8 @@ public class MPCustomBlock : MonoBehaviour
 
     public void ClearColor()
     {
+        m_colorTween?.Kill();
+        m_colorTween = null;
         m_isColor = false;
         m_colorImg.color = m_color = new Color(1, 1, 1, 0);
 
@@ -99,6 +124,12 @@ public class MPCustomBlock : MonoBehaviour
                 m_colorTween = m_colorImg.DOFade(1f, 0.1f);
             }
         }
+    }
+
+    private void OnDisable()
+    {
+        m_colorTween?.Kill();
+        m_colorTween = null;
     }
 
 }

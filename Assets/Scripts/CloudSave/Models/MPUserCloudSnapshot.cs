@@ -96,7 +96,8 @@ public class MPUserCloudSnapshot
                 coins = 200,
                 diamond = 0,
                 hintProps = 0,
-                loveRecoverProps = 0
+                loveRecoverProps = 0,
+                homeRewardReadyAtUtcTicks = DateTime.UtcNow.AddHours(3).Ticks
             },
             settings = new MPUserSettingsSnapshot
             {
@@ -128,6 +129,9 @@ public class MPUserAssetsSnapshot
 
     /// <summary>生命恢复道具数量。</summary>
     public int loveRecoverProps;
+
+    /// <summary>主页定时奖励下一次可领取的 UTC ticks。</summary>
+    public long homeRewardReadyAtUtcTicks;
 }
 
 /// <summary>
@@ -206,15 +210,6 @@ public class MPUserCustomLevelSnapshot
 [Serializable]
 public class MPUserPetsSnapshot
 {
-    /// <summary>宠物运行时数据列表。</summary>
-    public List<MPPetRuntimeData> petRuntimeList = new List<MPPetRuntimeData>();
-
-    /// <summary>食物和玩具运行时数据列表。</summary>
-    public List<MPPetCareRuntimeData> petCareRuntimeList = new List<MPPetCareRuntimeData>();
-
-    /// <summary>宠物奖励临时背包。</summary>
-    public Dictionary<string, int> petRewardInventory = new Dictionary<string, int>();
-
     /// <summary>当前选中的宠物 ID。</summary>
     public string selectedPetId;
 }

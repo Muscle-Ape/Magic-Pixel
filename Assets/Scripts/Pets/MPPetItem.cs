@@ -1,294 +1,180 @@
 using System;
-using TMPro;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// 主页宠物选择 Item。只负责锁定、选中和图标状态，不包含旧版养成及奖励逻辑。
+/// </summary>
 public class MPPetItem : MonoBehaviour
 {
-    /// <summary>
-    /// 单个 Item 最多展示的奖励数量，需要和 prefab 中 Award1-Award3 对齐。
-    /// </summary>
-    private const int MAX_REWARD_COUNT = 3;
+    private const float SELECTED_OFFSET_Y = 20f;
+    private const float SELECT_ANIMATION_DURATION = 0.22f;
+    private static readonly Color LOCKED_ICON_COLOR = new Color(0.42f, 0.42f, 0.42f, 1f);
 
-    /// <summary>
-    /// Item 内部倒计时刷新间隔。倒计时由 Item 自己刷新，避免 ContentGrid 每秒整体刷新。
-    /// </summary>
-    private const float TIMER_REFRESH_INTERVAL = 1f;
-
-    /// <summary>
-    /// 宠物图标，解锁和未解锁状态都需要显示。
-    /// </summary>
-    private Image m_petIcon;
-
-    /// <summary>
-    /// 宠物等级文本。
-    /// </summary>
-    private TMP_Text m_level;
-
-    /// <summary>
-    /// 奖励领取倒计时文本。
-    /// </summary>
-    private TMP_Text m_timer;
-
-    /// <summary>
-    /// 奖励生产进度填充图。
-    /// </summary>
-    private Image m_progressFill;
-
-    /// <summary>
-    /// 当前选中标识。
-    /// </summary>
-    private GameObject m_selected;
-
-    /// <summary>
-    /// 已解锁信息区域。
-    /// </summary>
-    private GameObject m_info;
-
-    /// <summary>
-    /// 未解锁遮罩区域。
-    /// </summary>
-    private GameObject m_lockMask;
-
-    /// <summary>
-    /// 未解锁状态下额外显示的锁定框，对应 prefab 中的 LockFrame。
-    /// </summary>
-    private GameObject m_lockFrame;
-
-    /// <summary>
-    /// 未解锁条件文本。
-    /// </summary>
-    private TMP_Text m_unlockText;
-
-    /// <summary>
-    /// Item 根按钮，未解锁时也保持可点击，方便后续弹出解锁确认。
-    /// </summary>
+    private Image m_icon;
+    private RectTransform m_lock;
+    private RectTransform m_shadow;
+    private RectTransform m_iconRect;
+    private RectTransform m_frame;
+    private Vector2 m_frameBasePosition;
+    private Vector2 m_iconBasePosition;
+    private Tween m_frameTween;
     private Button m_button;
-
-    /// <summary>
-    /// 奖励显示节点，最多展示三个。
-    /// </summary>
-    private Transform[] m_rewardNodes;
-
-    /// <summary>
-    /// 点击回调交给 MPPetsView 统一处理选中或解锁提示。
-    /// </summary>
     private Action<MPPetConfig> m_onClick;
-
-    /// <summary>
-    /// 当前复用格子绑定的宠物配置。
-    /// </summary>
     private MPPetConfig m_config;
+    private bool m_hasState;
+    private bool m_selected;
 
-    /// <summary>
-    /// 当前宠物运行时数据。
-    /// </summary>
-    private MPPetRuntimeData m_runtimeData;
+    public MPPetConfig Config => m_config;
+    public RectTransform RectTransform => transform as RectTransform;
 
-    /// <summary>
-    /// Item 内部倒计时刷新计时器。
-    /// </summary>
-    private float m_timerRefreshElapsed;
-
-    /// <summary>
-    /// 兼容 prefab 上可能配置的初始化入口。
-    /// </summary>
     public void Initialization()
     {
         Initialize(null);
     }
 
-    /// <summary>
-    /// 缓存 Item 内部节点，并注册点击事件。
-    /// </summary>
     public void Initialize(Action<MPPetConfig> onClick)
     {
         m_onClick = onClick;
-
-        m_petIcon = FindComponent<Image>("PetIcon");
-        m_info = FindGameObject("Info");
-        m_level = FindComponent<TMP_Text>("Info/LevelText");
-        m_timer = FindComponent<TMP_Text>("Info/TimerText");
-        m_progressFill = FindComponent<Image>("Info/ProgressBg/ProgressFill");
-        m_selected = FindGameObject("Selected", "Info/Selected");
-        m_lockMask = FindGameObject("LockMask");
-        m_lockFrame = FindGameObject("LockFrame");
-        m_unlockText = FindComponent<TMP_Text>("LockMask/UnlockText");
+        m_lock = transform.Find("Lock") as RectTransform;
+        m_shadow = transform.Find("Shadow") as RectTransform;
+        m_iconRect = transform.Find("Icon") as RectTransform;
+        m_frame = transform.Find("Shadow/Frame") as RectTransform;
+        m_icon = m_iconRect == null ? null : m_iconRect.GetComponent<Image>();
         m_button = GetComponent<Button>();
 
         if (m_button != null)
         {
             m_button.onClick.RemoveListener(OnClick);
             m_button.onClick.AddListener(OnClick);
-        }
-
-        m_rewardNodes = new Transform[MAX_REWARD_COUNT];
-        for (int i = 0; i < MAX_REWARD_COUNT; i++)
-        {
-            m_rewardNodes[i] = FindTransform($"Info/Awards/Award{i + 1}", $"Awards/Award{i + 1}");
-        }
-    }
-
-    /// <summary>
-    /// 刷新 Item 展示内容。LoopGridView 复用格子时会重复调用。
-    /// </summary>
-    public void Refresh(MPPetConfig config, MPPetRuntimeData runtimeData, bool selected)
-    {
-        MPLoad.ReleaseAll(this);
-        m_config = config;
-        m_runtimeData = runtimeData;
-        m_timerRefreshElapsed = 0f;
-
-        bool unlocked = runtimeData != null && runtimeData.unlocked;
-
-        SetPetIcon(config);
-        SetActive(m_info, unlocked);
-        SetActive(m_lockMask, !unlocked);
-        SetActive(m_lockFrame, !unlocked);
-        SetActive(m_selected, unlocked && selected);
-
-        if (m_button != null)
-        {
-            // 未解锁状态也允许点击，后续在 View 层接入解锁确认弹窗。
             m_button.interactable = true;
         }
 
-        if (!unlocked)
+        if (m_frame != null)
+            m_frameBasePosition = m_frame.anchoredPosition;
+        if (m_iconRect != null)
+            m_iconBasePosition = m_iconRect.anchoredPosition;
+    }
+
+    public void Refresh(MPPetConfig config, bool unlocked, bool selected)
+    {
+        bool sameConfig = m_config != null && config != null && m_config.ID == config.ID;
+        m_config = config;
+
+        SetIcon(config);
+        SetActive(m_lock, !unlocked);
+        SetActive(m_shadow, unlocked);
+
+        bool targetSelected = unlocked && selected;
+        if (m_icon != null)
+            m_icon.color = unlocked ? Color.white : LOCKED_ICON_COLOR;
+
+        bool animated = m_hasState && sameConfig && m_selected != targetSelected;
+        SetFrameSelectedState(targetSelected, animated);
+
+        m_selected = targetSelected;
+        m_hasState = true;
+    }
+
+    private void SetIcon(MPPetConfig config)
+    {
+        if (m_icon == null || config == null || string.IsNullOrWhiteSpace(config.Icon))
+            return;
+
+        MPLoad.ReleaseAll(this);
+        try
         {
-            if (m_unlockText != null)
+            Sprite sprite = MPLoad.Load<Sprite>(config.Icon, this);
+            if (sprite != null)
             {
-                m_unlockText.text = config != null ? config.UnlockText : string.Empty;
-            }
-            return;
-        }
-
-        if (m_level != null)
-        {
-            m_level.text = $"Lv.{runtimeData.level}";
-        }
-
-        RefreshRewards(config);
-        RefreshTimer(config);
-    }
-
-    private void Update()
-    {
-        if (m_config == null || m_runtimeData == null || !m_runtimeData.unlocked)
-            return;
-
-        m_timerRefreshElapsed += Time.deltaTime;
-        if (m_timerRefreshElapsed < TIMER_REFRESH_INTERVAL)
-            return;
-
-        m_timerRefreshElapsed = 0f;
-        RefreshTimer(m_config);
-    }
-
-    /// <summary>
-    /// 刷新单个 Item 的奖励倒计时和进度。
-    /// </summary>
-    public void RefreshTimer(MPPetConfig config)
-    {
-        if (config == null)
-            return;
-
-        int remainingSeconds = MPUser.instance.GetPetRewardRemainingSeconds(config);
-        float progress = MPUser.instance.GetPetRewardProgress(config);
-
-        if (m_timer != null)
-        {
-            m_timer.text = remainingSeconds <= 0 ? "Ready" : FormatTime(remainingSeconds);
-        }
-
-        SetProgress(m_progressFill, progress);
-    }
-
-    /// <summary>
-    /// 将秒数格式化为 00:00:00。
-    /// </summary>
-    public static string FormatTime(int seconds)
-    {
-        seconds = Mathf.Max(0, seconds);
-        TimeSpan time = TimeSpan.FromSeconds(seconds);
-        return $"{(int)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
-    }
-
-    /// <summary>
-    /// 根据奖励数量显示对应的奖励节点。
-    /// </summary>
-    private void RefreshRewards(MPPetConfig config)
-    {
-        int rewardCount = config == null ? 0 : Mathf.Min(config.Rewards.Count, MAX_REWARD_COUNT);
-        for (int i = 0; i < MAX_REWARD_COUNT; i++)
-        {
-            Transform rewardNode = m_rewardNodes[i];
-            if (rewardNode == null)
-                continue;
-
-            bool active = i < rewardCount;
-            rewardNode.gameObject.SetActive(active);
-            if (!active)
-                continue;
-
-            SetReward(rewardNode, config.Rewards[i]);
-        }
-    }
-
-    /// <summary>
-    /// 刷新单个奖励节点的图标和数量。
-    /// </summary>
-    private void SetReward(Transform rewardNode, MPPetRewardConfig reward)
-    {
-        if (reward == null)
-            return;
-
-        Transform icon = rewardNode.Find("Icon");
-        if (icon != null)
-        {
-            Image image = icon.GetComponent<Image>();
-            TMP_Text tmpText = icon.GetComponent<TMP_Text>();
-            Text text = icon.GetComponent<Text>();
-
-            Sprite sprite = LoadSprite(reward.Icon);
-            if (image != null && sprite != null)
-            {
-                image.sprite = sprite;
-            }
-
-            // 占位图或文本节点存在时，提供一个简短类型名兜底，方便美术资源未接入时调试。
-            string shortName = GetRewardShortName(reward.Type);
-            string fallbackText = reward.Count > 1 ? $"{shortName} {reward.Count}" : shortName;
-            if (tmpText != null)
-            {
-                tmpText.text = fallbackText;
-            }
-            if (text != null)
-            {
-                text.text = fallbackText;
+                m_icon.sprite = sprite;
+                m_icon.preserveAspect = true;
             }
         }
-
-        Transform count = rewardNode.Find("Count");
-        if (count != null)
+        catch (Exception exception)
         {
-            SetText(count, reward.Count.ToString());
+            Debug.LogWarning($"宠物图标加载失败：{config.Icon}，{exception.Message}");
         }
     }
 
     /// <summary>
-    /// 设置宠物图标。资源不存在时保留 prefab 原有占位图。
+    /// Shadow 是固定背景，选中切换同步移动 Frame 和 Icon。
+    /// 取消选择时保留 Frame 到下落动画结束，避免直接隐藏看不到回落过程。
     /// </summary>
-    private void SetPetIcon(MPPetConfig config)
+    private void SetFrameSelectedState(bool selected, bool animated)
     {
-        if (m_petIcon == null || config == null)
+        if (m_frame == null)
             return;
 
-        Sprite sprite = LoadSprite(config.Icon);
-        if (sprite != null)
+        KillFrameTween();
+        Vector2 offset = Vector2.up * (selected ? SELECTED_OFFSET_Y : 0f);
+        Vector2 frameTargetPosition = m_frameBasePosition + offset;
+        Vector2 iconTargetPosition = m_iconBasePosition + offset;
+        if (!animated)
         {
-            m_petIcon.sprite = sprite;
-            m_petIcon.SetNativeSize();
+            m_frame.anchoredPosition = frameTargetPosition;
+            if (m_iconRect != null)
+                m_iconRect.anchoredPosition = iconTargetPosition;
+            m_frame.localScale = Vector3.one;
+            SetActive(m_frame, selected);
+            return;
         }
+
+        SetActive(m_frame, true);
+        if (selected)
+            m_frame.localScale = Vector3.one * 0.82f;
+
+        Sequence sequence = DOTween.Sequence()
+            .SetUpdate(true)
+            .SetLink(gameObject)
+            .Join(m_frame.DOAnchorPos(frameTargetPosition, SELECT_ANIMATION_DURATION)
+                .SetEase(Ease.OutCubic));
+        if (m_iconRect != null)
+        {
+            sequence.Join(m_iconRect.DOAnchorPos(iconTargetPosition, SELECT_ANIMATION_DURATION)
+                .SetEase(Ease.OutCubic));
+        }
+        if (selected)
+        {
+            sequence.Join(m_frame.DOScale(1f, SELECT_ANIMATION_DURATION)
+                .SetEase(Ease.OutBack));
+        }
+
+        m_frameTween = sequence;
+        sequence.OnComplete(() =>
+        {
+            if (m_frameTween != sequence)
+                return;
+
+            m_frameTween = null;
+            if (!selected)
+                SetActive(m_frame, false);
+        });
+        sequence.OnKill(() =>
+        {
+            if (m_frameTween == sequence)
+                m_frameTween = null;
+        });
+    }
+
+    private void KillFrameTween()
+    {
+        Tween previousTween = m_frameTween;
+        m_frameTween = null;
+        if (previousTween != null && previousTween.IsActive())
+            previousTween.Kill();
+
+        if (m_frame != null)
+            m_frame.DOKill();
+        if (m_iconRect != null)
+            m_iconRect.DOKill();
+    }
+
+    private static void SetActive(Component target, bool active)
+    {
+        if (target != null && target.gameObject.activeSelf != active)
+            target.gameObject.SetActive(active);
     }
 
     private void OnClick()
@@ -297,139 +183,15 @@ public class MPPetItem : MonoBehaviour
             return;
 
         m_onClick?.Invoke(m_config);
-
-        // 按钮点击音效
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
-    }
-
-    private T FindComponent<T>(params string[] paths) where T : Component
-    {
-        Transform target = FindTransform(paths);
-        return target == null ? null : target.GetComponent<T>();
-    }
-
-    private GameObject FindGameObject(params string[] paths)
-    {
-        Transform target = FindTransform(paths);
-        return target == null ? null : target.gameObject;
-    }
-
-    private Transform FindTransform(params string[] paths)
-    {
-        if (paths == null)
-            return null;
-
-        for (int i = 0; i < paths.Length; i++)
-        {
-            if (string.IsNullOrEmpty(paths[i]))
-                continue;
-
-            Transform target = transform.Find(paths[i]);
-            if (target != null)
-            {
-                return target;
-            }
-        }
-
-        return null;
-    }
-
-    private void SetActive(GameObject target, bool active)
-    {
-        if (target != null && target.activeSelf != active)
-        {
-            target.SetActive(active);
-        }
-    }
-
-    private void SetText(Transform target, string value)
-    {
-        TMP_Text tmpText = target.GetComponent<TMP_Text>();
-        if (tmpText != null)
-        {
-            tmpText.text = value;
-            return;
-        }
-
-        Text text = target.GetComponent<Text>();
-        if (text != null)
-        {
-            text.text = value;
-        }
-    }
-
-    private void SetProgress(Image image, float progress)
-    {
-        if (image == null)
-            return;
-
-        progress = Mathf.Clamp01(progress);
-        // 进度条使用 Image.fillAmount，不修改 localScale，避免影响 prefab 原始布局。
-        image.fillAmount = progress;
-    }
-
-    /// <summary>
-    /// 通过项目资源加载封装加载图片，失败时返回 null。
-    /// </summary>
-    private Sprite LoadSprite(string location)
-    {
-        if (string.IsNullOrEmpty(location))
-            return null;
-
-        try
-        {
-            return MPLoad.Load<Sprite>(location, this);
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// 美术资源未接入时使用的奖励类型简写。
-    /// </summary>
-    private string GetRewardShortName(string rewardType)
-    {
-        if (string.IsNullOrEmpty(rewardType))
-            return string.Empty;
-
-        switch (rewardType.ToLowerInvariant())
-        {
-            case "coin":
-                return "C";
-            case "diamond":
-            case "diamonds":
-            case "gem":
-            case "gems":
-                return "D";
-            case "light":
-            case "hint":
-            case "hint_prop":
-                return "L";
-            case "paw":
-            case "love":
-            case "life":
-            case "love_recover":
-            case "life_recover":
-                return "P";
-            case "leaf":
-            case "food":
-                return "Leaf";
-            case "toy":
-                return "Toy";
-            default:
-                return rewardType;
-        }
-
     }
 
     private void OnDestroy()
     {
         if (m_button != null)
-        {
             m_button.onClick.RemoveListener(OnClick);
-        }
+
+        KillFrameTween();
 
         MPLoad.ReleaseAll(this);
     }

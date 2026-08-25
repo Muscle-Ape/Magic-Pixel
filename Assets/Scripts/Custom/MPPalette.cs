@@ -28,11 +28,25 @@ public class MPPalette : MonoBehaviour
     {
         m_setColor = setColor;
 
-        m_colorBlock = transform.Find("ColorFrame/Color").GetComponent<Image>();
+        Transform colorBlock = transform.Find("ColorFrame/Color");
+        Transform stauration = transform.Find("Stauration")
+            ?? transform.Find("StaurationFrame/StaurationMask/Stauration");
+        Transform hue = transform.Find("Hue")
+            ?? transform.Find("HueMask/Hue");
+        Transform pickColor = transform.Find("PickColorFrame");
 
-        m_staurationPanel = transform.Find("Stauration").GetComponent<MPStaurationPanel>();
-        m_huePanel = transform.Find("Hue").GetComponent<MPHuePanel>();
-        transform.Find("PickColorFrame").GetComponent<MPPickColor>().Initialization(SetPaletteColor);
+        m_colorBlock = colorBlock == null ? null : colorBlock.GetComponent<Image>();
+        m_staurationPanel = stauration == null ? null : stauration.GetComponent<MPStaurationPanel>();
+        m_huePanel = hue == null ? null : hue.GetComponent<MPHuePanel>();
+        MPPickColor pickColorPanel = pickColor == null ? null : pickColor.GetComponent<MPPickColor>();
+
+        if (m_colorBlock == null || m_staurationPanel == null || m_huePanel == null || pickColorPanel == null)
+        {
+            Debug.LogError($"调色板节点不完整：{name}", this);
+            return;
+        }
+
+        pickColorPanel.Initialization(SetPaletteColor);
 
         m_staurationPanel.Initialization(SetColor);
         m_huePanel.Initialization(m_staurationPanel);
@@ -40,7 +54,8 @@ public class MPPalette : MonoBehaviour
 
     private void SetColor(Color color)
     {
-        m_colorBlock.color = color;
+        if (m_colorBlock != null)
+            m_colorBlock.color = color;
 
         m_setColor?.Invoke(color);
     }
@@ -52,6 +67,9 @@ public class MPPalette : MonoBehaviour
     public void SetPaletteColor(Color color)
     {
         SetColor(color);
+
+        if (m_huePanel == null)
+            return;
 
         Color.RGBToHSV(color, out float h, out float s, out float v);
         m_huePanel.SetHueByHSV(h, s, v);
