@@ -21,8 +21,28 @@ public partial class MPHomeView
             block.ClearColor();
             block.Fill(false);
             block.SetMode(m_customIsFillMode);
-            block.SetFrameSprite(GetCustomGridCornerSprite(i / size, i % size, size));
             m_customBlocks.Add(block);
+        }
+
+        RefreshCustomGridFrameSprites(size);
+    }
+
+    /// <summary>
+    /// 对象池复用后 Item 顺序可能变化，因此尺寸切换完成后按当前可见顺序重新设置所有外框。
+    /// MPCustomBlock 内部会跳过相同 Sprite，只替换实际发生位置变化的外框。
+    /// </summary>
+    private void RefreshCustomGridFrameSprites(int size)
+    {
+        if (m_customBlocks == null)
+            return;
+
+        for (int i = 0; i < m_customBlocks.Count; i++)
+        {
+            MPCustomBlock block = m_customBlocks[i];
+            if (block == null)
+                continue;
+
+            block.SetFrameSprite(GetCustomGridCornerSprite(i / size, i % size, size));
         }
     }
 
@@ -71,8 +91,12 @@ public partial class MPHomeView
 
     private static void GetCustomBlock(MPCustomBlock block)
     {
-        if (block != null)
-            block.gameObject.SetActive(true);
+        if (block == null)
+            return;
+
+        block.gameObject.SetActive(true);
+        // GridLayoutGroup 按 Hierarchy 顺序排版，确保对象池取出顺序与 m_customBlocks 一致。
+        block.transform.SetAsLastSibling();
     }
 
     private static void ReleaseCustomBlock(MPCustomBlock block)

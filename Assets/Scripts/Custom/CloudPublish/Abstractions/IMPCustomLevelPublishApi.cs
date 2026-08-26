@@ -28,9 +28,12 @@ public interface IMPCustomLevelPublishApi
     Task<MPCustomLevelPublicRecord> PlayAsync(string publicLevelId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 点赞公开自定义关卡。
+    /// 设置公开自定义关卡的点赞状态。
     /// </summary>
-    Task<MPCustomLevelLikeResult> LikeAsync(string publicLevelId, CancellationToken cancellationToken = default);
+    Task<MPCustomLevelLikeResult> LikeAsync(
+        string publicLevelId,
+        bool liked,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 作者撤销公开自定义关卡。

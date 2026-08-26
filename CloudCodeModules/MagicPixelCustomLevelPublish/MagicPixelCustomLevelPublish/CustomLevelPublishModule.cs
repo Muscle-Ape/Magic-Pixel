@@ -130,6 +130,8 @@ public class CustomLevelPublishModule
             };
         }
 
+        var likedOnly = string.Equals(sortType, "Liked", StringComparison.OrdinalIgnoreCase);
+
         var catalog = await GetCatalogAsync(context, gameApiClient);
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         var scanOffset = Math.Min(ParseCursor(cursor), catalog.publicLevelIds.Count);
@@ -148,6 +150,12 @@ public class CustomLevelPublishModule
             foreach (var publicLevelId in publicLevelIds)
             {
                 if (!records.TryGetValue(publicLevelId, out var record) || record.status != StatusPublished)
+                {
+                    continue;
+                }
+
+                if (likedOnly &&
+                    !(record.likedPlayerIds?.Contains(context.PlayerId!) ?? false))
                 {
                     continue;
                 }
@@ -210,14 +218,15 @@ public class CustomLevelPublishModule
     }
 
     /// <summary>
-    /// 点赞公开自定义关卡。
-    /// 同一玩家重复点赞不会重复增加 likeCount。
+    /// 设置公开自定义关卡的点赞状态。
+    /// 使用目标状态而不是简单 Toggle，避免网络重试导致点赞状态反转。
     /// </summary>
     [CloudCodeFunction("LikePublishedCustomLevel")]
     public async Task<CustomLevelLikeResult> LikePublishedCustomLevel(
         IExecutionContext context,
         IGameApiClient gameApiClient,
-        string publicLevelId)
+        string publicLevelId,
+        bool liked)
     {
         EnsureSignedIn(context);
 
@@ -229,19 +238,29 @@ public class CustomLevelPublishModule
             }
 
             record.likedPlayerIds ??= new List<string>();
-            if (!record.likedPlayerIds.Contains(context.PlayerId!))
+            var stateChanged = false;
+            if (liked && !record.likedPlayerIds.Contains(context.PlayerId!))
             {
                 record.likedPlayerIds.Add(context.PlayerId!);
-                record.likeCount = record.likedPlayerIds.Count;
-                record.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
+                stateChanged = true;
             }
+            else if (!liked && record.likedPlayerIds.RemoveAll(
+                         playerId => playerId == context.PlayerId!) > 0)
+            {
+                stateChanged = true;
+            }
+
+            record.likeCount = record.likedPlayerIds.Count;
+            var finalLiked = record.likedPlayerIds.Contains(context.PlayerId!);
+            if (stateChanged)
+                record.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
 
             return new CustomLevelLikeResult
             {
                 success = true,
-                liked = true,
+                liked = finalLiked,
                 likeCount = record.likeCount,
-                message = "Liked",
+                message = finalLiked ? "Liked" : "Unliked",
                 record = ToClientRecord(record, context.PlayerId)
             };
         });

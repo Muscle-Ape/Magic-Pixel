@@ -20,6 +20,11 @@ public class MPCustomLevelPublishManager
     private const string LOCAL_STATE_KEY_PREFIX = "MPCustomLevelPublish.LocalState.";
 
     /// <summary>
+    /// 社区分页缓存有效时间。缓存只保存在当前进程中，退出游戏后自然清理。
+    /// </summary>
+    private static readonly long COMMUNITY_CACHE_LIFETIME_TICKS = TimeSpan.FromMinutes(10).Ticks;
+
+    /// <summary>
     /// 单例实例。
     /// </summary>
     private static MPCustomLevelPublishManager m_instance;
@@ -39,6 +44,24 @@ public class MPCustomLevelPublishManager
     /// 上传任务字典同步锁。
     /// </summary>
     private readonly object m_publishOperationsLock = new object();
+
+    /// <summary>
+    /// 当前玩家的社区关卡统一实例缓存，保证 All/Liked 两个列表共享点赞状态。
+    /// </summary>
+    private readonly Dictionary<string, MPCustomLevelPublicRecord> m_communityRecordCache =
+        new Dictionary<string, MPCustomLevelPublicRecord>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// 按排序、分页大小和游标保存的社区分页缓存。
+    /// </summary>
+    private readonly Dictionary<string, CommunityPageCacheEntry> m_communityPageCache =
+        new Dictionary<string, CommunityPageCacheEntry>(StringComparer.Ordinal);
+
+    private readonly Dictionary<string, CommunityLikeOperation> m_likeOperations =
+        new Dictionary<string, CommunityLikeOperation>(StringComparer.Ordinal);
+    private readonly object m_likeOperationsLock = new object();
+
+    private string m_communityCachePlayerId;
 
     /// <summary>
     /// 当前已加载缓存所属的 PlayerId。
@@ -80,6 +103,12 @@ public class MPCustomLevelPublishManager
     /// 某个本地关卡的上传任务开始或结束时触发，用于跨页面同步按钮状态。
     /// </summary>
     public event Action<string> PublishOperationChanged;
+
+    /// <summary>
+    /// 社区关卡点赞状态发生变化。
+    /// isFinal 为 false 表示乐观更新，为 true 表示服务端确认或失败回滚完成。
+    /// </summary>
+    public event Action<MPCustomLevelPublicRecord, bool> CommunityLikeStateChanged;
 
     /// <summary>
     /// 将本地自定义关卡发布到公开云端目录。
@@ -158,6 +187,7 @@ public class MPCustomLevelPublishManager
                     result.publicLevelId,
                     result.status,
                     string.Empty);
+                InvalidateCommunityPageCache();
             }
 
             return result;
@@ -176,10 +206,22 @@ public class MPCustomLevelPublishManager
     /// <summary>
     /// 获取公开自定义关卡列表。
     /// </summary>
-    public Task<MPCustomLevelListResult> GetListAsync(string sortType, int pageSize, string cursor, CancellationToken cancellationToken = default)
+    public Task<MPCustomLevelListResult> GetListAsync(
+        string sortType,
+        int pageSize,
+        string cursor,
+        CancellationToken cancellationToken = default)
     {
         EnsureLoggedIn();
-        return m_publishApi.GetListAsync(sortType, pageSize, cursor, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureCommunityCachePlayer();
+        RemoveExpiredCommunityPages();
+
+        string cacheKey = BuildCommunityPageCacheKey(sortType, pageSize, cursor);
+        if (m_communityPageCache.TryGetValue(cacheKey, out CommunityPageCacheEntry cachedPage))
+            return Task.FromResult(CloneListResult(cachedPage.result));
+
+        return GetListAndCacheAsync(sortType, pageSize, cursor, cacheKey, cancellationToken);
     }
 
     /// <summary>
@@ -203,13 +245,382 @@ public class MPCustomLevelPublishManager
     }
 
     /// <summary>
-    /// 点赞公开自定义关卡。
+    /// 设置公开自定义关卡的点赞状态。
+    /// 调用时立即更新本地记录和分页缓存，服务端失败时自动回滚。
     /// </summary>
-    public Task<MPCustomLevelLikeResult> LikeAsync(string publicLevelId, CancellationToken cancellationToken = default)
+    public Task<MPCustomLevelLikeResult> LikeAsync(
+        MPCustomLevelPublicRecord record,
+        bool liked)
     {
         EnsureLoggedIn();
-        EnsurePublicLevelId(publicLevelId);
-        return m_publishApi.LikeAsync(publicLevelId, cancellationToken);
+        if (record == null)
+            throw new ArgumentNullException(nameof(record));
+
+        EnsurePublicLevelId(record.publicLevelId);
+        EnsureCommunityCachePlayer();
+
+        MPCustomLevelPublicRecord cachedRecord = CacheCommunityRecord(record);
+        CommunityLikeOperation operation;
+        Task<MPCustomLevelLikeResult> operationTask;
+        lock (m_likeOperationsLock)
+        {
+            if (!m_likeOperations.TryGetValue(cachedRecord.publicLevelId, out operation))
+            {
+                operation = new CommunityLikeOperation
+                {
+                    record = cachedRecord,
+                    desiredLiked = cachedRecord.likedByCurrentPlayer,
+                    confirmedLiked = cachedRecord.likedByCurrentPlayer,
+                    confirmedLikeCount = Mathf.Max(0, cachedRecord.likeCount),
+                };
+                m_likeOperations.Add(cachedRecord.publicLevelId, operation);
+            }
+
+            operation.desiredLiked = liked;
+            ApplyCommunityLikeState(operation.record, liked);
+            operation.operationTask ??= SynchronizeLikeOperationAsync(operation);
+            operationTask = operation.operationTask;
+        }
+
+        SynchronizeLikedPageCache(operation.record);
+        CommunityLikeStateChanged?.Invoke(operation.record, false);
+        return operationTask;
+    }
+
+    public bool IsLikePending(string publicLevelId)
+    {
+        if (string.IsNullOrEmpty(publicLevelId))
+            return false;
+
+        lock (m_likeOperationsLock)
+            return m_likeOperations.ContainsKey(publicLevelId);
+    }
+
+    private async Task<MPCustomLevelListResult> GetListAndCacheAsync(
+        string sortType,
+        int pageSize,
+        string cursor,
+        string cacheKey,
+        CancellationToken cancellationToken)
+    {
+        MPCustomLevelListResult result = await m_publishApi.GetListAsync(
+            sortType,
+            pageSize,
+            cursor,
+            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (result == null || !result.success)
+            return result;
+
+        EnsureCommunityCachePlayer();
+        MPCustomLevelListResult cachedResult = NormalizeCommunityListResult(result);
+        m_communityPageCache[cacheKey] = new CommunityPageCacheEntry
+        {
+            sortType = sortType ?? string.Empty,
+            pageSize = pageSize,
+            cursor = cursor ?? string.Empty,
+            cachedAtUtcTicks = DateTime.UtcNow.Ticks,
+            result = cachedResult,
+        };
+        return CloneListResult(cachedResult);
+    }
+
+    private async Task<MPCustomLevelLikeResult> SynchronizeLikeOperationAsync(
+        CommunityLikeOperation operation)
+    {
+        // 确保 LikeAsync 先完成本地乐观刷新和任务登记，再开始处理服务端响应。
+        await Task.Yield();
+
+        while (true)
+        {
+            bool requestLiked;
+            lock (m_likeOperationsLock)
+            {
+                if (!IsCurrentLikeOperation(operation))
+                    return null;
+                requestLiked = operation.desiredLiked;
+            }
+
+            MPCustomLevelLikeResult result;
+            try
+            {
+                // 点赞属于业务状态变更，请求不跟随 Item 或页面生命周期取消。
+                result = await m_publishApi.LikeAsync(
+                    operation.record.publicLevelId,
+                    requestLiked,
+                    CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                RollbackLikeOperation(operation);
+                Debug.LogError(
+                    $"[MPCustomLevelPublishManager] 同步点赞状态失败：{FormatExceptionForLog(exception)}");
+                return new MPCustomLevelLikeResult
+                {
+                    success = false,
+                    liked = operation.record.likedByCurrentPlayer,
+                    likeCount = operation.record.likeCount,
+                    message = exception.Message,
+                    record = operation.record,
+                };
+            }
+
+            if (result == null || !result.success)
+            {
+                RollbackLikeOperation(operation);
+                Debug.LogWarning(
+                    $"[MPCustomLevelPublishManager] 服务端未能同步点赞状态：{result?.message}");
+                return result;
+            }
+
+            bool matchesLatestTarget;
+            lock (m_likeOperationsLock)
+            {
+                if (!IsCurrentLikeOperation(operation))
+                    return result;
+
+                operation.confirmedLiked = result.liked;
+                operation.confirmedLikeCount = Mathf.Max(0, result.likeCount);
+                matchesLatestTarget = operation.desiredLiked == result.liked;
+            }
+
+            if (result.record != null)
+            {
+                operation.record = CacheCommunityRecord(
+                    result.record,
+                    preservePendingLikeState: !matchesLatestTarget);
+                result.record = operation.record;
+            }
+            else if (matchesLatestTarget)
+            {
+                operation.record.likedByCurrentPlayer = result.liked;
+                operation.record.likeCount = Mathf.Max(0, result.likeCount);
+            }
+
+            if (!matchesLatestTarget)
+                continue;
+
+            CompleteLikeOperation(operation);
+            SynchronizeLikedPageCache(operation.record);
+            CommunityLikeStateChanged?.Invoke(operation.record, true);
+            return result;
+        }
+    }
+
+    private bool IsCurrentLikeOperation(CommunityLikeOperation operation)
+    {
+        return operation != null &&
+               operation.record != null &&
+               m_likeOperations.TryGetValue(operation.record.publicLevelId, out CommunityLikeOperation current) &&
+               ReferenceEquals(current, operation);
+    }
+
+    private void CompleteLikeOperation(CommunityLikeOperation operation)
+    {
+        lock (m_likeOperationsLock)
+        {
+            if (IsCurrentLikeOperation(operation))
+                m_likeOperations.Remove(operation.record.publicLevelId);
+        }
+    }
+
+    private void RollbackLikeOperation(CommunityLikeOperation operation)
+    {
+        CompleteLikeOperation(operation);
+        operation.record.likedByCurrentPlayer = operation.confirmedLiked;
+        operation.record.likeCount = Mathf.Max(0, operation.confirmedLikeCount);
+        SynchronizeLikedPageCache(operation.record);
+        CommunityLikeStateChanged?.Invoke(operation.record, true);
+    }
+
+    private static void ApplyCommunityLikeState(MPCustomLevelPublicRecord record, bool liked)
+    {
+        if (record == null || record.likedByCurrentPlayer == liked)
+            return;
+
+        record.likedByCurrentPlayer = liked;
+        record.likeCount = liked
+            ? Mathf.Max(0, record.likeCount) + 1
+            : Mathf.Max(0, record.likeCount - 1);
+    }
+
+    private MPCustomLevelListResult NormalizeCommunityListResult(MPCustomLevelListResult result)
+    {
+        List<MPCustomLevelPublicRecord> records = new List<MPCustomLevelPublicRecord>();
+        if (result.items != null)
+        {
+            for (int i = 0; i < result.items.Count; i++)
+            {
+                MPCustomLevelPublicRecord record = result.items[i];
+                if (record == null || string.IsNullOrEmpty(record.publicLevelId))
+                    continue;
+
+                records.Add(CacheCommunityRecord(record));
+            }
+        }
+
+        return new MPCustomLevelListResult
+        {
+            success = result.success,
+            items = records,
+            nextCursor = result.nextCursor ?? string.Empty,
+            message = result.message ?? string.Empty,
+        };
+    }
+
+    private MPCustomLevelPublicRecord CacheCommunityRecord(
+        MPCustomLevelPublicRecord source,
+        bool preservePendingLikeState = true)
+    {
+        if (source == null || string.IsNullOrEmpty(source.publicLevelId))
+            return source;
+
+        if (!m_communityRecordCache.TryGetValue(source.publicLevelId, out MPCustomLevelPublicRecord cachedRecord))
+        {
+            m_communityRecordCache[source.publicLevelId] = source;
+            return source;
+        }
+
+        if (!ReferenceEquals(cachedRecord, source))
+        {
+            bool shouldPreserveLikeState = false;
+            bool localLiked = cachedRecord.likedByCurrentPlayer;
+            int localLikeCount = cachedRecord.likeCount;
+            if (preservePendingLikeState)
+            {
+                lock (m_likeOperationsLock)
+                {
+                    shouldPreserveLikeState = m_likeOperations.ContainsKey(source.publicLevelId);
+                }
+            }
+
+            CopyCommunityRecord(source, cachedRecord);
+            // 分页刷新或旧请求响应可能晚于用户的最新点击。点赞任务未收敛前，
+            // 只合并关卡的其他字段，点赞状态始终以本地最新目标为准。
+            if (shouldPreserveLikeState)
+            {
+                cachedRecord.likedByCurrentPlayer = localLiked;
+                cachedRecord.likeCount = localLikeCount;
+            }
+        }
+
+        return cachedRecord;
+    }
+
+    private static void CopyCommunityRecord(
+        MPCustomLevelPublicRecord source,
+        MPCustomLevelPublicRecord target)
+    {
+        target.schemaVersion = source.schemaVersion;
+        target.publicLevelId = source.publicLevelId;
+        target.sourceLocalLevelId = source.sourceLocalLevelId;
+        target.ownerPlayerId = source.ownerPlayerId;
+        target.ownerDisplayName = source.ownerDisplayName;
+        target.title = source.title;
+        target.size = source.size;
+        target.block = source.block;
+        target.colors = source.colors;
+        target.likeCount = source.likeCount;
+        target.playCount = source.playCount;
+        target.status = source.status;
+        target.likedByCurrentPlayer = source.likedByCurrentPlayer;
+        target.likedPlayerIds = source.likedPlayerIds;
+        target.createdAtUtcTicks = source.createdAtUtcTicks;
+        target.updatedAtUtcTicks = source.updatedAtUtcTicks;
+        target.clientVersion = source.clientVersion;
+        target.unityEnvironment = source.unityEnvironment;
+    }
+
+    private void SynchronizeLikedPageCache(MPCustomLevelPublicRecord record)
+    {
+        if (record == null || string.IsNullOrEmpty(record.publicLevelId))
+            return;
+
+        long now = DateTime.UtcNow.Ticks;
+        foreach (CommunityPageCacheEntry page in m_communityPageCache.Values)
+        {
+            if (!string.Equals(
+                    page.sortType,
+                    MPCustomLevelPublishConstants.SORT_LIKED,
+                    StringComparison.OrdinalIgnoreCase) ||
+                page.result?.items == null)
+            {
+                continue;
+            }
+
+            int recordIndex = page.result.items.FindIndex(item =>
+                item != null && item.publicLevelId == record.publicLevelId);
+            if (!record.likedByCurrentPlayer)
+            {
+                if (recordIndex >= 0)
+                    page.result.items.RemoveAt(recordIndex);
+            }
+            else if (recordIndex < 0 && string.IsNullOrEmpty(page.cursor))
+            {
+                page.result.items.Insert(0, record);
+            }
+
+            page.cachedAtUtcTicks = now;
+        }
+    }
+
+    private void EnsureCommunityCachePlayer()
+    {
+        string playerId = ResolvePlayerId();
+        if (m_communityCachePlayerId == playerId)
+            return;
+
+        m_communityCachePlayerId = playerId;
+        m_communityRecordCache.Clear();
+        m_communityPageCache.Clear();
+    }
+
+    private void InvalidateCommunityPageCache()
+    {
+        EnsureCommunityCachePlayer();
+        m_communityPageCache.Clear();
+    }
+
+    private void RemoveExpiredCommunityPages()
+    {
+        if (m_communityPageCache.Count == 0)
+            return;
+
+        long expireBefore = DateTime.UtcNow.Ticks - COMMUNITY_CACHE_LIFETIME_TICKS;
+        List<string> expiredKeys = null;
+        foreach (KeyValuePair<string, CommunityPageCacheEntry> pair in m_communityPageCache)
+        {
+            if (pair.Value.cachedAtUtcTicks >= expireBefore)
+                continue;
+
+            expiredKeys ??= new List<string>();
+            expiredKeys.Add(pair.Key);
+        }
+
+        if (expiredKeys == null)
+            return;
+
+        for (int i = 0; i < expiredKeys.Count; i++)
+            m_communityPageCache.Remove(expiredKeys[i]);
+    }
+
+    private static string BuildCommunityPageCacheKey(string sortType, int pageSize, string cursor)
+    {
+        return $"{sortType ?? string.Empty}\n{pageSize}\n{cursor ?? string.Empty}";
+    }
+
+    private static MPCustomLevelListResult CloneListResult(MPCustomLevelListResult source)
+    {
+        return new MPCustomLevelListResult
+        {
+            success = source.success,
+            items = source.items == null
+                ? new List<MPCustomLevelPublicRecord>()
+                : new List<MPCustomLevelPublicRecord>(source.items),
+            nextCursor = source.nextCursor ?? string.Empty,
+            message = source.message ?? string.Empty,
+        };
     }
 
     /// <summary>
@@ -226,6 +637,7 @@ public class MPCustomLevelPublishManager
         if (result != null && result.success)
         {
             MarkLocalStateRevoked(publicLevelId, string.Empty);
+            InvalidateCommunityPageCache();
         }
 
         return result;
@@ -608,5 +1020,27 @@ public class MPCustomLevelPublishManager
         return string.IsNullOrEmpty(text)
             ? string.Empty
             : text.Replace("\r", " ").Replace("\n", " / ");
+    }
+
+    private sealed class CommunityPageCacheEntry
+    {
+        public string sortType;
+        public int pageSize;
+        public string cursor;
+        public long cachedAtUtcTicks;
+        public MPCustomLevelListResult result;
+    }
+
+    /// <summary>
+    /// 同一关卡只保留一个同步任务。任务执行期间可以反复修改 desiredLiked，
+    /// 每个服务端响应只更新 confirmed 基线，最终以最后一次点击状态结束。
+    /// </summary>
+    private sealed class CommunityLikeOperation
+    {
+        public MPCustomLevelPublicRecord record;
+        public bool desiredLiked;
+        public bool confirmedLiked;
+        public int confirmedLikeCount;
+        public Task<MPCustomLevelLikeResult> operationTask;
     }
 }

@@ -62,8 +62,14 @@ public class MPCustomBlock : MonoBehaviour
     /// </summary>
     public void SetFrameSprite(Sprite sprite)
     {
-        if (m_frame != null)
-            m_frame.sprite = sprite != null ? sprite : m_defaultFrameSprite;
+        if (m_frame == null)
+            return;
+
+        Sprite targetSprite = sprite != null ? sprite : m_defaultFrameSprite;
+        if (m_frame.sprite == targetSprite)
+            return;
+
+        m_frame.sprite = targetSprite;
     }
 
     public bool ColorIsSame(Color color)

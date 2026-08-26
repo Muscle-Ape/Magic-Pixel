@@ -65,4 +65,9 @@ public static class MPCustomLevelPublishConstants
     /// 热门点赞排序。
     /// </summary>
     public const string SORT_POPULAR = "Popular";
+
+    /// <summary>
+    /// 只返回当前玩家点过喜欢的公开关卡。
+    /// </summary>
+    public const string SORT_LIKED = "Liked";
 }

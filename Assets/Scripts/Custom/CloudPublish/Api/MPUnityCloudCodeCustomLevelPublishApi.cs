@@ -75,10 +75,14 @@ public class MPUnityCloudCodeCustomLevelPublishApi : IMPCustomLevelPublishApi
     }
 
     /// <inheritdoc />
-    public async Task<MPCustomLevelLikeResult> LikeAsync(string publicLevelId, CancellationToken cancellationToken = default)
+    public async Task<MPCustomLevelLikeResult> LikeAsync(
+        string publicLevelId,
+        bool liked,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Dictionary<string, object> args = BuildPublicLevelIdArgs(publicLevelId);
+        args["liked"] = liked;
         MPCustomLevelLikeResult result = await CloudCodeService.Instance.CallModuleEndpointAsync<MPCustomLevelLikeResult>(
             MPCustomLevelPublishConstants.MODULE_NAME,
             MPCustomLevelPublishConstants.LIKE_FUNCTION,
