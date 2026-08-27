@@ -118,7 +118,7 @@ public class MPAccountBindPop : AWindow
         MPLoginConfiguration configuration = MPLoginManager.Instance.Configuration;
         SetButtonVisible(m_passwordBindBtn, configuration.EnableUsernamePasswordLogin);
         SetButtonVisible(m_googleBindBtn, configuration.EnableGoogleLogin || configuration.EnableGooglePlayGamesLogin);
-        SetButtonVisible(m_appleBindBtn, configuration.EnableAppleLogin);
+        SetButtonVisible(m_appleBindBtn, configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
         SetButtonVisible(m_facebookBindBtn, configuration.EnableFacebookLogin);
     }
 
@@ -190,11 +190,23 @@ public class MPAccountBindPop : AWindow
     }
 
     /// <summary>
-    /// Apple 绑定入口，后续由 SDK Adapter 提供 Identity Token。
+    /// Apple 绑定入口。Adapter 会拉起系统授权并把 Identity Token 绑定到当前 Unity Authentication 账号。
     /// </summary>
-    private void OnAppleBindClick()
+    private async void OnAppleBindClick()
     {
-        SetStatus("Apple 绑定入口已预留。接入平台 token 后调用 MPLoginManager.BindProviderAsync。");
+        await RunBindOperationAsync(async token =>
+        {
+            SetStatus("正在请求 Apple 授权...");
+            return await MPLoginManager.Instance.LinkAsync(
+                MPLoginType.Apple,
+                new MPThirdPartyLoginRequest
+                {
+                    loginType = MPLoginType.Apple,
+                    provider = MPLoginType.Apple,
+                    forceLink = false
+                },
+                token);
+        });
     }
 
     /// <summary>

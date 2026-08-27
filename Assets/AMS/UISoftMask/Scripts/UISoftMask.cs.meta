@@ -9,7 +9,7 @@ MonoImporter:
   - m_OverrideTransform: {instanceID: 0}
   - m_SoftMaskBlitMaterial: {instanceID: 0}
   executionOrder: 0
-  icon: {fileID: 2800000, guid: 46c918aefad158b498384cf4b7eebfa8, type: 3}
+  icon: {instanceID: 0}
   userData: 
   assetBundleName: 
   assetBundleVariant: 

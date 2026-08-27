@@ -299,7 +299,13 @@ public class MPLoginManagerCore : IMPLoginManager
                 MPThirdPartyAuthResult authResult = await adapter.AuthorizeAsync(thirdPartyRequest, cancellationToken);
                 if (!authResult.success)
                 {
-                    return PublishFailure(loginType, MPLoginError.Create(authResult.errorCode, authResult.errorMessage, true));
+                    string errorCode = string.IsNullOrEmpty(authResult.errorCode)
+                        ? MPLoginErrorCodes.ThirdPartyAuthFailed
+                        : authResult.errorCode;
+                    return PublishFailure(loginType, MPLoginError.Create(
+                        errorCode,
+                        authResult.errorMessage,
+                        errorCode != MPLoginErrorCodes.UserCancelled));
                 }
 
                 session = await m_authApi.LinkThirdPartyAsync(loginType, authResult, thirdPartyRequest.forceLink, cancellationToken);

@@ -53,7 +53,6 @@ public static class AOAdsMenu
 
         Selection.activeObject = adsMediationSettings;
     }
-#else
-#endif
 #endif
 }
+#endif

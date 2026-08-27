@@ -25,6 +25,26 @@ public static class MPLoginExceptionMapper
 
         if (exception is AuthenticationException authenticationException)
         {
+            if (authenticationException.ErrorCode == AuthenticationErrorCodes.AccountAlreadyLinked)
+            {
+                return MPLoginError.Create(
+                    MPLoginErrorCodes.AccountBindingConflict,
+                    "该第三方账号已绑定到其他游戏账号，请退出当前账号后直接使用该第三方账号登录。",
+                    false,
+                    authenticationException.ErrorCode,
+                    exception);
+            }
+
+            if (authenticationException.ErrorCode == AuthenticationErrorCodes.AccountLinkLimitExceeded)
+            {
+                return MPLoginError.Create(
+                    MPLoginErrorCodes.AccountBindingConflict,
+                    "当前游戏账号已经绑定了同类型的第三方账号。",
+                    false,
+                    authenticationException.ErrorCode,
+                    exception);
+            }
+
             return MPLoginError.Create(
                 MPLoginErrorCodes.InvalidCredentials,
                 "认证失败，请检查登录信息后重试。",

@@ -187,7 +187,7 @@ public class MPLoginView : AWindow
         SetButtonVisible(m_passwordRegisterBtn, showPassword);
         SetButtonVisible(m_googleBtn, visible && configuration.EnableGoogleLogin);
         SetButtonVisible(m_googlePlayGamesBtn, visible && configuration.EnableGooglePlayGamesLogin);
-        SetButtonVisible(m_appleBtn, visible && configuration.EnableAppleLogin);
+        SetButtonVisible(m_appleBtn, visible && configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
         SetButtonVisible(m_facebookBtn, visible && configuration.EnableFacebookLogin);
         SetButtonVisible(m_guestBtn, visible && configuration.EnableAnonymousLogin && CanCreateGuest());
     }
@@ -251,11 +251,23 @@ public class MPLoginView : AWindow
     }
 
     /// <summary>
-    /// Apple 登录入口，后续需要从 Apple SDK 获取 Identity Token。
+    /// Apple 登录入口。Adapter 会拉起系统授权并把 Identity Token 交给 Unity Authentication。
     /// </summary>
-    private void OnAppleClick()
+    private async void OnAppleClick()
     {
-        SetStatus("Apple 登录页面已预留。接入 Apple Identity Token Adapter 后，可从这里调用 Unity Authentication 登录。");
+        await RunLoginOperationAsync(async token =>
+        {
+            SetStatus("正在请求 Apple 授权...");
+            return await MPLoginManager.Instance.LoginAsync(
+                MPLoginType.Apple,
+                new MPThirdPartyLoginRequest
+                {
+                    loginType = MPLoginType.Apple,
+                    provider = MPLoginType.Apple,
+                    createAccount = true
+                },
+                token);
+        });
     }
 
     /// <summary>

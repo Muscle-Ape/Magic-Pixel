@@ -51,15 +51,18 @@ public class MPThirdPartyLoginStrategy : IMPLoginStrategy
 
         try
         {
-            // 当前 Adapter 只校验外部传入的 token；后续接 SDK 时替换 Adapter 即可。
+            // Adapter 负责拉起平台 SDK，或校验外部已经提供的 token/authCode。
             IMPThirdPartyAuthAdapter adapter = m_adapterFactory.GetAdapter(thirdPartyRequest.provider);
             MPThirdPartyAuthResult authResult = await adapter.AuthorizeAsync(thirdPartyRequest, cancellationToken);
             if (!authResult.success)
             {
+                string errorCode = string.IsNullOrEmpty(authResult.errorCode)
+                    ? MPLoginErrorCodes.ThirdPartyAuthFailed
+                    : authResult.errorCode;
                 return MPLoginResult.Failed(LoginType, MPLoginError.Create(
-                    string.IsNullOrEmpty(authResult.errorCode) ? MPLoginErrorCodes.ThirdPartyAuthFailed : authResult.errorCode,
+                    errorCode,
                     authResult.errorMessage,
-                    true));
+                    errorCode != MPLoginErrorCodes.UserCancelled));
             }
 
             MPUserSession session = await m_authApi.SignInWithThirdPartyAsync(LoginType, authResult, thirdPartyRequest.createAccount, cancellationToken);

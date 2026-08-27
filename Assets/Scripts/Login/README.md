@@ -5,7 +5,7 @@
 ## 模块目标
 
 - 使用 Unity Authentication 作为当前认证后端。
-- 默认支持游客/匿名登录，并预留账号密码、Google、Google Play Games、Apple、Facebook 登录能力。
+- 默认支持游客/匿名登录、账号密码和 Apple 原生登录，并预留 Google、Google Play Games、Facebook 登录能力。
 - UI、启动决策、登录编排、具体 SDK 调用、本地资料持久化彼此解耦。
 - 通过接口抽象隔离 Unity SDK、ES3、第三方平台 SDK，后续接入游戏服务器或云存档时尽量不改 UI 层。
 
@@ -16,6 +16,8 @@
 - `MPLoginConfiguration.EnableAnonymousRecovery` 当前默认关闭，因为项目尚未接入真正的服务端游客恢复接口。
 - 本地只保存恢复线索和偏好，不保存 AccessToken 或 SessionToken 明文。
 - UI 页面使用项目当前 UIManager 框架，通过 `[Component("PrefabName")]` + `[TransformPath("...")]` 绑定 Prefab。
+- Unity Dashboard 的 Apple Provider 必须启用，`App ID` 必须填写 iOS Bundle ID `com.yunqi.magicpixel`，不能填写 App Store 数字 Apple ID。
+- iOS 导出由 `Assets/Editor/SignInWithApplePostprocessor.cs` 自动添加 Sign in with Apple Capability、Entitlement 和系统框架；原生授权需在 iOS 13 或更高版本真机验证。
 
 ## 分层关系总图
 
@@ -265,7 +267,8 @@ flowchart LR
 | `MPProvidedTokenAuthAdapterBase` | `Adapters/MPProvidedTokenAuthAdapterBase.cs` | 第三方 Adapter 基类。当前阶段不主动拉起 SDK，只校验外部传入的 token/authCode。 | 实现 `IMPThirdPartyAuthAdapter`；被具体平台 Adapter 继承。 |
 | `MPGoogleAuthAdapter` | `Adapters/MPGoogleAuthAdapter.cs` | Google 登录适配器，要求 `identityToken`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult` 给第三方策略。 |
 | `MPGooglePlayGamesAuthAdapter` | `Adapters/MPGooglePlayGamesAuthAdapter.cs` | Google Play Games 登录适配器，要求 `authorizationCode`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult`。 |
-| `MPAppleAuthAdapter` | `Adapters/MPAppleAuthAdapter.cs` | Apple 登录适配器，要求 `identityToken`，可透传 `authorizationCode`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult`。 |
+| `MPAppleAuthAdapter` | `Adapters/MPAppleAuthAdapter.cs` | Apple 登录适配器；没有外部 Token 时拉起原生授权，校验并转换 Identity Token。 | 实现 `IMPThirdPartyAuthAdapter`；调用 AppleAuth SDK；返回 `MPThirdPartyAuthResult`。 |
+| `MPAppleAuthRuntime` | `Adapters/MPAppleAuthRuntime.cs` | 常驻更新 AppleAuthManager、派发原生回调并监听凭证撤销。 | 由 `MPAppleAuthAdapter` 和 `MPLoginManager` 使用；仅在支持的平台初始化。 |
 | `MPFacebookAuthAdapter` | `Adapters/MPFacebookAuthAdapter.cs` | Facebook 登录适配器，要求 `accessToken`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult`。 |
 
 ### 持久化与配置层
@@ -282,7 +285,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | `MPLoginView` | `UI/MPLoginView.cs` | 登录主页面，展示启动结果、登录方式入口、账号密码输入、重试和游客继续按钮。 | 继承 `AWindow`；绑定 `MPLoginView.prefab`；调用 `MPLoginManager`；接收 `MPLoginViewUIMsgData`。 |
 | `MPLoginViewUIMsgData` | `UI/MPLoginView.cs` | 登录主页面打开参数。 | 携带 `MPLoginStartupResult` 和登录成功回调；由启动器传给 `MPLoginView`。 |
-| `MPAccountBindPop` | `UI/MPAccountBindPop.cs` | 游客绑定提示弹窗，支持账号密码绑定入口，第三方绑定入口预留。 | 继承 `AWindow`；绑定 `MPAccountBindPop.prefab`；调用 `MPLoginManager.LinkAsync`；接收 `MPAccountBindPopUIMsgData`。 |
+| `MPAccountBindPop` | `UI/MPAccountBindPop.cs` | 游客绑定提示弹窗，支持账号密码、Google Play Games 和 Apple 绑定入口。 | 继承 `AWindow`；绑定 `MPAccountBindPop.prefab`；调用 `MPLoginManager.LinkAsync`；接收 `MPAccountBindPopUIMsgData`。 |
 | `MPAccountBindPopUIMsgData` | `UI/MPAccountBindPop.cs` | 绑定弹窗打开参数。 | 携带标题、说明、关闭回调、绑定成功回调。 |
 | `MPAccountConflictPop` | `UI/MPAccountConflictPop.cs` | 账号冲突确认弹窗。当前为后续第三方账号冲突处理预留。 | 继承 `AWindow`；绑定 `MPAccountConflictPop.prefab`；接收 `MPAccountConflictPopUIMsgData`。 |
 | `MPAccountConflictPopUIMsgData` | `UI/MPAccountConflictPop.cs` | 冲突弹窗打开参数。 | 携带 `MPAccountConflictData`、取消回调、确认回调。 |
@@ -354,18 +357,18 @@ flowchart LR
 
 ### 第三方登录
 
-1. 外部平台 SDK 获取 token/authCode 后创建 `MPThirdPartyLoginRequest`。
+1. 创建 `MPThirdPartyLoginRequest`；Apple 可不传 Token，由 Adapter 直接拉起系统授权，其他平台也可传入外部 SDK 已获取的 token/authCode。
 2. 调用 `MPLoginManager.LoginAsync(provider, request)` 或 `LoginWithProviderAsync`。
 3. Core 选择对应 `MPThirdPartyLoginStrategy`。
 4. Strategy 通过 `MPThirdPartyAuthAdapterFactory` 获取对应 Adapter。
-5. Adapter 校验并转换 token/authCode 为 `MPThirdPartyAuthResult`。
+5. Adapter 拉起平台授权或校验外部凭证，并转换为 `MPThirdPartyAuthResult`。
 6. Strategy 调用 AuthApi 的 Unity Authentication 第三方登录接口。
 7. 成功后保存 Session 和本地资料。
 
 ### 账号绑定
 
 1. `MPAccountBindPop` 通过账号密码绑定时调用 `MPLoginManager.LinkAsync(MPLoginType.UsernamePassword, request)`。
-2. 第三方绑定入口当前预留，后续拿到 token 后调用 `MPLoginManager.BindProviderAsync` 或 `LinkGoogleAsync` 等快捷方法。
+2. Apple 和 Google Play Games 绑定按钮会直接拉起对应平台授权；其他平台可在拿到 token 后调用 `MPLoginManager.BindProviderAsync` 或对应快捷方法。
 3. Core 的 `LinkAsync` 分账号密码和第三方两条路径。
 4. 账号密码绑定调用 `IMPAuthApi.LinkUsernamePasswordAsync`。
 5. 第三方绑定先通过 Adapter 获取授权结果，再调用 `IMPAuthApi.LinkThirdPartyAsync`。
@@ -377,7 +380,7 @@ flowchart LR
 | --- | --- | --- |
 | 接入真实 Google SDK 获取 Identity Token | 新增或替换 `MPGoogleAuthAdapter` | 不影响 Core、Flow、UI 的登录编排。 |
 | 接入 Google Play Games Auth Code | 新增或替换 `MPGooglePlayGamesAuthAdapter` | 保持第三方策略统一。 |
-| 接入 Apple SDK | 新增或替换 `MPAppleAuthAdapter` | 只改平台授权逻辑。 |
+| 扩展 Apple 用户资料或服务器校验 | 扩展 `MPAppleAuthAdapter` 的授权结果处理 | 当前只申请 Unity Authentication 必需的 Identity Token，不申请邮箱和姓名。 |
 | 接入 Facebook SDK | 新增或替换 `MPFacebookAuthAdapter` | 只改平台授权逻辑。 |
 | 接入游戏服务器账号恢复 | 新增服务器 API 抽象，并扩展 `MPLoginFlowController` | 匿名恢复和云存档归启动/恢复策略负责。 |
 | 接入云存档 | 登录成功后读取 `MPLoginResult.playerId` / `MPUserSession.userId` | 云存档应绑定稳定 PlayerId。 |

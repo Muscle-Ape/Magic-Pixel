@@ -52,6 +52,12 @@ public class MPLoginManager
         m_flowController = services.flowController;
         m_localLoginRepository = services.localLoginRepository;
         m_configuration = services.configuration;
+
+        if (m_configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported)
+        {
+            MPAppleAuthRuntime.CredentialsRevoked += OnAppleCredentialsRevoked;
+            MPAppleAuthRuntime.GetOrCreateManager();
+        }
     }
 
     public static MPLoginManager Instance
@@ -466,6 +472,36 @@ public class MPLoginManager
     public bool ClearSessionToken()
     {
         return m_inner.ClearSessionToken();
+    }
+
+    /// <summary>
+    /// Apple 凭证被系统撤销后，如果当前会话由 Apple 登录恢复，则清理本地认证状态并返回登录态。
+    /// 已通过其他身份登录的账号不会仅因 Apple 绑定失效而被强制退出。
+    /// </summary>
+    private async void OnAppleCredentialsRevoked()
+    {
+        try
+        {
+            if (!IsLoggedIn)
+            {
+                return;
+            }
+
+            MPLocalLoginProfile profile = await m_localLoginRepository.LoadAsync();
+            bool isAppleSession = CurrentSession != null && CurrentSession.loginType == MPLoginType.Apple;
+            bool restoredFromApple = profile != null && profile.lastLoginProvider == MPLoginProvider.Apple;
+            if (!isAppleSession && !restoredFromApple)
+            {
+                return;
+            }
+
+            Debug.LogWarning("[MPLogin] Apple 登录授权已被撤销，正在清理当前登录凭证。");
+            await LogoutAsync(clearCredentials: true);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError($"[MPLogin] 处理 Apple 凭证撤销事件失败：{exception.Message}");
+        }
     }
 
     /// <summary>
