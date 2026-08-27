@@ -77,7 +77,10 @@ public class MPCloudSaveConflictResolver
             passIndex = Mathf.Max(local.passIndex, cloud.passIndex),
             unlockList = UnionList(local.unlockList, cloud.unlockList),
             passList = UnionList(local.passList, cloud.passList),
-            stars = MergeMaxDictionary(local.stars, cloud.stars)
+            stars = MergeMaxDictionary(local.stars, cloud.stars),
+            boxAwardClaimedList = UnionList(
+                local.boxAwardClaimedList,
+                cloud.boxAwardClaimedList)
         };
     }
 

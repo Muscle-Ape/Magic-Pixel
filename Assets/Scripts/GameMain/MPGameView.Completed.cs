@@ -41,7 +41,7 @@ public partial class MPGameView
             return;
         }
 
-        // 1、记录当前已通关关卡
+        // 1、记录当前已通关关卡。宝箱奖励返回主关卡页面后由用户主动领取。
         MPUser.instance.MainLevelPass(m_blockInfo.ID, m_lovesCount);
 
         // 2、更新解锁到的关卡位置，解锁新关卡

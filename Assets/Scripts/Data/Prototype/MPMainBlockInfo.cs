@@ -31,8 +31,33 @@ public class MPMainBlockInfo
     [JsonProperty]
     private List<int> block;
 
+    /// <summary>
+    /// 可选宝箱奖励。配置为空或奖励无效时不显示宝箱。
+    /// </summary>
+    [JsonProperty("box_award")]
+    private MPMainLevelBoxAward boxAward;
+
     public string ID { get => id; }
 
     public List<int> Block { get => block; }
+
+    public MPMainLevelBoxAward BoxAward { get => boxAward; }
 }
 
+/// <summary>
+/// 主线关卡宝箱奖励配置。
+/// </summary>
+public sealed class MPMainLevelBoxAward
+{
+    [JsonProperty("type")]
+    private string type;
+
+    [JsonProperty("count")]
+    private int count;
+
+    public string Type { get => type ?? string.Empty; }
+
+    public int Count { get => count; }
+
+    public bool IsValid => !string.IsNullOrWhiteSpace(type) && count > 0;
+}

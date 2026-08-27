@@ -1,6 +1,8 @@
 using HQ.UIManager;
 using SuperScrollView;
 using DG.Tweening;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,11 +16,38 @@ public class MPMainLevelView : AWindow
     private const float TRACK_BUTTON_SHOW_DISTANCE = LEVEL_ITEM_HEIGHT * 4f;
     private const float TRACK_BUTTON_SCALE_DURATION = 0.2f;
     private const float TRACK_SCROLL_DURATION = 0.45f;
+    private const float CLOUD_PARALLAX_FACTOR = 0.12f;
+    private const float FLASH_MIN_SCALE = 0.35f;
+    private const float FLASH_MAX_SCALE = 1f;
+    private const float FLASH_INITIAL_DELAY_MAX = 1.4f;
+    private const int LEVEL_LINE_SEGMENTS_PER_CONNECTION = 10;
+    private const float LEVEL_LINE_CONTROL_RATIO = 0.38f;
 
     /// <summary>
     /// 每次启动游戏只自动定位一次；返回主页时保留用户当前的滚动位置。
     /// </summary>
     private static bool s_hasLocatedLatestLevelOnLaunch;
+
+    [TransformPath("View/Head/BackBtn")]
+    private Button m_backBtn;
+
+    [TransformPath("View/Head/SettingBtn")]
+    private Button m_settingBtn;
+
+    [TransformPath("View/Head/Coin/Count")]
+    private TMP_Text m_coinText;
+
+    [TransformPath("View/Head/Diamond/Count")]
+    private TMP_Text m_diamondText;
+
+    [TransformPath("View/Head/PlayerName")]
+    private TMP_Text m_playerNameText;
+
+    [TransformPath("View/Head/Level/Text")]
+    private TMP_Text m_playerLevelText;
+
+    [TransformPath("View/Head/Level/Mask/Fill")]
+    private Image m_playerLevelFill;
 
     /// <summary>
     /// 主关卡循环列表。
@@ -32,15 +61,28 @@ public class MPMainLevelView : AWindow
     [TransformPath("View/TrackBtn")]
     private Button m_trackBtn;
 
+    [TransformPath("View/Cloud/Cloud1")]
+    private RectTransform m_cloudOne;
+
+    [TransformPath("View/Cloud/Cloud2")]
+    private RectTransform m_cloudTwo;
+
+    [TransformPath("View/Flash")]
+    private RectTransform m_flashRoot;
+
+    [TransformPath("View/Lines")]
+    private RectTransform m_levelLinesRoot;
+
+    [TransformPath("View/Lines/Path")]
+    private MPUILineGraphic m_levelPathLine;
+
+    [TransformPath("View/Lines/Completed")]
+    private MPUILineGraphic m_levelCompletedLine;
+
     /// <summary>
     /// 主关卡数据
     /// </summary>
     private MPMainLevelModel m_levelModel;
-
-    /// <summary>
-    /// 云层滚动视差控制器。
-    /// </summary>
-    private MPHomeParallaxController m_parallaxController;
 
     /// <summary>
     /// 列表完成初始化后才允许在 OnFocus 中刷新。
@@ -60,6 +102,31 @@ public class MPMainLevelView : AWindow
 
     private Tween m_trackButtonTween;
 
+    private float m_cloudStartContentY;
+    private float m_cloudHeight;
+    private float m_cloudOneX;
+    private float m_cloudTwoX;
+    private bool m_cloudInitialized;
+
+    private RectTransform[] m_flashPoints;
+    private Image[] m_flashImages;
+    private Sequence[] m_flashSequences;
+    private bool m_flashRunning;
+
+    private readonly List<LevelLineAnchor> m_levelLineAnchors =
+        new List<LevelLineAnchor>();
+    private readonly List<Vector2> m_levelLinePoints =
+        new List<Vector2>();
+    private readonly List<Vector2> m_completedLevelLinePoints =
+        new List<Vector2>();
+    private bool m_levelLineInitialized;
+
+    private struct LevelLineAnchor
+    {
+        public int ListIndex;
+        public Vector2 Position;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetLaunchState()
     {
@@ -68,6 +135,9 @@ public class MPMainLevelView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        RegisterHeadButtons();
+        RefreshHead();
+
         m_loopList.gameObject.SetActive(true);
         m_trackBtn.gameObject.SetActive(true);
         m_levelModel = MPDataManager.Instance.m_mainLevelModel;
@@ -81,16 +151,6 @@ public class MPMainLevelView : AWindow
             GetListItemSizeByIndex);
         m_listInitialized = true;
 
-        m_parallaxController = m_loopList.GetComponent<MPHomeParallaxController>();
-        if (m_parallaxController != null)
-        {
-            m_parallaxController.Initialize(m_loopList.ScrollRect);
-        }
-        else
-        {
-            Debug.LogError("MPMainLevelView Prefab 的 Levels 节点缺少 MPHomeParallaxController");
-        }
-
         InitializeTrackButton();
 
         if (!s_hasLocatedLatestLevelOnLaunch && LocateLatestLevelAtCenter())
@@ -98,6 +158,9 @@ public class MPMainLevelView : AWindow
             s_hasLocatedLatestLevelOnLaunch = true;
         }
 
+        InitializeLevelLine();
+        InitializeCloudParallax();
+        InitializeFlashEffects();
         RefreshTrackButtonVisibility();
 
         // 开始播放背景音乐
@@ -106,19 +169,24 @@ public class MPMainLevelView : AWindow
 
     public override void OnFocus(bool focus)
     {
-        if (focus)
+        if (!focus)
         {
-            if (m_listInitialized)
-            {
-                if (m_isTrackingLatestLevel)
-                {
-                    m_loopList.ClearAutoMoveToItemData();
-                    m_isTrackingLatestLevel = false;
-                }
+            StopFlashEffects();
+            return;
+        }
 
-                RefreshLevels();
-                RefreshTrackButtonVisibility();
+        if (m_listInitialized)
+        {
+            if (m_isTrackingLatestLevel)
+            {
+                m_loopList.ClearAutoMoveToItemData();
+                m_isTrackingLatestLevel = false;
             }
+
+            RefreshLevels();
+            RefreshCloudParallax();
+            StartFlashEffects();
+            RefreshTrackButtonVisibility();
         }
     }
 
@@ -153,11 +221,19 @@ public class MPMainLevelView : AWindow
         if (!item.IsInitHandlerCalled)
         {
             item.IsInitHandlerCalled = true;
-            level.Initialize(RefreshLevels);
+            level.Initialize(RefreshLevels, OnBoxAwardInfoRequested);
         }
 
-        level.Refresh(data, index, m_levelModel.blockInfos.Count);
+        level.Refresh(data, index);
         return item;
+    }
+
+    /// <summary>
+    /// 未满足宝箱领取条件时的奖励信息展示入口。
+    /// 后续可在这里打开 Toast 或奖励详情弹窗。
+    /// </summary>
+    private void OnBoxAwardInfoRequested(MPMainBlockInfo levelInfo)
+    {
     }
 
     /// <summary>
@@ -234,7 +310,478 @@ public class MPMainLevelView : AWindow
 
     private void OnLevelScrollValueChanged(Vector2 _)
     {
+        RefreshLevelLine();
+        RefreshCloudParallax();
         RefreshTrackButtonVisibility();
+    }
+
+    /// <summary>
+    /// 初始化 UGUI 关卡连接线。Path 绘制完整路径，Completed 在其上方
+    /// 绘制第一关到当前最新解锁关卡的路径。
+    /// </summary>
+    private void InitializeLevelLine()
+    {
+        m_levelLineInitialized = false;
+        if (m_levelLinesRoot == null
+            || m_levelPathLine == null
+            || m_levelCompletedLine == null)
+        {
+            ClearLevelLine();
+            return;
+        }
+
+        m_levelPathLine.raycastTarget = false;
+        m_levelCompletedLine.raycastTarget = false;
+
+        Transform levelsTransform = m_loopList != null
+            ? m_loopList.transform
+            : null;
+        Transform cloudTransform = m_cloudOne != null
+            ? m_cloudOne.parent
+            : null;
+        if (cloudTransform != null
+            && m_levelLinesRoot.parent == cloudTransform.parent)
+        {
+            m_levelLinesRoot.SetSiblingIndex(
+                cloudTransform.GetSiblingIndex() + 1);
+        }
+        else if (levelsTransform != null
+            && m_levelLinesRoot.parent == levelsTransform.parent
+            && m_levelLinesRoot.GetSiblingIndex()
+            > levelsTransform.GetSiblingIndex())
+        {
+            m_levelLinesRoot.SetSiblingIndex(
+                levelsTransform.GetSiblingIndex());
+        }
+
+        m_levelLineInitialized = true;
+        Canvas.ForceUpdateCanvases();
+        RefreshLevelLine();
+    }
+
+    /// <summary>
+    /// 使用当前已创建的循环列表 Item 生成平滑曲线。
+    /// 只处理可见区及列表预加载区，避免为全部关卡持续更新大量顶点。
+    /// </summary>
+    private void RefreshLevelLine()
+    {
+        if (!m_listInitialized
+            || !m_levelLineInitialized
+            || m_levelLinesRoot == null
+            || m_levelPathLine == null
+            || m_levelCompletedLine == null
+            || m_loopList == null)
+        {
+            ClearLevelLine();
+            return;
+        }
+
+        m_levelLineAnchors.Clear();
+        int levelCount = m_levelModel?.blockInfos?.Count ?? 0;
+        for (int i = 0; i < m_loopList.ShownItemCount; i++)
+        {
+            LoopListViewItem2 item = m_loopList.GetShownItemByIndex(i);
+            if (item == null
+                || item.ItemIndex <= 0
+                || item.ItemIndex > levelCount)
+            {
+                continue;
+            }
+
+            MPMainLevelItem levelItem = item.GetComponent<MPMainLevelItem>();
+            RectTransform levelRoot = levelItem != null
+                ? levelItem.LevelRoot
+                : null;
+            if (levelRoot == null)
+                continue;
+
+            Vector2 position = m_levelLinesRoot.InverseTransformPoint(
+                levelRoot.position);
+            m_levelLineAnchors.Add(new LevelLineAnchor
+            {
+                ListIndex = item.ItemIndex,
+                Position = position,
+            });
+        }
+
+        if (m_levelLineAnchors.Count < 2)
+        {
+            ClearLevelLine();
+            return;
+        }
+
+        m_levelLineAnchors.Sort(CompareLevelLineAnchor);
+        BuildLevelLinePoints();
+        if (m_levelLinePoints.Count < 2)
+        {
+            ClearLevelLine();
+            return;
+        }
+
+        SetLevelLinePoints(m_levelPathLine, m_levelLinePoints);
+        SetLevelLinePoints(
+            m_levelCompletedLine,
+            m_completedLevelLinePoints);
+    }
+
+    private void BuildLevelLinePoints()
+    {
+        m_levelLinePoints.Clear();
+        m_completedLevelLinePoints.Clear();
+        int levelCount = m_levelModel?.blockInfos?.Count ?? 0;
+        int latestUnlockedListIndex = levelCount > 0
+            ? Mathf.Clamp(
+                MPUser.instance.GetMainLevlPassIndex(),
+                0,
+                levelCount - 1) + 1
+            : 0;
+        for (int i = 0; i < m_levelLineAnchors.Count - 1; i++)
+        {
+            LevelLineAnchor current = m_levelLineAnchors[i];
+            LevelLineAnchor next = m_levelLineAnchors[i + 1];
+            if (next.ListIndex != current.ListIndex + 1)
+                continue;
+
+            Vector2 start = current.Position;
+            Vector2 end = next.Position;
+            float direction = Mathf.Sign(end.y - start.y);
+            if (Mathf.Approximately(direction, 0f))
+                direction = 1f;
+
+            float controlDistance = Mathf.Abs(end.y - start.y)
+                * LEVEL_LINE_CONTROL_RATIO;
+            Vector2 controlOffset = Vector2.up
+                * direction
+                * controlDistance;
+            Vector2 controlOne = start + controlOffset;
+            Vector2 controlTwo = end - controlOffset;
+            AddBezierPoints(
+                m_levelLinePoints,
+                start,
+                controlOne,
+                controlTwo,
+                end);
+            if (next.ListIndex <= latestUnlockedListIndex)
+            {
+                AddBezierPoints(
+                    m_completedLevelLinePoints,
+                    start,
+                    controlOne,
+                    controlTwo,
+                    end);
+            }
+        }
+    }
+
+    private static void AddBezierPoints(
+        List<Vector2> points,
+        Vector2 start,
+        Vector2 controlOne,
+        Vector2 controlTwo,
+        Vector2 end)
+    {
+        int startSegment = points.Count == 0 ? 0 : 1;
+        for (int segment = startSegment;
+            segment <= LEVEL_LINE_SEGMENTS_PER_CONNECTION;
+            segment++)
+        {
+            float progress = segment
+                / (float)LEVEL_LINE_SEGMENTS_PER_CONNECTION;
+            points.Add(EvaluateCubicBezier(
+                start,
+                controlOne,
+                controlTwo,
+                end,
+                progress));
+        }
+    }
+
+    private static void SetLevelLinePoints(
+        MPUILineGraphic line,
+        List<Vector2> points)
+    {
+        if (line == null)
+            return;
+
+        bool hasLine = points != null && points.Count >= 2;
+        if (hasLine)
+            line.SetPoints(points);
+        else
+            line.ClearPoints();
+
+        line.enabled = hasLine;
+    }
+
+    private static Vector2 EvaluateCubicBezier(
+        Vector2 start,
+        Vector2 controlOne,
+        Vector2 controlTwo,
+        Vector2 end,
+        float progress)
+    {
+        float inverse = 1f - progress;
+        return inverse * inverse * inverse * start
+            + 3f * inverse * inverse * progress * controlOne
+            + 3f * inverse * progress * progress * controlTwo
+            + progress * progress * progress * end;
+    }
+
+    private static int CompareLevelLineAnchor(
+        LevelLineAnchor left,
+        LevelLineAnchor right)
+    {
+        return left.ListIndex.CompareTo(right.ListIndex);
+    }
+
+    private void ClearLevelLine()
+    {
+        m_levelLineAnchors.Clear();
+        m_levelLinePoints.Clear();
+        m_completedLevelLinePoints.Clear();
+
+        if (m_levelPathLine != null)
+        {
+            m_levelPathLine.ClearPoints();
+            m_levelPathLine.enabled = false;
+        }
+
+        if (m_levelCompletedLine != null)
+        {
+            m_levelCompletedLine.ClearPoints();
+            m_levelCompletedLine.enabled = false;
+        }
+    }
+
+    /// <summary>
+    /// 记录关卡列表的初始位置，并让两张可首尾衔接的云图组成循环背景。
+    /// 初次自动定位完成后再记录基准，避免启动定位造成云层跳动。
+    /// </summary>
+    private void InitializeCloudParallax()
+    {
+        m_cloudInitialized = false;
+        if (m_cloudOne == null
+            || m_cloudTwo == null
+            || m_loopList == null
+            || m_loopList.ContainerTrans == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        m_cloudHeight = Mathf.Max(
+            Mathf.Abs(m_cloudOne.rect.height),
+            Mathf.Abs(m_cloudOne.sizeDelta.y));
+        if (m_cloudHeight <= Mathf.Epsilon)
+            return;
+
+        m_cloudStartContentY = m_loopList.ContainerTrans.anchoredPosition.y;
+        m_cloudOneX = m_cloudOne.anchoredPosition.x;
+        m_cloudTwoX = m_cloudTwo.anchoredPosition.x;
+        Image cloudOneImage = m_cloudOne.GetComponent<Image>();
+        Image cloudTwoImage = m_cloudTwo.GetComponent<Image>();
+        if (cloudOneImage != null)
+            cloudOneImage.raycastTarget = false;
+        if (cloudTwoImage != null)
+            cloudTwoImage.raycastTarget = false;
+        m_cloudInitialized = true;
+        ApplyCloudOffset(0f);
+    }
+
+    private void RefreshCloudParallax()
+    {
+        if (!m_cloudInitialized
+            || m_loopList == null
+            || m_loopList.ContainerTrans == null)
+        {
+            return;
+        }
+
+        float contentOffset = m_loopList.ContainerTrans.anchoredPosition.y
+            - m_cloudStartContentY;
+        ApplyCloudOffset(contentOffset * CLOUD_PARALLAX_FACTOR);
+    }
+
+    private void ApplyCloudOffset(float offsetY)
+    {
+        if (!m_cloudInitialized || m_cloudHeight <= Mathf.Epsilon)
+            return;
+
+        float wrappedY = offsetY
+            - Mathf.Floor(offsetY / m_cloudHeight) * m_cloudHeight;
+        m_cloudOne.anchoredPosition = new Vector2(m_cloudOneX, wrappedY);
+        m_cloudTwo.anchoredPosition = new Vector2(
+            m_cloudTwoX,
+            wrappedY - m_cloudHeight);
+    }
+
+    /// <summary>
+    /// 初始化闪光点。位置、移动方向、显隐时长和缩放均在每轮重新随机。
+    /// </summary>
+    private void InitializeFlashEffects()
+    {
+        StopFlashEffects();
+        if (m_flashRoot == null || m_flashRoot.childCount == 0)
+            return;
+
+        int pointCount = m_flashRoot.childCount;
+        m_flashPoints = new RectTransform[pointCount];
+        m_flashImages = new Image[pointCount];
+        m_flashSequences = new Sequence[pointCount];
+        for (int i = 0; i < pointCount; i++)
+        {
+            RectTransform point = m_flashRoot.GetChild(i) as RectTransform;
+            Image image = point != null ? point.GetComponent<Image>() : null;
+            m_flashPoints[i] = point;
+            m_flashImages[i] = image;
+            if (image == null)
+                continue;
+
+            image.raycastTarget = false;
+            SetImageAlpha(image, 0f);
+        }
+
+        StartFlashEffects();
+    }
+
+    private void StartFlashEffects()
+    {
+        if (m_flashRunning
+            || m_flashPoints == null
+            || m_flashImages == null
+            || m_flashSequences == null)
+        {
+            return;
+        }
+
+        m_flashRunning = true;
+        for (int i = 0; i < m_flashPoints.Length; i++)
+        {
+            StartFlashCycle(i, Random.Range(0f, FLASH_INITIAL_DELAY_MAX));
+        }
+    }
+
+    private void StartFlashCycle(int index, float delay)
+    {
+        if (!m_flashRunning
+            || index < 0
+            || index >= m_flashPoints.Length)
+        {
+            return;
+        }
+
+        RectTransform point = m_flashPoints[index];
+        Image image = m_flashImages[index];
+        if (point == null || image == null)
+            return;
+
+        float scale = Random.Range(FLASH_MIN_SCALE, FLASH_MAX_SCALE);
+        point.localScale = Vector3.one * scale;
+        point.anchoredPosition = GetRandomFlashPosition(point, scale);
+        SetImageAlpha(image, 0f);
+
+        float fadeInDuration = Random.Range(0.45f, 0.8f);
+        float visibleDuration = Random.Range(1.2f, 2.8f);
+        float fadeOutDuration = Random.Range(0.55f, 0.9f);
+        float movementDuration = fadeInDuration
+            + visibleDuration
+            + fadeOutDuration;
+        Vector2 targetPosition = GetRandomFlashTargetPosition(point, scale);
+
+        Sequence sequence = DOTween.Sequence()
+            .SetUpdate(true)
+            .SetLink(gameObject);
+        if (delay > 0f)
+            sequence.AppendInterval(delay);
+
+        sequence.Append(
+                point.DOAnchorPos(targetPosition, movementDuration)
+                    .SetEase(Ease.InOutSine))
+            .Join(image.DOFade(1f, fadeInDuration)
+                .SetEase(Ease.InOutSine))
+            .Insert(
+                delay + fadeInDuration + visibleDuration,
+                image.DOFade(0f, fadeOutDuration)
+                    .SetEase(Ease.InOutSine))
+            .OnComplete(() =>
+            {
+                if (m_flashSequences != null
+                    && index < m_flashSequences.Length)
+                {
+                    m_flashSequences[index] = null;
+                }
+
+                if (m_flashRunning)
+                    StartFlashCycle(index, Random.Range(0.1f, 0.6f));
+            });
+        m_flashSequences[index] = sequence;
+    }
+
+    private Vector2 GetRandomFlashPosition(RectTransform point, float scale)
+    {
+        Rect area = m_flashRoot.rect;
+        float halfWidth = point.rect.width * scale * 0.5f;
+        float halfHeight = point.rect.height * scale * 0.5f;
+        float minX = area.xMin + halfWidth;
+        float maxX = area.xMax - halfWidth;
+        float minY = area.yMin + halfHeight;
+        float maxY = area.yMax - halfHeight;
+        float x = minX < maxX ? Random.Range(minX, maxX) : area.center.x;
+        float y = minY < maxY ? Random.Range(minY, maxY) : area.center.y;
+        return new Vector2(x, y);
+    }
+
+    private Vector2 GetRandomFlashTargetPosition(
+        RectTransform point,
+        float scale)
+    {
+        Rect area = m_flashRoot.rect;
+        float halfWidth = point.rect.width * scale * 0.5f;
+        float halfHeight = point.rect.height * scale * 0.5f;
+        float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+        float distance = Random.Range(80f, 220f);
+        Vector2 offset = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle))
+            * distance;
+        Vector2 target = point.anchoredPosition + offset;
+        target.x = Mathf.Clamp(
+            target.x,
+            area.xMin + halfWidth,
+            area.xMax - halfWidth);
+        target.y = Mathf.Clamp(
+            target.y,
+            area.yMin + halfHeight,
+            area.yMax - halfHeight);
+        return target;
+    }
+
+    private void StopFlashEffects()
+    {
+        m_flashRunning = false;
+        if (m_flashSequences != null)
+        {
+            for (int i = 0; i < m_flashSequences.Length; i++)
+            {
+                Sequence sequence = m_flashSequences[i];
+                if (sequence != null && sequence.IsActive())
+                    sequence.Kill();
+                m_flashSequences[i] = null;
+            }
+        }
+
+        if (m_flashImages == null)
+            return;
+
+        for (int i = 0; i < m_flashImages.Length; i++)
+        {
+            if (m_flashImages[i] != null)
+                SetImageAlpha(m_flashImages[i], 0f);
+        }
+    }
+
+    private static void SetImageAlpha(Image image, float alpha)
+    {
+        Color color = image.color;
+        color.a = alpha;
+        image.color = color;
     }
 
     /// <summary>
@@ -421,12 +968,81 @@ public class MPMainLevelView : AWindow
 
     private void RefreshLevels()
     {
+        RefreshHead();
         m_loopList.RefreshAllShownItem();
+        RefreshLevelLine();
+    }
+
+    /// <summary>
+    /// 注册顶部栏按钮，重复打开页面时不会叠加监听。
+    /// </summary>
+    private void RegisterHeadButtons()
+    {
+        UnregisterHeadButtons();
+        if (m_backBtn != null)
+            m_backBtn.onClick.AddListener(OnBackClick);
+        if (m_settingBtn != null)
+            m_settingBtn.onClick.AddListener(OnSettingClick);
+    }
+
+    private void UnregisterHeadButtons()
+    {
+        if (m_backBtn != null)
+            m_backBtn.onClick.RemoveListener(OnBackClick);
+        if (m_settingBtn != null)
+            m_settingBtn.onClick.RemoveListener(OnSettingClick);
+    }
+
+    /// <summary>
+    /// 刷新玩家信息、主线进度和资源数量。
+    /// </summary>
+    private void RefreshHead()
+    {
+        if (m_coinText != null)
+            m_coinText.text = MPUser.instance.GetCoins().ToString();
+        if (m_diamondText != null)
+            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+
+        if (m_playerNameText != null)
+        {
+            string playerName = MPLoginManager.Instance.PlayerName;
+            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
+                ? "Player"
+                : playerName;
+        }
+
+        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
+        int latestLevelIndex = levelCount > 0
+            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
+            : 0;
+        if (m_playerLevelText != null)
+            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
+        if (m_playerLevelFill != null)
+        {
+            m_playerLevelFill.fillAmount = levelCount <= 1
+                ? 0f
+                : latestLevelIndex / (float)(levelCount - 1);
+        }
+    }
+
+    private void OnBackClick()
+    {
+        DestroyWindow();
+    }
+
+    private void OnSettingClick()
+    {
+        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 
     public override void OnRelease()
     {
         m_listInitialized = false;
+        m_levelLineInitialized = false;
+        ClearLevelLine();
+        StopFlashEffects();
+        m_cloudInitialized = false;
+        UnregisterHeadButtons();
         m_trackBtn.onClick.RemoveListener(OnTrackButtonClick);
 
         if (m_loopList != null)
@@ -444,11 +1060,6 @@ public class MPMainLevelView : AWindow
         if (m_trackBtn != null)
         {
             m_trackBtn.interactable = false;
-        }
-
-        if (m_parallaxController != null)
-        {
-            m_parallaxController.Shutdown();
         }
     }
 }

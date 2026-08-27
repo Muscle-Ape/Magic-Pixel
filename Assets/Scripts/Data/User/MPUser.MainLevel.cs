@@ -11,6 +11,7 @@ public partial class MPUser
     private string m_key_mainlevel_unlocklist = "key_mainlevel_unlocklist";
     private string m_key_mainlevel_passlist = "key_mainlevel_passlist";
     private string m_key_mainlevel_stars = "key_mainlevel_stars";
+    private string m_key_mainlevel_box_award_claimed = "key_mainlevel_box_award_claimed";
     #endregion
 
     #region Fields
@@ -33,6 +34,11 @@ public partial class MPUser
     /// 主线关卡已通关星数，key为关卡ID，value为剩余生命对应的星数。
     /// </summary>
     private Dictionary<string, int> m_mainlevel_stars;
+
+    /// <summary>
+    /// 主线关卡已经领取过宝箱奖励的关卡ID列表。
+    /// </summary>
+    private List<string> m_mainlevel_box_award_claimed;
     #endregion
 
     #region Method
@@ -45,6 +51,9 @@ public partial class MPUser
         m_mainlevel_unlocklist = ES3.Load<List<string>>(m_key_mainlevel_unlocklist, new List<string>());
         m_mainlevel_passlist = ES3.Load<List<string>>(m_key_mainlevel_passlist, new List<string>());
         m_mainlevel_stars = ES3.Load<Dictionary<string, int>>(m_key_mainlevel_stars, new Dictionary<string, int>());
+        m_mainlevel_box_award_claimed = ES3.Load<List<string>>(
+            m_key_mainlevel_box_award_claimed,
+            new List<string>());
 
         MainLevelUnlock(MPDataManager.Instance.m_mainLevelModel.blockInfos[0].ID);
     }
@@ -158,6 +167,48 @@ public partial class MPUser
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// 判断指定主线关卡的宝箱奖励是否已经领取。
+    /// </summary>
+    public bool MainLevelBoxAwardIsClaimed(string id)
+    {
+        return !string.IsNullOrEmpty(id)
+            && m_mainlevel_box_award_claimed.Contains(id);
+    }
+
+    /// <summary>
+    /// 尝试领取已通关主线关卡的宝箱奖励，每个关卡只允许领取一次。
+    /// </summary>
+    public bool TryClaimMainLevelBoxAward(MPMainBlockInfo levelInfo)
+    {
+        MPMainLevelBoxAward award = levelInfo?.BoxAward;
+        if (levelInfo == null
+            || string.IsNullOrEmpty(levelInfo.ID)
+            || award == null
+            || !award.IsValid
+            || !MainLevelIsPass(levelInfo.ID)
+            || MainLevelBoxAwardIsClaimed(levelInfo.ID))
+        {
+            return false;
+        }
+
+        switch (award.Type.Trim().ToLowerInvariant())
+        {
+            case "coin":
+                m_mainlevel_box_award_claimed.Add(levelInfo.ID);
+                ES3.Save(
+                    m_key_mainlevel_box_award_claimed,
+                    m_mainlevel_box_award_claimed);
+                NotifyCloudSaveDirty(MPCloudSaveDirtyReason.MainLevel);
+                AddCoins(award.Count);
+                return true;
+            default:
+                Debug.LogWarning(
+                    $"不支持的主线宝箱奖励类型：{award.Type}，关卡：{levelInfo.ID}");
+                return false;
+        }
     }
     #endregion
 }

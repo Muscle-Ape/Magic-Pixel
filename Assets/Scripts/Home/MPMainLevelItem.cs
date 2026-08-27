@@ -1,142 +1,127 @@
 using HQ.UIManager;
 using System;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using YooAsset;
 
 public class MPMainLevelItem : MonoBehaviour
 {
-    private const int PATH_POINT_COUNT = 3;
-    private const float PATH_ENDPOINT_GAP = 6f;
-    private const float INCOMPLETE_PATH_ALPHA = 0.3f;
     private const int LEVEL_POSITION_GROUP_SIZE = 12;
-    private const float LEVEL_VERTICAL_OFFSET_SCALE = 0.8f;
-    private const float HORIZONTAL_LINK_RATIO = 1.15f;
-    private const float HORIZONTAL_PATH_CURVE_OFFSET = 60f;
-    private const float CLOSE_LINK_ANCHOR_THRESHOLD = 150f;
-
-    private enum CloseLinkMode
-    {
-        None,
-        LeftToBottom,
-        RightToBottom,
-        TopToLeft,
-        TopToRight,
-    }
+    private const float LEVEL_MIN_X = -150f;
+    private const float LEVEL_VERTICAL_OFFSET_LIMIT = 25f;
+    private const float BOX_HORIZONTAL_GAP = 140f;
 
     /// <summary>
-    /// 六组不同节奏的二维关卡轨迹，依次表现宽幅折返、侧边攀爬、交叉跳转、
-    /// 中轴突刺、离散岛链和左右平台，降低长距离滑动时的重复感。
+    /// 六组左右交替且不对称的关卡位置。偶数项位于左侧，奇数项位于右侧；
+    /// Y 偏移保持在较小范围内，让纵向间距有变化但不会忽远忽近。
     /// </summary>
     private static readonly Vector2[][] LEVEL_POSITION_GROUPS =
     {
         new Vector2[]
         {
-            new Vector2(0f, 0f),
-            new Vector2(-250f, 20f),
-            new Vector2(-310f, 135f),
-            new Vector2(250f, -140f),
-            new Vector2(305f, -45f),
-            new Vector2(-220f, 125f),
-            new Vector2(275f, -125f),
-            new Vector2(120f, 70f),
-            new Vector2(-305f, 135f),
-            new Vector2(285f, -135f),
-            new Vector2(225f, -10f),
-            new Vector2(-270f, 120f),
+            new Vector2(-120f, -18f),
+            new Vector2(150f, -8f),
+            new Vector2(-145f, 7f),
+            new Vector2(190f, 18f),
+            new Vector2(-95f, 5f),
+            new Vector2(130f, -10f),
+            new Vector2(-150f, -22f),
+            new Vector2(215f, -7f),
+            new Vector2(-80f, 9f),
+            new Vector2(170f, 24f),
+            new Vector2(-135f, 11f),
+            new Vector2(200f, -4f),
         },
         new Vector2[]
         {
-            new Vector2(280f, -130f),
-            new Vector2(315f, 90f),
-            new Vector2(100f, 140f),
-            new Vector2(-300f, -125f),
-            new Vector2(-260f, 20f),
-            new Vector2(-70f, 130f),
-            new Vector2(300f, -140f),
-            new Vector2(250f, 40f),
-            new Vector2(40f, 120f),
-            new Vector2(-310f, -130f),
-            new Vector2(-280f, -10f),
-            new Vector2(160f, 135f),
+            new Vector2(-105f, -17f),
+            new Vector2(220f, -3f),
+            new Vector2(-140f, 13f),
+            new Vector2(165f, 25f),
+            new Vector2(-75f, 10f),
+            new Vector2(195f, -5f),
+            new Vector2(-150f, -20f),
+            new Vector2(125f, -8f),
+            new Vector2(-90f, 6f),
+            new Vector2(230f, 19f),
+            new Vector2(-130f, 8f),
+            new Vector2(180f, -6f),
         },
         new Vector2[]
         {
-            new Vector2(-270f, -135f),
-            new Vector2(-315f, 70f),
-            new Vector2(-140f, 135f),
-            new Vector2(290f, -120f),
-            new Vector2(220f, 10f),
-            new Vector2(100f, 120f),
-            new Vector2(-310f, -130f),
-            new Vector2(-260f, 60f),
-            new Vector2(-50f, 135f),
-            new Vector2(310f, -140f),
-            new Vector2(260f, 20f),
-            new Vector2(-130f, 125f),
+            new Vector2(-150f, -21f),
+            new Vector2(175f, -9f),
+            new Vector2(-115f, 4f),
+            new Vector2(225f, 17f),
+            new Vector2(-85f, 3f),
+            new Vector2(145f, -12f),
+            new Vector2(-138f, -24f),
+            new Vector2(205f, -10f),
+            new Vector2(-70f, 5f),
+            new Vector2(185f, 20f),
+            new Vector2(-125f, 7f),
+            new Vector2(240f, -8f),
         },
         new Vector2[]
         {
-            new Vector2(300f, -125f),
-            new Vector2(140f, 30f),
-            new Vector2(60f, 135f),
-            new Vector2(-300f, -135f),
-            new Vector2(-80f, 20f),
-            new Vector2(-60f, 125f),
-            new Vector2(310f, -125f),
-            new Vector2(120f, 35f),
-            new Vector2(50f, 130f),
-            new Vector2(-310f, -130f),
-            new Vector2(-100f, 10f),
-            new Vector2(30f, 120f),
+            new Vector2(-98f, -19f),
+            new Vector2(205f, -5f),
+            new Vector2(-148f, 11f),
+            new Vector2(135f, 23f),
+            new Vector2(-110f, 9f),
+            new Vector2(230f, -6f),
+            new Vector2(-78f, -18f),
+            new Vector2(180f, -4f),
+            new Vector2(-142f, 12f),
+            new Vector2(155f, 22f),
+            new Vector2(-90f, 8f),
+            new Vector2(215f, -7f),
         },
         new Vector2[]
         {
-            new Vector2(-320f, -120f),
-            new Vector2(-180f, 80f),
-            new Vector2(-60f, 135f),
-            new Vector2(300f, -135f),
-            new Vector2(250f, 0f),
-            new Vector2(80f, 120f),
-            new Vector2(-300f, -125f),
-            new Vector2(-120f, 50f),
-            new Vector2(230f, 130f),
-            new Vector2(-290f, -140f),
-            new Vector2(-240f, 30f),
-            new Vector2(250f, 120f),
+            new Vector2(-135f, -23f),
+            new Vector2(160f, -11f),
+            new Vector2(-72f, 2f),
+            new Vector2(220f, 16f),
+            new Vector2(-150f, 6f),
+            new Vector2(185f, -9f),
+            new Vector2(-102f, -21f),
+            new Vector2(240f, -6f),
+            new Vector2(-145f, 10f),
+            new Vector2(130f, 25f),
+            new Vector2(-82f, 13f),
+            new Vector2(200f, -2f),
         },
         new Vector2[]
         {
-            new Vector2(-250f, -130f),
-            new Vector2(-300f, 40f),
-            new Vector2(260f, 130f),
-            new Vector2(-280f, -120f),
-            new Vector2(-60f, 0f),
-            new Vector2(300f, 135f),
-            new Vector2(-260f, -135f),
-            new Vector2(-310f, 60f),
-            new Vector2(-80f, 125f),
-            new Vector2(300f, -130f),
-            new Vector2(250f, 20f),
-            new Vector2(-250f, 90f),
+            new Vector2(-88f, -16f),
+            new Vector2(235f, -1f),
+            new Vector2(-148f, 14f),
+            new Vector2(170f, 24f),
+            new Vector2(-118f, 12f),
+            new Vector2(210f, -3f),
+            new Vector2(-75f, -19f),
+            new Vector2(150f, -7f),
+            new Vector2(-137f, 8f),
+            new Vector2(225f, 21f),
+            new Vector2(-100f, 5f),
+            new Vector2(190f, -10f),
         },
     };
 
     /// <summary>
-    /// 三个连接点在同一条平滑曲线上的采样位置。
+    /// 与位置组一一对应的 Level 节点 Z 轴旋转角度。
     /// </summary>
-    private static readonly float[] PATH_PROGRESS =
+    private static readonly float[][] LEVEL_ROTATION_GROUPS =
     {
-        0f, 0.50f, 1f,
-    };
-
-    /// <summary>
-    /// 非横向连接使用不同的曲线侧向幅度，避免所有弧线朝向和弯曲程度相同。
-    /// </summary>
-    private static readonly float[] PATH_CURVE_OFFSETS =
-    {
-        48f, -62f, 42f, -52f, 68f, -40f, 56f,
-        -70f, 45f, -55f, 64f, -42f, 58f,
+        new float[] { -7f, 4f, 2f, -6f, -3f, 7f, -8f, 3f, 5f, -5f, -2f, 6f },
+        new float[] { 4f, -7f, -5f, 3f, 7f, -2f, -6f, 5f, 2f, -8f, 6f, -3f },
+        new float[] { -5f, 8f, 3f, -4f, -7f, 2f, 6f, -6f, -2f, 7f, 4f, -8f },
+        new float[] { 6f, -3f, -8f, 4f, 2f, -7f, -4f, 8f, 5f, -2f, -6f, 3f },
+        new float[] { -8f, 5f, 2f, -6f, 7f, -3f, -5f, 4f, 8f, -4f, -1f, 6f },
+        new float[] { 3f, -6f, -2f, 8f, -5f, 4f, 7f, -8f, -3f, 5f, 2f, -4f },
     };
 
     [SerializeField]
@@ -151,14 +136,20 @@ public class MPMainLevelItem : MonoBehaviour
     private RectTransform m_levelRoot;
 
     /// <summary>
-    /// 当前关卡到下一关之间的路线节点。
+    /// 宝箱以底部中心为 Pivot，与关卡底边对齐并放在关卡另一侧。
     /// </summary>
-    private RectTransform m_pathRoot;
+    private RectTransform m_boxRoot;
+
+    private Image m_boxImage;
+
+    private Button m_boxBtn;
+
+    private Tween m_boxShakeTween;
 
     /// <summary>
-    /// 路线点 Image。节点固定存在于 Prefab 中，代码只更新位置和颜色。
+    /// Prefab 中宝箱关闭状态的半宽，用于稳定计算与关卡之间的水平间隔。
     /// </summary>
-    private Image[] m_pathPoints;
+    private float m_boxReferenceHalfWidth;
 
     /// <summary>
     /// 通关状态节点。
@@ -221,19 +212,48 @@ public class MPMainLevelItem : MonoBehaviour
     private bool m_isUnlock;
 
     /// <summary>
+    /// 当前关卡是否已经通关，只有通关后才能点击领取宝箱。
+    /// </summary>
+    private bool m_isPass;
+
+    /// <summary>
     /// 刷新页面回调
     /// </summary>
     private Action m_refresh;
 
+    /// <summary>
+    /// 未满足领取条件时，请求上层展示宝箱奖励信息。
+    /// 当前只预留调用接口，不实现具体弹窗。
+    /// </summary>
+    private Action<MPMainBlockInfo> m_boxAwardInfoRequested;
+
+    public RectTransform LevelRoot => m_levelRoot;
 
     /// <summary>
     /// 初始化
     /// </summary>
-    public void Initialize(Action refresh)
+    public void Initialize(
+        Action refresh,
+        Action<MPMainBlockInfo> boxAwardInfoRequested = null)
     {
         m_refresh = refresh;
+        m_boxAwardInfoRequested = boxAwardInfoRequested;
 
         m_levelRoot = transform.Find("Level") as RectTransform;
+        m_boxRoot = transform.Find("Box") as RectTransform;
+        m_boxImage = m_boxRoot != null ? m_boxRoot.GetComponent<Image>() : null;
+        m_boxBtn = m_boxRoot != null ? m_boxRoot.GetComponent<Button>() : null;
+        m_boxReferenceHalfWidth = m_boxRoot != null
+            ? Mathf.Abs(m_boxRoot.rect.width) * 0.5f
+            : 0f;
+        if (m_boxImage != null)
+            m_boxImage.raycastTarget = false;
+        if (m_boxBtn != null)
+        {
+            m_boxBtn.onClick.RemoveListener(OnBoxClick);
+            m_boxBtn.onClick.AddListener(OnBoxClick);
+        }
+
         m_completed = transform.Find("Level/Completed").gameObject;
         m_levelIndex = transform.Find("Level/Index").gameObject;
         m_levelIndexText = transform.Find("Level/Index/Text").GetComponent<TMP_Text>();
@@ -255,8 +275,6 @@ public class MPMainLevelItem : MonoBehaviour
         m_lock = transform.Find("Level/Lock").gameObject;
         m_levelBtn = m_levelRoot.GetComponent<Button>();
 
-        CachePathVisuals();
-
         m_levelBtn.onClick.RemoveListener(OnLevelClick);
         m_levelBtn.onClick.AddListener(OnLevelClick);
     }
@@ -264,273 +282,44 @@ public class MPMainLevelItem : MonoBehaviour
     /// <summary>
     /// 刷新
     /// </summary>
-    public void Refresh(MPMainBlockInfo data, int index, int totalCount)
+    public void Refresh(MPMainBlockInfo data, int index)
     {
         m_data = data;
         m_index = index;
 
-        RefreshLevelPosition(index);
+        RefreshLevelTransform(index);
 
         string indexText = (m_index + 1).ToString();
         m_levelIndexText.text = indexText;
         m_levelIndexShadowText.text = indexText;
 
         m_isUnlock = MPUser.instance.MainLevelIsUnlock(m_data.ID);
-        bool isPass = m_isUnlock && MPUser.instance.MainLevelIsPass(m_data.ID);
+        m_isPass = m_isUnlock && MPUser.instance.MainLevelIsPass(m_data.ID);
 
         m_lock.SetActive(!m_isUnlock);
-        m_unlock.SetActive(m_isUnlock && !isPass);
+        m_unlock.SetActive(m_isUnlock && !m_isPass);
         m_levelIndex.SetActive(m_isUnlock);
-        m_completed.SetActive(isPass);
-        RefreshLevelIndexMaterial(isPass);
+        m_completed.SetActive(m_isPass);
+        RefreshLevelIndexMaterial(m_isPass);
 
-        int stars = isPass ? MPUser.instance.GetMainLevelStars(m_data.ID) : 0;
+        int stars = m_isPass ? MPUser.instance.GetMainLevelStars(m_data.ID) : 0;
         RefreshStars(m_isUnlock, stars);
-        RefreshPath(index, totalCount, isPass);
+        RefreshBox(index);
     }
 
     /// <summary>
-    /// 根据关卡下标设置横向位置，形成非对称的探索路线。
+    /// 根据关卡下标设置位置和旋转，形成左右交替但不完全对称的探索路线。
     /// </summary>
-    private void RefreshLevelPosition(int index)
+    private void RefreshLevelTransform(int index)
     {
         if (m_levelRoot == null)
             return;
 
         m_levelRoot.anchoredPosition = GetLevelPosition(index);
-    }
-
-    /// <summary>
-    /// 缓存 Prefab 中已经搭建好的三个路线点，不在运行时创建 UI 节点。
-    /// </summary>
-    private void CachePathVisuals()
-    {
-        m_pathRoot = transform.Find("Path") as RectTransform;
-        m_pathPoints = new Image[PATH_POINT_COUNT];
-
-        if (m_pathRoot == null)
-        {
-            Debug.LogError("MPMainLevelItem Prefab 缺少 Path 节点", this);
-            return;
-        }
-
-        for (int i = 0; i < m_pathPoints.Length; i++)
-        {
-            string pointName = $"Point_{i + 1:00}";
-            Transform pointTransform = m_pathRoot.Find(pointName);
-            m_pathPoints[i] = pointTransform != null
-                ? pointTransform.GetComponent<Image>()
-                : null;
-
-            if (m_pathPoints[i] == null)
-            {
-                Debug.LogError($"MPMainLevelItem Prefab 缺少路线点 {pointName}", this);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 刷新当前关卡到下一关的三个连接点。
-    /// 先从两个关卡框边缘取得连接锚点，再在锚点之间均匀采样曲线。
-    /// </summary>
-    private void RefreshPath(int index, int totalCount, bool isPass)
-    {
-        if (m_pathRoot == null || m_pathPoints == null)
-            return;
-
-        bool showPath = index >= 0 && index < totalCount - 1;
-        m_pathRoot.gameObject.SetActive(showPath);
-        if (!showPath)
-            return;
-
-        float rowHeight = ((RectTransform)transform).rect.height;
-        if (rowHeight <= 0f)
-        {
-            rowHeight = ((RectTransform)transform).sizeDelta.y;
-        }
-
-        Vector3 levelCenterInPath = m_pathRoot.InverseTransformPoint(m_levelRoot.position);
-        Vector2 start = new Vector2(levelCenterInPath.x, levelCenterInPath.y);
-        Vector2 nextLevelPosition = GetLevelPosition(index + 1);
-        Vector2 end = new Vector2(nextLevelPosition.x, rowHeight + nextLevelPosition.y);
-        Vector2 maxPointExtents = GetMaxPathPointExtents();
-        Vector2 startPointExtents = m_pathPoints[0] != null
-            ? GetPointExtents(m_pathPoints[0].rectTransform)
-            : maxPointExtents;
-        Vector2 endPointExtents = m_pathPoints[PATH_POINT_COUNT - 1] != null
-            ? GetPointExtents(m_pathPoints[PATH_POINT_COUNT - 1].rectTransform)
-            : maxPointExtents;
-        Vector2 startSafeHalfSize = GetLevelSafeHalfSize(startPointExtents);
-        Vector2 endSafeHalfSize = GetLevelSafeHalfSize(endPointExtents);
-        Vector2 startAnchor = GetRectEdgePoint(start, end - start, startSafeHalfSize);
-        Vector2 endAnchor = GetRectEdgePoint(end, start - end, endSafeHalfSize);
-        CloseLinkMode closeLinkMode = CloseLinkMode.None;
-        if (Vector2.Distance(startAnchor, endAnchor) < CLOSE_LINK_ANCHOR_THRESHOLD)
-        {
-            bool nextLevelOnLeft = Mathf.Abs(end.x - start.x) > Mathf.Epsilon
-                ? end.x < start.x
-                : (index & 1) == 0;
-            bool useSideToBottom = ShouldUseSideToBottomConnection(index);
-            if (useSideToBottom)
-            {
-                closeLinkMode = nextLevelOnLeft
-                    ? CloseLinkMode.LeftToBottom
-                    : CloseLinkMode.RightToBottom;
-                startAnchor = start + new Vector2(
-                    nextLevelOnLeft
-                        ? -startSafeHalfSize.x
-                        : startSafeHalfSize.x,
-                    0f);
-                endAnchor = end + new Vector2(0f, -endSafeHalfSize.y);
-            }
-            else
-            {
-                closeLinkMode = nextLevelOnLeft
-                    ? CloseLinkMode.TopToRight
-                    : CloseLinkMode.TopToLeft;
-                startAnchor = start + new Vector2(0f, startSafeHalfSize.y);
-                endAnchor = end + new Vector2(
-                    nextLevelOnLeft
-                        ? endSafeHalfSize.x
-                        : -endSafeHalfSize.x,
-                    0f);
-            }
-        }
-
-        Vector2 controlPoint = GetPathControlPoint(
-            index,
-            start,
-            end,
-            startAnchor,
-            endAnchor,
-            closeLinkMode);
-        Color pointColor = Color.white;
-        pointColor.a = isPass ? 1f : INCOMPLETE_PATH_ALPHA;
-
-        for (int i = 0; i < m_pathPoints.Length; i++)
-        {
-            Image point = m_pathPoints[i];
-            if (point == null)
-                continue;
-
-            float progress = PATH_PROGRESS[i];
-            Vector2 position = GetQuadraticBezierPoint(
-                startAnchor,
-                controlPoint,
-                endAnchor,
-                progress);
-
-            point.rectTransform.anchoredPosition = position;
-            point.color = pointColor;
-        }
-    }
-
-    /// <summary>
-    /// 以 Item/Level 节点的实际尺寸为基准，只在点与关卡框之间保留少量缝隙。
-    /// </summary>
-    private Vector2 GetLevelSafeHalfSize(Vector2 pointExtents)
-    {
-        return new Vector2(
-            m_levelRoot.rect.width * 0.5f + pointExtents.x + PATH_ENDPOINT_GAP,
-            m_levelRoot.rect.height * 0.5f + pointExtents.y + PATH_ENDPOINT_GAP);
-    }
-
-    /// <summary>
-    /// 近距离连接混用“左右侧到下侧”和“上侧到左右侧”，其余连接使用交替侧弯曲线。
-    /// </summary>
-    private static Vector2 GetPathControlPoint(
-        int index,
-        Vector2 start,
-        Vector2 end,
-        Vector2 startAnchor,
-        Vector2 endAnchor,
-        CloseLinkMode closeLinkMode)
-    {
-        Vector2 centerDelta = end - start;
-        Vector2 anchorCenter = (startAnchor + endAnchor) * 0.5f;
-        if (closeLinkMode == CloseLinkMode.LeftToBottom
-            || closeLinkMode == CloseLinkMode.RightToBottom)
-        {
-            // 水平离开当前关卡，随后垂直接近下一关卡下侧。
-            return new Vector2(endAnchor.x, startAnchor.y);
-        }
-
-        if (closeLinkMode == CloseLinkMode.TopToLeft
-            || closeLinkMode == CloseLinkMode.TopToRight)
-        {
-            // 垂直离开当前关卡上侧，随后水平接近下一关卡侧边。
-            return new Vector2(startAnchor.x, endAnchor.y);
-        }
-
-        bool isHorizontalLink = Mathf.Abs(centerDelta.x)
-            >= Mathf.Abs(centerDelta.y) * HORIZONTAL_LINK_RATIO;
-        if (isHorizontalLink)
-        {
-            anchorCenter.y -= HORIZONTAL_PATH_CURVE_OFFSET;
-            return anchorCenter;
-        }
-
-        Vector2 normal = new Vector2(-centerDelta.y, centerDelta.x).normalized;
-        float curveOffset = PATH_CURVE_OFFSETS[index % PATH_CURVE_OFFSETS.Length];
-        return anchorCenter + normal * curveOffset;
-    }
-
-    /// <summary>
-    /// 固定节奏交替两类近距离路线，避免 LoopListView2 复用时连接方式随机跳变。
-    /// </summary>
-    private static bool ShouldUseSideToBottomConnection(int index)
-    {
-        int patternIndex = index % 7;
-        return patternIndex == 1 || patternIndex == 4 || patternIndex == 6;
-    }
-
-    private static Vector2 GetRectEdgePoint(
-        Vector2 center,
-        Vector2 direction,
-        Vector2 halfSize)
-    {
-        float scaleX = Mathf.Abs(direction.x) > Mathf.Epsilon
-            ? halfSize.x / Mathf.Abs(direction.x)
-            : float.PositiveInfinity;
-        float scaleY = Mathf.Abs(direction.y) > Mathf.Epsilon
-            ? halfSize.y / Mathf.Abs(direction.y)
-            : float.PositiveInfinity;
-        float scale = Mathf.Min(scaleX, scaleY);
-        return float.IsInfinity(scale)
-            ? center
-            : center + direction * scale;
-    }
-
-    /// <summary>
-    /// 二次贝塞尔曲线保证三个连接点始终属于同一条连续弧线。
-    /// </summary>
-    private static Vector2 GetQuadraticBezierPoint(
-        Vector2 start,
-        Vector2 control,
-        Vector2 end,
-        float progress)
-    {
-        float inverseProgress = 1f - progress;
-        return inverseProgress * inverseProgress * start
-            + 2f * inverseProgress * progress * control
-            + progress * progress * end;
-    }
-
-    private Vector2 GetMaxPathPointExtents()
-    {
-        Vector2 maxExtents = Vector2.zero;
-        for (int i = 0; i < m_pathPoints.Length; i++)
-        {
-            Image point = m_pathPoints[i];
-            if (point == null)
-                continue;
-
-            Vector2 pointExtents = GetPointExtents(point.rectTransform);
-            maxExtents.x = Mathf.Max(maxExtents.x, pointExtents.x);
-            maxExtents.y = Mathf.Max(maxExtents.y, pointExtents.y);
-        }
-
-        return maxExtents;
+        m_levelRoot.localRotation = Quaternion.Euler(
+            0f,
+            0f,
+            GetLevelRotation(index));
     }
 
     private void RefreshLevelIndexMaterial(bool isPass)
@@ -547,43 +336,164 @@ public class MPMainLevelItem : MonoBehaviour
     }
 
     /// <summary>
-    /// 计算路线点旋转后的二维包围范围。
+    /// 仅配置了有效 box_award 的关卡显示宝箱。
+    /// 宝箱放在 Level 对侧，并利用底部 Pivot 与 Level 底边对齐。
     /// </summary>
-    private static Vector2 GetPointExtents(RectTransform point)
+    private void RefreshBox(int index)
     {
-        Rect rect = point.rect;
-        float radians = point.localEulerAngles.z * Mathf.Deg2Rad;
-        float width = rect.width * Mathf.Abs(point.localScale.x);
-        float height = rect.height * Mathf.Abs(point.localScale.y);
-        float horizontalExtent = Mathf.Abs(Mathf.Cos(radians)) * width * 0.5f
-            + Mathf.Abs(Mathf.Sin(radians)) * height * 0.5f;
-        float verticalExtent = Mathf.Abs(Mathf.Cos(radians))
-                * height
-                * 0.5f
-            + Mathf.Abs(Mathf.Sin(radians))
-                * width
-                * 0.5f;
-        return new Vector2(horizontalExtent, verticalExtent);
+        if (m_boxRoot == null || m_boxImage == null)
+            return;
+
+        KillBoxShakeTween();
+        MPMainLevelBoxAward award = m_data?.BoxAward;
+        if (award == null || !award.IsValid)
+        {
+            SetBoxInteractable(false);
+            m_boxRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        bool isClaimed = MPUser.instance.MainLevelBoxAwardIsClaimed(m_data.ID);
+        string rewardType = award.Type.Trim().ToLowerInvariant();
+        string state = isClaimed ? "open" : "close";
+        string spriteLocation = $"box_{rewardType}_{state}";
+        if (!YooAssets.CheckLocationValid(spriteLocation))
+        {
+            Debug.LogWarning(
+                $"主线宝箱图片不存在或尚未加入 YooAsset：{spriteLocation}",
+                this);
+            SetBoxInteractable(false);
+            m_boxRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        try
+        {
+            Sprite boxSprite = MPLoad.Load<Sprite>(spriteLocation, this);
+            if (boxSprite == null)
+            {
+                SetBoxInteractable(false);
+                m_boxRoot.gameObject.SetActive(false);
+                return;
+            }
+
+            m_boxImage.sprite = boxSprite;
+            // 开启图包含更大的光效区域，按原图尺寸切换，并依靠底部 Pivot 向上展开。
+            m_boxImage.SetNativeSize();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                $"主线宝箱图片加载失败：{spriteLocation}，{exception.Message}",
+                this);
+            SetBoxInteractable(false);
+            m_boxRoot.gameObject.SetActive(false);
+            return;
+        }
+
+        Vector2 levelPosition = GetLevelPosition(index);
+        float levelBottomY = levelPosition.y - m_levelRoot.rect.height * 0.5f;
+        float direction = levelPosition.x <= 0f ? 1f : -1f;
+        float centerDistance = Mathf.Abs(m_levelRoot.rect.width) * 0.5f
+            + m_boxReferenceHalfWidth
+            + BOX_HORIZONTAL_GAP;
+        m_boxRoot.anchoredPosition = new Vector2(
+            levelPosition.x + direction * centerDistance,
+            levelBottomY);
+        m_boxRoot.localRotation = Quaternion.identity;
+        m_boxRoot.gameObject.SetActive(true);
+        SetBoxInteractable(true);
+    }
+
+    private void SetBoxInteractable(bool interactable)
+    {
+        if (m_boxBtn != null)
+            m_boxBtn.interactable = interactable;
+        if (m_boxImage != null)
+            m_boxImage.raycastTarget = interactable;
+    }
+
+    private void OnBoxClick()
+    {
+        MPMainLevelBoxAward award = m_data?.BoxAward;
+        if (award == null || !award.IsValid)
+            return;
+
+        if (MPUser.instance.MainLevelBoxAwardIsClaimed(m_data.ID))
+        {
+            PlayBoxClaimedShake();
+            return;
+        }
+
+        if (!m_isPass)
+        {
+            m_boxAwardInfoRequested?.Invoke(m_data);
+            return;
+        }
+
+        if (!MPUser.instance.TryClaimMainLevelBoxAward(m_data))
+            return;
+
+        RefreshBox(m_index);
+        m_refresh?.Invoke();
+    }
+
+    private void PlayBoxClaimedShake()
+    {
+        KillBoxShakeTween();
+        if (m_boxRoot == null)
+            return;
+
+        m_boxShakeTween = m_boxRoot
+            .DOPunchRotation(new Vector3(0f, 0f, 5f), 0.35f, 6, 0.5f)
+            .SetUpdate(true)
+            .SetLink(gameObject)
+            .OnComplete(() =>
+            {
+                m_boxRoot.localRotation = Quaternion.identity;
+                m_boxShakeTween = null;
+            });
+    }
+
+    private void KillBoxShakeTween()
+    {
+        if (m_boxShakeTween != null && m_boxShakeTween.IsActive())
+            m_boxShakeTween.Kill();
+
+        m_boxShakeTween = null;
+        if (m_boxRoot != null)
+            m_boxRoot.localRotation = Quaternion.identity;
     }
 
     private static Vector2 GetLevelPosition(int index)
     {
-        int normalizedIndex = Mathf.Abs(index);
-        int positionsPerCycle = LEVEL_POSITION_GROUP_SIZE * LEVEL_POSITION_GROUPS.Length;
-        int cycleIndex = normalizedIndex / positionsPerCycle;
-        int indexInCycle = normalizedIndex % positionsPerCycle;
-        int groupIndex = indexInCycle / LEVEL_POSITION_GROUP_SIZE;
-        int positionIndex = indexInCycle % LEVEL_POSITION_GROUP_SIZE;
+        GetLevelLayoutIndex(index, out int groupIndex, out int positionIndex);
         Vector2 position = LEVEL_POSITION_GROUPS[groupIndex][positionIndex];
-
-        // 完成六组后水平镜像下一轮，把完全相同的路线重复周期延长到 144 关。
-        if ((cycleIndex & 1) != 0)
-        {
-            position.x = -position.x;
-        }
-
-        position.y *= LEVEL_VERTICAL_OFFSET_SCALE;
+        position.x = Mathf.Max(LEVEL_MIN_X, position.x);
+        position.y = Mathf.Clamp(
+            position.y,
+            -LEVEL_VERTICAL_OFFSET_LIMIT,
+            LEVEL_VERTICAL_OFFSET_LIMIT);
         return position;
+    }
+
+    private static float GetLevelRotation(int index)
+    {
+        GetLevelLayoutIndex(index, out int groupIndex, out int positionIndex);
+        return LEVEL_ROTATION_GROUPS[groupIndex][positionIndex];
+    }
+
+    private static void GetLevelLayoutIndex(
+        int index,
+        out int groupIndex,
+        out int positionIndex)
+    {
+        int normalizedIndex = Mathf.Abs(index);
+        int positionsPerCycle = LEVEL_POSITION_GROUP_SIZE
+            * LEVEL_POSITION_GROUPS.Length;
+        int indexInCycle = normalizedIndex % positionsPerCycle;
+        groupIndex = indexInCycle / LEVEL_POSITION_GROUP_SIZE;
+        positionIndex = indexInCycle % LEVEL_POSITION_GROUP_SIZE;
     }
 
     public static float GetLevelVerticalOffset(int index)
@@ -639,9 +549,18 @@ public class MPMainLevelItem : MonoBehaviour
 
     private void OnDestroy()
     {
+        KillBoxShakeTween();
         if (m_levelBtn != null)
         {
             m_levelBtn.onClick.RemoveListener(OnLevelClick);
         }
+        if (m_boxBtn != null)
+        {
+            m_boxBtn.onClick.RemoveListener(OnBoxClick);
+        }
+
+        m_refresh = null;
+        m_boxAwardInfoRequested = null;
+        MPLoad.ReleaseAll(this);
     }
 }

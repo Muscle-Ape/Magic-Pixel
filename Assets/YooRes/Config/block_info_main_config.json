@@ -84,6 +84,10 @@
     },
     {
       "id": "level_main_19",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         0,
         1,
@@ -434,6 +438,10 @@
     },
     {
       "id": "level_main_42",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         10,
         16,
@@ -893,6 +901,10 @@
     },
     {
       "id": "level_main_52",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         0,
         1,
@@ -1205,6 +1217,10 @@
     },
     {
       "id": "level_main_57",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         3,
         4,
@@ -1519,6 +1535,10 @@
     },
     {
       "id": "level_main_64",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         0,
         1,
@@ -1889,6 +1909,10 @@
     },
     {
       "id": "level_main_78",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         1,
         2,
@@ -2211,6 +2235,10 @@
     },
     {
       "id": "level_main_97",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         2,
         3,
@@ -2498,6 +2526,10 @@
     },
     {
       "id": "level_main_108",
+      "box_award": {
+        "type": "coin",
+        "count": 100
+      },
       "block": [
         4,
         5,

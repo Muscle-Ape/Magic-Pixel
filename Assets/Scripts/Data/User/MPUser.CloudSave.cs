@@ -46,7 +46,8 @@ public partial class MPUser
                 passIndex = Mathf.Max(0, m_mainlevel_pass_index),
                 unlockList = CopyStringList(m_mainlevel_unlocklist),
                 passList = CopyStringList(m_mainlevel_passlist),
-                stars = CopyIntDictionary(m_mainlevel_stars)
+                stars = CopyIntDictionary(m_mainlevel_stars),
+                boxAwardClaimedList = CopyStringList(m_mainlevel_box_award_claimed)
             },
             largeImageLevel = new MPUserLargeImageLevelSnapshot
             {
@@ -194,11 +195,15 @@ public partial class MPUser
         m_mainlevel_unlocklist = CopyStringList(snapshot.unlockList);
         m_mainlevel_passlist = CopyStringList(snapshot.passList);
         m_mainlevel_stars = CopyIntDictionary(snapshot.stars);
+        m_mainlevel_box_award_claimed = CopyStringList(snapshot.boxAwardClaimedList);
 
         ES3.Save(m_key_mainlevel_pass_index, m_mainlevel_pass_index);
         ES3.Save(m_key_mainlevel_unlocklist, m_mainlevel_unlocklist);
         ES3.Save(m_key_mainlevel_passlist, m_mainlevel_passlist);
         ES3.Save(m_key_mainlevel_stars, m_mainlevel_stars);
+        ES3.Save(
+            m_key_mainlevel_box_award_claimed,
+            m_mainlevel_box_award_claimed);
 
         if (MPDataManager.Instance.m_mainLevelModel?.blockInfos != null && MPDataManager.Instance.m_mainLevelModel.blockInfos.Count > 0)
         {

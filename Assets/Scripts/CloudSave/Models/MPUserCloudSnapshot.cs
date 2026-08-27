@@ -167,6 +167,9 @@ public class MPUserMainLevelSnapshot
 
     /// <summary>关卡最高星数，Key 为关卡 ID。</summary>
     public Dictionary<string, int> stars = new Dictionary<string, int>();
+
+    /// <summary>已经领取过宝箱奖励的关卡 ID 列表。</summary>
+    public List<string> boxAwardClaimedList = new List<string>();
 }
 
 /// <summary>

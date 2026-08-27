@@ -1093,8 +1093,25 @@ internal static class MPLevelEditorStorage
         [JsonProperty(Order = 0)]
         public string id;
 
-        [JsonProperty(Order = 1)]
+        [JsonProperty("box_award", Order = 1, NullValueHandling = NullValueHandling.Ignore)]
+        public MPMainLevelEditorBoxAwardJsonRecord boxAward;
+
+        [JsonProperty(Order = 2)]
         public List<int> block = new List<int>();
+    }
+
+    /// <summary>
+    /// 编辑器程序集专用的宝箱奖励 JSON 结构。
+    /// MagicPixel.Editor 不能直接引用 Assembly-CSharp 中的运行时数据类型。
+    /// </summary>
+    [Serializable]
+    private sealed class MPMainLevelEditorBoxAwardJsonRecord
+    {
+        [JsonProperty("type", Order = 0)]
+        public string type;
+
+        [JsonProperty("count", Order = 1)]
+        public int count;
     }
 
     [Serializable]
