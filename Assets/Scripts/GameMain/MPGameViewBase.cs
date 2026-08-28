@@ -14,6 +14,11 @@ using UnityEngine.UI;
 /// </summary>
 public abstract class MPGameViewBase : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 网格区域固定大小。
     /// </summary>

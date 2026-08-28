@@ -15,6 +15,11 @@ using UnityEngine.UI;
 [Component("MPThreeDView")]
 public sealed class MPThreeDView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     private const float AutoSaveDelay = 0.8f;
     private const float ClearConfirmDuration = 3f;
     private const float PartCardHeight = 144f;

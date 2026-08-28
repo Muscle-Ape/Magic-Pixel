@@ -8,6 +8,11 @@ using UnityEngine.UI;
 [Component("MPCustomLevelView")]
 public class MPCustomLevelView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 返回按钮。
     /// </summary>
@@ -140,4 +145,3 @@ public class MPCustomLevelView : AWindow
         UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 }
-

@@ -7,6 +7,11 @@ using UnityEngine.UI;
 [Component("MPLevelUnlockPop")]
 public class MPLevelUnlockPop : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 主关卡提前解锁需要消耗的金币数量。
     /// </summary>

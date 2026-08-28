@@ -13,6 +13,11 @@ using UnityEngine.UI;
 [Component("MPLoginView")]
 public class MPLoginView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>页面标题文本。</summary>
     [TransformPath("View/Content/Title")]
     private TMP_Text m_titleText;

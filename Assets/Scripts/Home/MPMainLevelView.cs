@@ -9,6 +9,11 @@ using UnityEngine.UI;
 [Component("MPMainLevelView")]
 public class MPMainLevelView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     private const string LEVEL_ITEM_PREFAB_NAME = "MPMainLevelItem";
     private const string SPACER_ITEM_PREFAB_NAME = "MPMainLevelSpacerItem";
     private const float LEVEL_ITEM_HEIGHT = 480f;

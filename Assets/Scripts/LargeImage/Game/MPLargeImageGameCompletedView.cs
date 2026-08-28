@@ -12,6 +12,11 @@ using UnityEngine.UI;
 [Component("MPLargeImageGameCompletedView")]
 public class MPLargeImageGameCompletedView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 图片节点从游戏页网格位置移动到完成页目标位置的动画时长。
     /// </summary>

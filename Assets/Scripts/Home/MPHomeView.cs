@@ -4,6 +4,11 @@ using HQ.UIManager;
 [Component("MPHomeView")]
 public partial class MPHomeView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         InitializeTabs();

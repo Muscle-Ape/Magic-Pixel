@@ -11,6 +11,11 @@ using UnityEngine.UI;
 [Component("MPTransitionView")]
 public class MPTransitionView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 四周云片滑入和滑出的动画时长。
     /// </summary>

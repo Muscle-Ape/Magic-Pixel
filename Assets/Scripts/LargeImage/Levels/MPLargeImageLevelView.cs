@@ -7,6 +7,11 @@ using UnityEngine.UI;
 [Component("MPLargeImageLevelView")]
 public class MPLargeImageLevelView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     private const int EXTRA_PADDING_ITEM_COUNT = 2;
     private const float TOP_PADDING_HEIGHT = 500f;
     private const float BOTTOM_PADDING_HEIGHT = 50f;

@@ -5,6 +5,11 @@ using UnityEngine.UI;
 [Component("MPGameFailPop")]
 public class MPGameFailPop : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 退出当前游戏按钮。
     /// </summary>

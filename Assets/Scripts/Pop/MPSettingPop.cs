@@ -8,6 +8,11 @@ using UnityEngine.UI;
 [Component("MPSettingPop")]
 public class MPSettingPop : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 开关按钮移动动画时长。
     /// </summary>

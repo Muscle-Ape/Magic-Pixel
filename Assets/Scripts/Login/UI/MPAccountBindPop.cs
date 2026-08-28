@@ -13,6 +13,11 @@ using UnityEngine.UI;
 [Component("MPAccountBindPop")]
 public class MPAccountBindPop : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>弹窗标题文本。</summary>
     [TransformPath("View/Window/Title")]
     private TMP_Text m_titleText;

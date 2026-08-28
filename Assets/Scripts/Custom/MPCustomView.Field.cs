@@ -11,6 +11,11 @@ using UnityEngine.UI;
 [Component("MPCustomView")]
 public partial class MPCustomView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 固定格子大小
     /// </summary>

@@ -15,6 +15,11 @@ using UnityEngine.UI;
 [Component("MPCommunityView")]
 public class MPCommunityView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     private const int PAGE_SIZE = 10;
     private const int PREFETCH_REMAINING_COUNT = 4;
     private const string LEVEL_ITEM_NAME = "MPCommunityLevelItem";

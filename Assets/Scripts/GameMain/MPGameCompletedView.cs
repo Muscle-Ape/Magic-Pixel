@@ -9,6 +9,11 @@ using UnityEngine.UI;
 [Component("MPGameCompletedView")]
 public class MPGameCompletedView : AWindow
 {
+    protected override bool ShouldAdaptToNotchScreen()
+    {
+        return false;
+    }
+
     /// <summary>
     /// 图片节点从结算框移动到最终位置的动画时长。
     /// </summary>
