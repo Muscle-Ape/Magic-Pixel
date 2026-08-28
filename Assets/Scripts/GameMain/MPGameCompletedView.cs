@@ -32,26 +32,44 @@ public class MPGameCompletedView : AWindow
     /// <summary>
     /// 金币数量文本。
     /// </summary>
-    [TransformPath("View/Up/Coin/Count")]
+    [TransformPath("View/Head/Coin/Count")]
     private TMP_Text m_coinText;
 
     /// <summary>
     /// 钻石数量文本。
     /// </summary>
-    [TransformPath("View/Up/Diamond/Count")]
+    [TransformPath("View/Head/Diamond/Count")]
     private TMP_Text m_diamondText;
 
     /// <summary>
-    /// 返回按钮。
+    /// 返回主页按钮。
     /// </summary>
-    [TransformPath("View/Up/BackBtn")]
-    private Button m_backBtn;
+    [TransformPath("View/Head/HomeBtn")]
+    private Button m_homeBtn;
 
     /// <summary>
     /// 设置按钮。
     /// </summary>
-    [TransformPath("View/Up/SettingBtn")]
+    [TransformPath("View/Head/SettingBtn")]
     private Button m_settingBtn;
+
+    /// <summary>
+    /// 玩家名称。
+    /// </summary>
+    [TransformPath("View/Head/PlayerName")]
+    private TMP_Text m_playerNameText;
+
+    /// <summary>
+    /// 当前最新解锁的主线关卡。
+    /// </summary>
+    [TransformPath("View/Head/Level/Text")]
+    private TMP_Text m_playerLevelText;
+
+    /// <summary>
+    /// 主线关卡解锁进度。
+    /// </summary>
+    [TransformPath("View/Head/Level/Mask/Fill")]
+    private Image m_playerLevelFill;
 
     /// <summary>
     /// 重玩当前关卡按钮。
@@ -461,10 +479,10 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void RegisterUI()
     {
-        if (m_backBtn != null)
+        if (m_homeBtn != null)
         {
-            m_backBtn.onClick.RemoveListener(ReturnHome);
-            m_backBtn.onClick.AddListener(ReturnHome);
+            m_homeBtn.onClick.RemoveListener(ReturnHome);
+            m_homeBtn.onClick.AddListener(ReturnHome);
         }
 
         if (m_settingBtn != null)
@@ -487,7 +505,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 刷新顶部资源数量显示。
+    /// 刷新顶部玩家信息、主线进度和资源数量。
     /// </summary>
     private void RefreshUI()
     {
@@ -499,6 +517,38 @@ public class MPGameCompletedView : AWindow
         if (m_diamondText != null)
         {
             m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        }
+
+        if (m_playerNameText != null)
+        {
+            string playerName = MPLoginManager.Instance.PlayerName;
+            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
+                ? "Player"
+                : playerName;
+        }
+
+        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
+        int latestLevelIndex = levelCount > 0
+            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
+            : 0;
+        if (m_playerLevelText != null)
+        {
+            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
+        }
+
+        if (m_playerLevelFill != null)
+        {
+            m_playerLevelFill.fillAmount = levelCount <= 1
+                ? 0f
+                : latestLevelIndex / (float)(levelCount - 1);
+        }
+    }
+
+    public override void OnFocus(bool focus)
+    {
+        if (focus)
+        {
+            RefreshUI();
         }
     }
 
@@ -979,6 +1029,29 @@ public class MPGameCompletedView : AWindow
         UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
     }
 
+    private void UnregisterUI()
+    {
+        if (m_homeBtn != null)
+        {
+            m_homeBtn.onClick.RemoveListener(ReturnHome);
+        }
+
+        if (m_settingBtn != null)
+        {
+            m_settingBtn.onClick.RemoveListener(OnSettingClick);
+        }
+
+        if (m_replayBtn != null)
+        {
+            m_replayBtn.onClick.RemoveListener(OnReplayClick);
+        }
+
+        if (m_nextBtn != null)
+        {
+            m_nextBtn.onClick.RemoveListener(OnNextLevelClick);
+        }
+    }
+
     /// <summary>
     /// 打开指定主线关卡。
     /// </summary>
@@ -1067,6 +1140,15 @@ public class MPGameCompletedView : AWindow
 
             MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
         });
+    }
+
+    public override void OnRelease()
+    {
+        UnregisterUI();
+        m_enterSequence?.Kill();
+        ClearPixelGrid();
+        MPLoad.ReleaseAll(this);
+        base.OnRelease();
     }
 
     private void OnDestroy()

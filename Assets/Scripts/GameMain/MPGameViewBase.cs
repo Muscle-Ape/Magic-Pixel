@@ -61,10 +61,10 @@ public abstract class MPGameViewBase : AWindow
     [TransformPath("View/ModeSwitch/Btn/Blank")]
     protected Image m_modeSwitchBlank;
 
-    [TransformPath("View/Up/BackBtn")]
+    [TransformPath("View/Head/BackBtn")]
     protected Button m_backBtn;
 
-    [TransformPath("View/Up/SettingBtn")]
+    [TransformPath("View/Head/SettingBtn")]
     protected Button m_settingBtn;
 
     [TransformPath("View/Props")]
@@ -100,11 +100,20 @@ public abstract class MPGameViewBase : AWindow
     [TransformPath("View/Title")]
     protected TMP_Text m_titleText;
 
-    [TransformPath("View/Up/Coin/Count")]
+    [TransformPath("View/Head/Coin/Count")]
     protected TMP_Text m_coinText;
 
-    [TransformPath("View/Up/Diamond/Count")]
+    [TransformPath("View/Head/Diamond/Count")]
     protected TMP_Text m_diamondText;
+
+    [TransformPath("View/Head/PlayerName")]
+    protected TMP_Text m_playerNameText;
+
+    [TransformPath("View/Head/Level/Text")]
+    protected TMP_Text m_playerLevelText;
+
+    [TransformPath("View/Head/Level/Mask/Fill")]
+    protected Image m_playerLevelFill;
 
     [TransformPath("View/Loves")]
     protected RectTransform m_lovesNode;
@@ -352,7 +361,7 @@ public abstract class MPGameViewBase : AWindow
 
         RefreshModeSpecificLayout();
         RegisterModeSpecificUI();
-        RefreshCurrency();
+        RefreshHead();
         RefreshPropButtons();
 
         if (m_titleText != null)
@@ -370,8 +379,8 @@ public abstract class MPGameViewBase : AWindow
         button.onClick.AddListener(callback);
     }
 
-    /// <summary>刷新顶部金币和钻石数量。</summary>
-    protected void RefreshCurrency()
+    /// <summary>刷新顶部玩家信息、主线进度和资源数量。</summary>
+    protected void RefreshHead()
     {
         if (m_coinText != null)
         {
@@ -381,6 +390,38 @@ public abstract class MPGameViewBase : AWindow
         if (m_diamondText != null)
         {
             m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        }
+
+        if (m_playerNameText != null)
+        {
+            string playerName = MPLoginManager.Instance.PlayerName;
+            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
+                ? "Player"
+                : playerName;
+        }
+
+        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
+        int latestLevelIndex = levelCount > 0
+            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
+            : 0;
+        if (m_playerLevelText != null)
+        {
+            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
+        }
+
+        if (m_playerLevelFill != null)
+        {
+            m_playerLevelFill.fillAmount = levelCount <= 1
+                ? 0f
+                : latestLevelIndex / (float)(levelCount - 1);
+        }
+    }
+
+    public override void OnFocus(bool focus)
+    {
+        if (focus)
+        {
+            RefreshHead();
         }
     }
 
@@ -742,8 +783,32 @@ public abstract class MPGameViewBase : AWindow
     {
         SaveProgressCache();
         m_modeSwitchTween?.Kill();
+        UnregisterCommonUI();
         ReleaseModeSpecificResources();
         MPLoad.ReleaseAll(this);
+    }
+
+    /// <summary>移除公共按钮事件，避免页面关闭后保留无效回调。</summary>
+    private void UnregisterCommonUI()
+    {
+        if (m_modeSwitchFrame != null)
+        {
+            m_modeSwitchFrame.onClick.RemoveListener(OnModeSwitchClick);
+        }
+
+        UnregisterButton(m_backBtn, OnBackClick);
+        UnregisterButton(m_settingBtn, OnSettingClick);
+        UnregisterButton(m_hintPropBtn, OnHintPropClick);
+        UnregisterButton(m_loveRecoverPropBtn, OnLoveRecoverPropClick);
+        UnregisterButton(m_petSkillBtn, OnPetSkillClick);
+    }
+
+    private static void UnregisterButton(Button button, UnityEngine.Events.UnityAction callback)
+    {
+        if (button != null)
+        {
+            button.onClick.RemoveListener(callback);
+        }
     }
 
     /// <summary>游戏进入后台时保存当前关卡进度。</summary>
