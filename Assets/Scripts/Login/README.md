@@ -5,7 +5,7 @@
 ## 模块目标
 
 - 使用 Unity Authentication 作为当前认证后端。
-- 默认支持游客/匿名登录、账号密码和 Apple 原生登录，并预留 Google、Google Play Games、Facebook 登录能力。
+- 默认支持游客/匿名登录、账号密码、Apple 原生登录和 Android Google Play Games 登录，并预留通用 Google Identity Token 与 Facebook 登录能力。
 - UI、启动决策、登录编排、具体 SDK 调用、本地资料持久化彼此解耦。
 - 通过接口抽象隔离 Unity SDK、ES3、第三方平台 SDK，后续接入游戏服务器或云存档时尽量不改 UI 层。
 
@@ -18,6 +18,10 @@
 - UI 页面使用项目当前 UIManager 框架，通过 `[Component("PrefabName")]` + `[TransformPath("...")]` 绑定 Prefab。
 - Unity Dashboard 的 Apple Provider 必须启用，`App ID` 必须填写 iOS Bundle ID `com.yunqi.magicpixel`，不能填写 App Store 数字 Apple ID。
 - iOS 导出由 `Assets/Editor/SignInWithApplePostprocessor.cs` 自动添加 Sign in with Apple Capability、Entitlement 和系统框架；原生授权需在 iOS 13 或更高版本真机验证。
+- Android Google Play Games 使用 Application ID `544048571541` 和 Web Client ID `544048571541-1s9gk8hkgi81qtncrgj1pt3n9las8bcv.apps.googleusercontent.com`；Web Client Secret 只配置在 Unity Dashboard，禁止写入客户端工程或日志。
+- Google Play Games 登录按钮只在 Android 真机包中显示。按钮通过交互式 GPGS 登录取得一次性服务端 Auth Code，再调用 Unity Authentication 的 Google Play Games Provider。
+- `Packages/com.google.play.games/Editor/GooglePlayGamesPluginDependencies.xml` 和同目录的 `m2repository` 是 GPGS 2.1.0 的 Android 原生依赖入口，会解析 `gpgs-plugin-support:2.1.0`、`play-services-games-v2:21.0.0` 等依赖，不能从嵌入式包中删掉。
+- Play 商店分发包使用 Play App Signing 的 SHA-1。若使用 Unity 本地签名的 APK/AAB 真机调试，还必须在同一 Google Cloud 项目中为调试/上传证书的 SHA-1 创建对应 Android OAuth 客户端。
 
 ## 分层关系总图
 
@@ -266,7 +270,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | `MPProvidedTokenAuthAdapterBase` | `Adapters/MPProvidedTokenAuthAdapterBase.cs` | 第三方 Adapter 基类。当前阶段不主动拉起 SDK，只校验外部传入的 token/authCode。 | 实现 `IMPThirdPartyAuthAdapter`；被具体平台 Adapter 继承。 |
 | `MPGoogleAuthAdapter` | `Adapters/MPGoogleAuthAdapter.cs` | Google 登录适配器，要求 `identityToken`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult` 给第三方策略。 |
-| `MPGooglePlayGamesAuthAdapter` | `Adapters/MPGooglePlayGamesAuthAdapter.cs` | Google Play Games 登录适配器，要求 `authorizationCode`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult`。 |
+| `MPGooglePlayGamesAuthAdapter` | `Adapters/MPGooglePlayGamesAuthAdapter.cs` | Google Play Games 登录适配器，接收平台授权服务取得的 `authorizationCode`。 | `MPGooglePlayGamesAuthService` 通过交互式 GPGS 登录获取 Auth Code 和玩家 Id；Adapter 继承 `MPProvidedTokenAuthAdapterBase` 并返回 `MPThirdPartyAuthResult`。 |
 | `MPAppleAuthAdapter` | `Adapters/MPAppleAuthAdapter.cs` | Apple 登录适配器；没有外部 Token 时拉起原生授权，校验并转换 Identity Token。 | 实现 `IMPThirdPartyAuthAdapter`；调用 AppleAuth SDK；返回 `MPThirdPartyAuthResult`。 |
 | `MPAppleAuthRuntime` | `Adapters/MPAppleAuthRuntime.cs` | 常驻更新 AppleAuthManager、派发原生回调并监听凭证撤销。 | 由 `MPAppleAuthAdapter` 和 `MPLoginManager` 使用；仅在支持的平台初始化。 |
 | `MPFacebookAuthAdapter` | `Adapters/MPFacebookAuthAdapter.cs` | Facebook 登录适配器，要求 `accessToken`。 | 继承 `MPProvidedTokenAuthAdapterBase`；返回 `MPThirdPartyAuthResult`。 |
@@ -357,7 +361,7 @@ flowchart LR
 
 ### 第三方登录
 
-1. 创建 `MPThirdPartyLoginRequest`；Apple 可不传 Token，由 Adapter 直接拉起系统授权，其他平台也可传入外部 SDK 已获取的 token/authCode。
+1. 创建 `MPThirdPartyLoginRequest`；Apple 可不传 Token，由 Adapter 直接拉起系统授权；Android Google Play Games 由 UI 调用 `MPGooglePlayGamesAuthService` 获取 Auth Code；其他平台也可传入外部 SDK 已获取的 token/authCode。
 2. 调用 `MPLoginManager.LoginAsync(provider, request)` 或 `LoginWithProviderAsync`。
 3. Core 选择对应 `MPThirdPartyLoginStrategy`。
 4. Strategy 通过 `MPThirdPartyAuthAdapterFactory` 获取对应 Adapter。
@@ -379,7 +383,7 @@ flowchart LR
 | 扩展目标 | 推荐修改位置 | 原因 |
 | --- | --- | --- |
 | 接入真实 Google SDK 获取 Identity Token | 新增或替换 `MPGoogleAuthAdapter` | 不影响 Core、Flow、UI 的登录编排。 |
-| 接入 Google Play Games Auth Code | 新增或替换 `MPGooglePlayGamesAuthAdapter` | 保持第三方策略统一。 |
+| 扩展 Google Play Games 成就、排行榜 | 在现有 GPGS 平台登录成功后增加独立业务服务 | 登录 Auth Code 链路已经接入，游戏服务能力不应耦合到认证 Adapter。 |
 | 扩展 Apple 用户资料或服务器校验 | 扩展 `MPAppleAuthAdapter` 的授权结果处理 | 当前只申请 Unity Authentication 必需的 Identity Token，不申请邮箱和姓名。 |
 | 接入 Facebook SDK | 新增或替换 `MPFacebookAuthAdapter` | 只改平台授权逻辑。 |
 | 接入游戏服务器账号恢复 | 新增服务器 API 抽象，并扩展 `MPLoginFlowController` | 匿名恢复和云存档归启动/恢复策略负责。 |

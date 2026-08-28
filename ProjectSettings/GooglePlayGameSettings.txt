@@ -1,0 +1,5 @@
+proj.AppId=544048571541
+and.ClientId=544048571541-1s9gk8hkgi81qtncrgj1pt3n9las8bcv.apps.googleusercontent.com
+and.BundleId=com.yunqi.magicpixel
+proj.pluginVersion=2.1.0
+android.SetupDone=true

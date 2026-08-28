@@ -25,9 +25,10 @@ public sealed class MPLoginConfiguration : ScriptableObject
     public bool EnableAnonymousLogin = true;
 
     /// <summary>
-    /// 是否在 UI 和策略中开放 Google 登录入口。
+    /// 是否在 UI 和策略中开放通用 Google Identity Token 登录入口。
+    /// 当前项目未安装通用 Google Sign-In SDK，默认关闭；Android 游戏登录使用下方的 Google Play Games。
     /// </summary>
-    public bool EnableGoogleLogin = true;
+    public bool EnableGoogleLogin = false;
 
     /// <summary>
     /// 是否在 UI 和策略中开放 Google Play Games 登录入口。

@@ -190,8 +190,12 @@ public class MPLoginView : AWindow
         SetGameObjectVisible(m_accountGroup, showPassword);
         SetButtonVisible(m_passwordLoginBtn, showPassword);
         SetButtonVisible(m_passwordRegisterBtn, showPassword);
-        SetButtonVisible(m_googleBtn, visible && configuration.EnableGoogleLogin);
-        SetButtonVisible(m_googlePlayGamesBtn, visible && configuration.EnableGooglePlayGamesLogin);
+        // 通用 Google 登录需要 Google Identity Token SDK；当前项目实际接入的是 Android GPGS Auth Code 流程。
+        // 隐藏未完成的通用入口，避免与 Google Play Games 按钮重复且误导用户。
+        SetButtonVisible(m_googleBtn, false);
+        SetButtonVisible(
+            m_googlePlayGamesBtn,
+            visible && configuration.EnableGooglePlayGamesLogin && MPGooglePlayGamesAuthService.IsCurrentPlatformSupported);
         SetButtonVisible(m_appleBtn, visible && configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
         SetButtonVisible(m_facebookBtn, visible && configuration.EnableFacebookLogin);
         SetButtonVisible(m_guestBtn, visible && configuration.EnableAnonymousLogin && CanCreateGuest());

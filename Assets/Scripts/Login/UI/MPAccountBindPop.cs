@@ -122,7 +122,9 @@ public class MPAccountBindPop : AWindow
     {
         MPLoginConfiguration configuration = MPLoginManager.Instance.Configuration;
         SetButtonVisible(m_passwordBindBtn, configuration.EnableUsernamePasswordLogin);
-        SetButtonVisible(m_googleBindBtn, configuration.EnableGoogleLogin || configuration.EnableGooglePlayGamesLogin);
+        SetButtonVisible(
+            m_googleBindBtn,
+            configuration.EnableGooglePlayGamesLogin && MPGooglePlayGamesAuthService.IsCurrentPlatformSupported);
         SetButtonVisible(m_appleBindBtn, configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
         SetButtonVisible(m_facebookBindBtn, configuration.EnableFacebookLogin);
     }

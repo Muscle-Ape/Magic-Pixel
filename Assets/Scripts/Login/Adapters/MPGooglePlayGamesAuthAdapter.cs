@@ -9,7 +9,8 @@ using GooglePlayGames.BasicApi;
 #endif
 
 /// <summary>
-/// Google Play Games 登录适配器。当前要求外部传入 Auth Code。
+/// Google Play Games 登录适配器。
+/// 平台 SDK 授权由 MPGooglePlayGamesAuthService 负责，本适配器把 Auth Code 转换为统一授权结果。
 /// </summary>
 public class MPGooglePlayGamesAuthAdapter : MPProvidedTokenAuthAdapterBase
 {
@@ -32,6 +33,22 @@ public class MPGooglePlayGamesAuthAdapter : MPProvidedTokenAuthAdapterBase
 public static class MPGooglePlayGamesAuthService
 {
     /// <summary>
+    /// 当前运行平台是否支持直接拉起 Google Play Games 授权。
+    /// 编辑器和非 Android 平台不能调用原生 GPGS 登录。
+    /// </summary>
+    public static bool IsCurrentPlatformSupported
+    {
+        get
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
     /// 当前是否已经激活过 PlayGamesPlatform。
     /// GPGS 只需要激活一次，重复激活没有必要。
     /// </summary>
@@ -49,16 +66,33 @@ public static class MPGooglePlayGamesAuthService
         cancellationToken.ThrowIfCancellationRequested();
 
 #if UNITY_ANDROID && !UNITY_EDITOR
+        if (!GameInfo.ApplicationIdInitialized())
+        {
+            return Task.FromResult(MPThirdPartyAuthResult.Failed(
+                MPLoginErrorCodes.PlatformSdkNotReady,
+                "尚未配置 Google Play Games Application ID，请先在 Google Play Games Setup 中完成 Android 配置。"));
+        }
+
+        if (!GameInfo.WebClientIdInitialized())
+        {
+            return Task.FromResult(MPThirdPartyAuthResult.Failed(
+                MPLoginErrorCodes.PlatformSdkNotReady,
+                "尚未配置 Google Play Games Web Client ID，请先创建 Web OAuth 客户端并同步到 Unity。"));
+        }
+
         ActivateIfNeeded();
-        TaskCompletionSource<MPThirdPartyAuthResult> completion = new TaskCompletionSource<MPThirdPartyAuthResult>();
+        TaskCompletionSource<MPThirdPartyAuthResult> completion =
+            new TaskCompletionSource<MPThirdPartyAuthResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         CancellationTokenRegistration registration = cancellationToken.Register(() =>
         {
-            completion.TrySetCanceled();
+            completion.TrySetCanceled(cancellationToken);
         });
 
         try
         {
-            PlayGamesPlatform.Instance.Authenticate(status =>
+            // 当前方法由用户点击登录/绑定按钮触发，必须使用交互式登录。
+            // Authenticate 只执行自动登录尝试，自动登录失败后不会主动弹出账号选择界面。
+            PlayGamesPlatform.Instance.ManuallyAuthenticate(status =>
             {
                 if (completion.Task.IsCompleted)
                 {
@@ -71,14 +105,19 @@ public static class MPGooglePlayGamesAuthService
                     return;
                 }
 
-                RequestServerSideAccess(forceRefreshToken, completion);
+                try
+                {
+                    RequestServerSideAccess(forceRefreshToken, completion);
+                }
+                catch (Exception exception)
+                {
+                    completion.TrySetResult(CreateUnexpectedFailure(exception));
+                }
             });
         }
         catch (Exception exception)
         {
-            completion.TrySetResult(MPThirdPartyAuthResult.Failed(
-                MPLoginErrorCodes.ThirdPartyAuthFailed,
-                $"Google Play Games 登录异常：{exception.Message}"));
+            completion.TrySetResult(CreateUnexpectedFailure(exception));
         }
 
         return DisposeRegistrationWhenCompletedAsync(completion.Task, registration);
@@ -111,6 +150,7 @@ public static class MPGooglePlayGamesAuthService
     /// <param name="completion">异步结果完成源。</param>
     private static void RequestServerSideAccess(bool forceRefreshToken, TaskCompletionSource<MPThirdPartyAuthResult> completion)
     {
+        string platformUserId = GetPlatformUserId();
         PlayGamesPlatform.Instance.RequestServerSideAccess(forceRefreshToken, authCode =>
         {
             if (completion.Task.IsCompleted)
@@ -126,8 +166,23 @@ public static class MPGooglePlayGamesAuthService
                 return;
             }
 
-            completion.TrySetResult(MPThirdPartyAuthResult.Success(authorizationCode: authCode));
+            completion.TrySetResult(MPThirdPartyAuthResult.Success(
+                authorizationCode: authCode,
+                platformUserId: platformUserId));
         });
+    }
+
+    /// <summary>
+    /// 获取当前 Google Play Games 玩家 Id。
+    /// 该字段只用于业务透传；Unity Authentication 的身份校验仍以一次性 Auth Code 为准。
+    /// </summary>
+    /// <returns>有效玩家 Id；SDK 未返回时为 null。</returns>
+    private static string GetPlatformUserId()
+    {
+        string platformUserId = PlayGamesPlatform.Instance.GetUserId();
+        return string.IsNullOrWhiteSpace(platformUserId) || platformUserId == "0"
+            ? null
+            : platformUserId;
     }
 
     /// <summary>
@@ -145,6 +200,16 @@ public static class MPGooglePlayGamesAuthService
             : $"Google Play Games 登录失败：{status}";
 
         return MPThirdPartyAuthResult.Failed(errorCode, message);
+    }
+
+    /// <summary>
+    /// 将 SDK 抛出的异常转换为登录模块统一错误。
+    /// </summary>
+    private static MPThirdPartyAuthResult CreateUnexpectedFailure(Exception exception)
+    {
+        return MPThirdPartyAuthResult.Failed(
+            MPLoginErrorCodes.ThirdPartyAuthFailed,
+            $"Google Play Games 登录异常：{exception.Message}");
     }
 
     /// <summary>
