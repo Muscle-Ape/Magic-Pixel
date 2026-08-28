@@ -799,11 +799,13 @@ public class MPGameCompletedView : AWindow
     {
         m_enterSequence?.Kill();
         m_enterSequence = DOTween.Sequence().SetLink(gameObject);
+        bool hasPictureMoveAnimation = false;
 
         if (m_pictureNode != null)
         {
             m_pictureNode.DOKill();
             m_enterSequence.Append(m_pictureNode.DOAnchorPos(m_pictureTargetPosition, PICTURE_MOVE_DURATION).SetEase(Ease.Linear));
+            hasPictureMoveAnimation = true;
         }
 
         if (m_isLargeImageLevel)
@@ -812,7 +814,14 @@ public class MPGameCompletedView : AWindow
             if (zoomBackTween != null)
             {
                 m_enterSequence.Append(zoomBackTween);
+                hasPictureMoveAnimation = true;
             }
+        }
+
+        if (hasPictureMoveAnimation)
+        {
+            // 完成图片到达结算页最终位置时触发一次落位反馈。
+            m_enterSequence.AppendCallback(MPVibrationManager.Instance.PlayMediumImpact);
         }
 
         m_enterSequence.Append(CreateElementShowTween());

@@ -42,6 +42,8 @@ MonoBehaviour:
     - Google.Play.Games.Editor
     - HQ.UIManager
     - joy.unity.editor.ads
+    - Lofelt.NiceVibrations
+    - Lofelt.NiceVibrations.Editor
     - MagicPixel.Editor
     - MagicPixel.ThreeD
     - MaxSdk.Scripts

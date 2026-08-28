@@ -71,33 +71,14 @@ public partial class MPCustomView
         // 根据当前模式对方块进行操作
         if (m_isFillMode)
         {
-            // 判断是填充还是清空，并进行标记
-            if (block.isFill)
-            {
-                block.Fill(false);
-                m_isClear = true;
-            }
-            else
-            {
-                block.Fill(true);
-                m_isClear = false;
-            }
+            m_isClear = block.isFill;
         }
         else
         {
-            // 判断是上色还是清空，并进行标记
-            if (block.ColorIsSame(m_currentColor))
-            {
-                block.ClearColor();
-                m_isClear = true;
-            }
-            else
-            {
-                block.SetColor(m_currentColor);
-                m_isClear = false;
-            }
+            m_isClear = block.ColorIsSame(m_currentColor);
         }
 
+        ApplyCurrentEdit(block);
         m_currentDragBlocks.Add(block);
     }
 
@@ -112,31 +93,42 @@ public partial class MPCustomView
         if (block == null || m_currentDragBlocks.Contains(block))
             return;
 
-        // 根据模式进行判断，对并根据是否清空对格子进行填充上色或者清除
+        ApplyCurrentEdit(block);
+        m_currentDragBlocks.Add(block);
+    }
+
+    /// <summary>
+    /// 应用当前编辑状态。仅在格子状态真正变化时触发震动。
+    /// </summary>
+    private void ApplyCurrentEdit(MPCustomBlock block)
+    {
         if (m_isFillMode)
         {
-            if (m_isClear)
-            {
-                block.Fill(false);
-            }
-            else
-            {
-                block.Fill(true);
-            }
+            bool targetFill = !m_isClear;
+            if (block.isFill == targetFill)
+                return;
+
+            block.Fill(targetFill);
+            MPVibrationManager.Instance.PlayMediumImpact();
+            return;
+        }
+
+        if (m_isClear)
+        {
+            if (!block.isColor)
+                return;
+
+            block.ClearColor();
         }
         else
         {
-            if (m_isClear)
-            {
-                block.ClearColor();
-            }
-            else
-            {
-                block.SetColor(m_currentColor);
-            }
+            if (block.ColorIsSame(m_currentColor))
+                return;
+
+            block.SetColor(m_currentColor);
         }
 
-        m_currentDragBlocks.Add(block);
+        MPVibrationManager.Instance.PlaySelection();
     }
 
     /// <summary>

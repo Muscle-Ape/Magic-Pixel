@@ -126,10 +126,16 @@ public partial class MPGameView
                 m_blocks[index].PlaySettlementAnimation(pixelColor, SETTLEMENT_BLOCK_ANIMATION_DURATION);
             }
 
-            yield return new WaitForSeconds(diagonalDelay);
+            if (diagonal < diagonalCount - 1)
+            {
+                yield return new WaitForSeconds(diagonalDelay);
+            }
         }
 
         yield return new WaitForSeconds(SETTLEMENT_BLOCK_ANIMATION_DURATION);
+
+        // 所有方块完成变色后，仅播放一次单段震动反馈。
+        MPVibrationManager.Instance.PlayHeavyImpact();
 
         Destroy(readableTexture);
         OpenCompletedView();

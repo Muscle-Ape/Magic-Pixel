@@ -211,6 +211,7 @@ public partial class MPLargeImageGameView
 
         m_blockStatueHead += dir;
         RefreshContent();
+        MPVibrationManager.Instance.PlaySelection();
         return true;
     }
 

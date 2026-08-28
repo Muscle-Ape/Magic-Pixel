@@ -284,8 +284,14 @@ public class MPSettingPop : AWindow
     private void OnVibrationSwitchClick()
     {
         bool isOpen = !MPUser.instance.isVibration;
-        MPUser.instance.SetVibrationStatus(isOpen);
+        MPVibrationManager.Instance.SetEnabled(isOpen);
         RefreshSwitch(m_vibrationSwitchBtn, m_vibrationSwitchOn, isOpen, true);
+
+        if (isOpen)
+        {
+            // 开启后立即给出一次反馈，让玩家确认设置已经生效。
+            MPVibrationManager.Instance.PlaySelection();
+        }
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }

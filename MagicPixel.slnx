@@ -8,7 +8,9 @@
   <Project Path="Google.Play.Games.csproj" />
   <Project Path="spine-unity-editor.csproj" />
   <Project Path="MaxSdk.Scripts.csproj" />
+  <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="com.Brogrammist.JSAM.Editor.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Editor.csproj" />
   <Project Path="MagicPixel.Editor.csproj" />
   <Project Path="Unity.Services.CloudCode.GeneratedBindings.csproj" />
   <Project Path="HQ.UIManager.csproj" />

@@ -81,6 +81,16 @@ public partial class MPGameView
         if (!correct)
         {
             block.Wrong();
+            MPVibrationManager.Instance.PlayFailure();
+        }
+        else if (block.isFill)
+        {
+            MPVibrationManager.Instance.PlayMediumImpact();
+        }
+        else
+        {
+            // 叉号使用短促、清晰的刚性反馈，与填充方块的柔和反馈区分。
+            MPVibrationManager.Instance.Play(MPVibrationType.RigidImpact);
         }
 
         block.Disable();

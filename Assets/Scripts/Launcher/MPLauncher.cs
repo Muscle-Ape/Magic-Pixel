@@ -89,6 +89,9 @@ public class MPLauncher : MonoBehaviour
             Debug.LogWarning($"[MPLauncher] Cloud Save initialize failed: {cloudSaveTask.Exception}");
         }
 
+        // 云存档可能更新玩家的震动设置，因此在同步完成后初始化震动控制器。
+        MPVibrationManager.Instance.Initialize();
+
         UIManager.Inst.ShowWindow<MPHomeView>();
     }
 }

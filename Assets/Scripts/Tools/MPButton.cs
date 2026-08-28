@@ -115,6 +115,7 @@ public class MPButton : Button
 
         // 按钮点击音效
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+        MPVibrationManager.Instance.PlaySelection();
 
         m_lastClickTime = CurrentTime;
         onClick.Invoke();
