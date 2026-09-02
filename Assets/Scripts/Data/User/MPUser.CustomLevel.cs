@@ -286,7 +286,13 @@ public partial class MPUser
         List<MPCustomLevelColorInfo> colors = NormalizeCustomColors(level.Colors, cellCount);
         string title = string.IsNullOrEmpty(level.Title) ? "Undefined" : level.Title;
 
-        return new MPCustomLevelInfo(level.ID, title, size, blocks, colors);
+        return new MPCustomLevelInfo(
+            level.ID,
+            title,
+            size,
+            blocks,
+            colors,
+            level.UpdatedAtUtcTicks);
     }
 
     /// <summary>
@@ -475,7 +481,6 @@ public partial class MPUser
         }
     }
 }
-
 
 
 

@@ -61,6 +61,13 @@ public class MPCustomLevelPublishManager
         new Dictionary<string, CommunityLikeOperation>(StringComparer.Ordinal);
     private readonly object m_likeOperationsLock = new object();
 
+    /// <summary>
+    /// 当前玩家已发布关卡点赞缓存的后台同步任务。同一玩家重复打开页面时复用未完成的任务。
+    /// </summary>
+    private readonly object m_localLikeCountSyncLock = new object();
+    private Task m_localLikeCountSyncTask;
+    private string m_localLikeCountSyncPlayerId;
+
     private string m_communityCachePlayerId;
 
     /// <summary>
@@ -186,7 +193,8 @@ public class MPCustomLevelPublishManager
                     normalizedLevel.ID,
                     result.publicLevelId,
                     result.status,
-                    string.Empty);
+                    string.Empty,
+                    result.record?.likeCount ?? 0);
                 InvalidateCommunityPageCache();
             }
 
@@ -232,6 +240,170 @@ public class MPCustomLevelPublishManager
         EnsureLoggedIn();
         EnsurePublicLevelId(publicLevelId);
         return m_publishApi.GetDetailAsync(publicLevelId, cancellationToken);
+    }
+
+    /// <summary>
+    /// 获取本地关卡上一次成功同步的点赞数量。首次没有缓存时返回 0。
+    /// </summary>
+    public int GetCachedLocalLevelLikeCount(string sourceLocalLevelId)
+    {
+        MPCustomLevelPublishLocalState state = GetLocalState(sourceLocalLevelId);
+        return state == null || !state.IsPublished
+            ? 0
+            : Mathf.Max(0, state.cachedLikeCount);
+    }
+
+    /// <summary>
+    /// 在后台刷新当前玩家所有已发布本地关卡的点赞缓存。
+    /// 该任务不触发 UI 事件，结果只会在下一次打开页面时展示。
+    /// </summary>
+    public Task RefreshPublishedLocalLevelLikeCountCacheAsync()
+    {
+        if (MPLoginManager.Instance == null ||
+            !MPLoginManager.Instance.IsLoggedIn ||
+            string.IsNullOrEmpty(MPLoginManager.Instance.PlayerId))
+        {
+            return Task.CompletedTask;
+        }
+
+        EnsureLocalStateLoaded();
+        List<LocalLevelLikeSyncTarget> targets = new List<LocalLevelLikeSyncTarget>();
+        if (m_localState?.items != null)
+        {
+            HashSet<string> publicLevelIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < m_localState.items.Count; i++)
+            {
+                MPCustomLevelPublishLocalState state = m_localState.items[i];
+                if (state == null ||
+                    !state.IsPublished ||
+                    string.IsNullOrEmpty(state.sourceLocalLevelId) ||
+                    string.IsNullOrEmpty(state.publicLevelId) ||
+                    !publicLevelIds.Add(state.publicLevelId))
+                {
+                    continue;
+                }
+
+                targets.Add(new LocalLevelLikeSyncTarget
+                {
+                    sourceLocalLevelId = state.sourceLocalLevelId,
+                    publicLevelId = state.publicLevelId,
+                    cacheVersionUtcTicks = state.likeCountSyncedAtUtcTicks,
+                });
+            }
+        }
+
+        if (targets.Count == 0)
+            return Task.CompletedTask;
+
+        string playerId = MPLoginManager.Instance.PlayerId;
+        lock (m_localLikeCountSyncLock)
+        {
+            if (m_localLikeCountSyncTask != null &&
+                !m_localLikeCountSyncTask.IsCompleted &&
+                m_localLikeCountSyncPlayerId == playerId)
+            {
+                return m_localLikeCountSyncTask;
+            }
+
+            m_localLikeCountSyncPlayerId = playerId;
+            m_localLikeCountSyncTask = RefreshPublishedLocalLevelLikeCountCacheCoreAsync(
+                playerId,
+                targets);
+            return m_localLikeCountSyncTask;
+        }
+    }
+
+    private async Task RefreshPublishedLocalLevelLikeCountCacheCoreAsync(
+        string playerId,
+        List<LocalLevelLikeSyncTarget> targets)
+    {
+        Dictionary<string, int> likeCountByPublicLevelId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        for (int offset = 0;
+             offset < targets.Count;
+             offset += MPCustomLevelPublishConstants.MAX_STATS_BATCH_SIZE)
+        {
+            int count = Mathf.Min(
+                MPCustomLevelPublishConstants.MAX_STATS_BATCH_SIZE,
+                targets.Count - offset);
+            List<string> publicLevelIds = new List<string>(count);
+            for (int i = 0; i < count; i++)
+                publicLevelIds.Add(targets[offset + i].publicLevelId);
+
+            try
+            {
+                MPCustomLevelStatsResult result = await m_publishApi.GetStatsAsync(
+                    publicLevelIds,
+                    CancellationToken.None);
+                if (result == null || !result.success)
+                {
+                    Debug.LogWarning(
+                        $"[MPCustomLevelPublishManager] 拉取点赞统计失败：{result?.message}");
+                    continue;
+                }
+
+                if (result.items == null)
+                    continue;
+
+                for (int i = 0; i < result.items.Count; i++)
+                {
+                    MPCustomLevelStatsRecord item = result.items[i];
+                    if (item == null || string.IsNullOrEmpty(item.publicLevelId))
+                        continue;
+
+                    likeCountByPublicLevelId[item.publicLevelId] = Mathf.Max(0, item.likeCount);
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning(
+                    $"[MPCustomLevelPublishManager] 拉取点赞统计异常：{FormatExceptionForLog(exception)}");
+            }
+        }
+
+        // 玩家已经切换时丢弃旧账号请求结果，避免写进新账号的 ES3 缓存。
+        if (likeCountByPublicLevelId.Count == 0 || ResolvePlayerId() != playerId)
+            return;
+
+        EnsureLocalStateLoaded();
+        if (m_loadedPlayerId != playerId || m_localState?.items == null)
+            return;
+
+        long syncedAtUtcTicks = DateTime.UtcNow.Ticks;
+        bool shouldSave = false;
+        for (int i = 0; i < targets.Count; i++)
+        {
+            LocalLevelLikeSyncTarget target = targets[i];
+            if (!likeCountByPublicLevelId.TryGetValue(target.publicLevelId, out int likeCount))
+                continue;
+
+            // 点赞操作若在统计请求期间先完成，会推进缓存版本；旧统计响应不得覆盖它。
+            MPCustomLevelPublishLocalState state = m_localState.items.Find(item =>
+                item != null &&
+                item.sourceLocalLevelId == target.sourceLocalLevelId &&
+                item.publicLevelId == target.publicLevelId &&
+                item.IsPublished &&
+                item.likeCountSyncedAtUtcTicks == target.cacheVersionUtcTicks);
+            if (state == null)
+                continue;
+
+            state.cachedLikeCount = likeCount;
+            state.likeCountSyncedAtUtcTicks = syncedAtUtcTicks;
+            shouldSave = true;
+        }
+
+        if (!shouldSave)
+            return;
+
+        try
+        {
+            SaveLocalState();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                $"[MPCustomLevelPublishManager] 保存点赞统计缓存失败：{FormatExceptionForLog(exception)}");
+        }
     }
 
     /// <summary>
@@ -403,6 +575,9 @@ public class MPCustomLevelPublishManager
 
             CompleteLikeOperation(operation);
             SynchronizeLikedPageCache(operation.record);
+            CacheConfirmedLocalLevelLikeCount(
+                operation.record.publicLevelId,
+                operation.record.likeCount);
             CommunityLikeStateChanged?.Invoke(operation.record, true);
             return result;
         }
@@ -431,6 +606,9 @@ public class MPCustomLevelPublishManager
         operation.record.likedByCurrentPlayer = operation.confirmedLiked;
         operation.record.likeCount = Mathf.Max(0, operation.confirmedLikeCount);
         SynchronizeLikedPageCache(operation.record);
+        CacheConfirmedLocalLevelLikeCount(
+            operation.record.publicLevelId,
+            operation.record.likeCount);
         CommunityLikeStateChanged?.Invoke(operation.record, true);
     }
 
@@ -743,7 +921,12 @@ public class MPCustomLevelPublishManager
     /// <summary>
     /// 写入或更新本地发布状态。
     /// </summary>
-    private void UpsertLocalState(string sourceLocalLevelId, string publicLevelId, int status, string lastError)
+    private void UpsertLocalState(
+        string sourceLocalLevelId,
+        string publicLevelId,
+        int status,
+        string lastError,
+        int cachedLikeCount)
     {
         EnsureLocalStateLoaded();
         if (m_localState.items == null)
@@ -764,9 +947,38 @@ public class MPCustomLevelPublishManager
         state.publicLevelId = publicLevelId;
         state.status = status;
         state.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
+        state.cachedLikeCount = Mathf.Max(0, cachedLikeCount);
+        state.likeCountSyncedAtUtcTicks = DateTime.UtcNow.Ticks;
         state.lastError = lastError;
         SaveLocalState();
         PublishStateChanged?.Invoke(state);
+    }
+
+    /// <summary>
+    /// 点赞接口确认或回滚后同步作者本地关卡缓存，不触发自定义关卡 Item 刷新。
+    /// </summary>
+    private void CacheConfirmedLocalLevelLikeCount(string publicLevelId, int likeCount)
+    {
+        if (string.IsNullOrEmpty(publicLevelId))
+            return;
+
+        EnsureLocalStateLoaded();
+        MPCustomLevelPublishLocalState state = m_localState?.items?.Find(item =>
+            item != null && item.IsPublished && item.publicLevelId == publicLevelId);
+        if (state == null)
+            return;
+
+        state.cachedLikeCount = Mathf.Max(0, likeCount);
+        state.likeCountSyncedAtUtcTicks = DateTime.UtcNow.Ticks;
+        try
+        {
+            SaveLocalState();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                $"[MPCustomLevelPublishManager] 保存点赞确认缓存失败：{FormatExceptionForLog(exception)}");
+        }
     }
 
     /// <summary>
@@ -788,6 +1000,8 @@ public class MPCustomLevelPublishManager
 
         state.status = (int)MPCustomLevelPublishStatus.Revoked;
         state.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
+        state.cachedLikeCount = 0;
+        state.likeCountSyncedAtUtcTicks = 0;
         state.lastError = lastError;
         SaveLocalState();
         PublishStateChanged?.Invoke(state);
@@ -906,7 +1120,13 @@ public class MPCustomLevelPublishManager
         List<int> blocks = NormalizeBlockIndexes(levelInfo.Block, cellCount);
         List<MPCustomLevelColorInfo> colors = NormalizeColors(levelInfo.Colors, cellCount);
         string title = string.IsNullOrEmpty(levelInfo.Title) ? "Undefined" : levelInfo.Title;
-        return new MPCustomLevelInfo(levelInfo.ID, title, size, blocks, colors);
+        return new MPCustomLevelInfo(
+            levelInfo.ID,
+            title,
+            size,
+            blocks,
+            colors,
+            levelInfo.UpdatedAtUtcTicks);
     }
 
     /// <summary>
@@ -1042,5 +1262,12 @@ public class MPCustomLevelPublishManager
         public bool confirmedLiked;
         public int confirmedLikeCount;
         public Task<MPCustomLevelLikeResult> operationTask;
+    }
+
+    private sealed class LocalLevelLikeSyncTarget
+    {
+        public string sourceLocalLevelId;
+        public string publicLevelId;
+        public long cacheVersionUtcTicks;
     }
 }

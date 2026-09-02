@@ -62,6 +62,38 @@ public class MPUnityCloudCodeCustomLevelPublishApi : IMPCustomLevelPublishApi
     }
 
     /// <inheritdoc />
+    public async Task<MPCustomLevelStatsResult> GetStatsAsync(
+        IReadOnlyList<string> publicLevelIds,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        List<string> ids = new List<string>();
+        if (publicLevelIds != null)
+        {
+            int count = Mathf.Min(
+                publicLevelIds.Count,
+                MPCustomLevelPublishConstants.MAX_STATS_BATCH_SIZE);
+            for (int i = 0; i < count; i++)
+            {
+                if (!string.IsNullOrEmpty(publicLevelIds[i]))
+                    ids.Add(publicLevelIds[i]);
+            }
+        }
+
+        Dictionary<string, object> args = new Dictionary<string, object>
+        {
+            { "publicLevelIds", ids }
+        };
+        MPCustomLevelStatsResult result =
+            await CloudCodeService.Instance.CallModuleEndpointAsync<MPCustomLevelStatsResult>(
+                MPCustomLevelPublishConstants.MODULE_NAME,
+                MPCustomLevelPublishConstants.GET_STATS_FUNCTION,
+                args);
+        cancellationToken.ThrowIfCancellationRequested();
+        return result;
+    }
+
+    /// <inheritdoc />
     public async Task<MPCustomLevelPublicRecord> PlayAsync(string publicLevelId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

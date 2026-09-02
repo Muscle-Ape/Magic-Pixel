@@ -61,6 +61,34 @@ public class MPCustomLevelListResult
 }
 
 /// <summary>
+/// 公开关卡的轻量统计数据。
+/// </summary>
+[Serializable]
+public class MPCustomLevelStatsRecord
+{
+    /// <summary>
+    /// 公开关卡ID。
+    /// </summary>
+    public string publicLevelId;
+
+    /// <summary>
+    /// 服务端最新点赞数量。
+    /// </summary>
+    public int likeCount;
+}
+
+/// <summary>
+/// 批量拉取公开关卡统计数据的返回结果。
+/// </summary>
+[Serializable]
+public class MPCustomLevelStatsResult
+{
+    public bool success;
+    public List<MPCustomLevelStatsRecord> items;
+    public string message;
+}
+
+/// <summary>
 /// 点赞公开自定义关卡的返回结果。
 /// </summary>
 [Serializable]

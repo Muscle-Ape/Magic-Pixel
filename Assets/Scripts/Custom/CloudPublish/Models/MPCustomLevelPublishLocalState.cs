@@ -29,6 +29,17 @@ public class MPCustomLevelPublishLocalState
     public long updatedAtUtcTicks;
 
     /// <summary>
+    /// 最近一次从服务端同步成功的点赞数量。
+    /// 页面打开时直接使用该值，不等待网络请求。
+    /// </summary>
+    public int cachedLikeCount;
+
+    /// <summary>
+    /// 点赞数量最近一次同步成功的时间，UTC Ticks。
+    /// </summary>
+    public long likeCountSyncedAtUtcTicks;
+
+    /// <summary>
     /// 最近一次发布或撤销失败信息。
     /// </summary>
     public string lastError;

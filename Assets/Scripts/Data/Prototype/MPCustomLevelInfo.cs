@@ -37,6 +37,12 @@ public class MPCustomLevelInfo
     private List<MPCustomLevelColorInfo> colors;
 
     /// <summary>
+    /// 本地关卡最近一次创建或编辑完成时间，使用 UTC Ticks。
+    /// </summary>
+    [JsonProperty]
+    private long updatedAtUtcTicks;
+
+    /// <summary>
     /// 自定义关卡唯一ID。该属性仅供业务代码读取，不参与JSON序列化，避免和私有字段 id 重复写入。
     /// </summary>
     [JsonIgnore]
@@ -67,6 +73,12 @@ public class MPCustomLevelInfo
     public List<MPCustomLevelColorInfo> Colors => colors;
 
     /// <summary>
+    /// 本地关卡最近一次创建或编辑完成时间。
+    /// </summary>
+    [JsonIgnore]
+    public long UpdatedAtUtcTicks => updatedAtUtcTicks;
+
+    /// <summary>
     /// 默认构造函数，供Json反序列化使用。
     /// </summary>
     public MPCustomLevelInfo()
@@ -76,13 +88,20 @@ public class MPCustomLevelInfo
     /// <summary>
     /// 创建自定义关卡信息实例。
     /// </summary>
-    public MPCustomLevelInfo(string id, string title, int size, List<int> block, List<MPCustomLevelColorInfo> colors)
+    public MPCustomLevelInfo(
+        string id,
+        string title,
+        int size,
+        List<int> block,
+        List<MPCustomLevelColorInfo> colors,
+        long updatedAtUtcTicks = 0)
     {
         this.id = id;
         this.title = title;
         this.size = size;
         this.block = block ?? new List<int>();
         this.colors = colors ?? new List<MPCustomLevelColorInfo>();
+        this.updatedAtUtcTicks = updatedAtUtcTicks;
     }
 
     /// <summary>
@@ -138,4 +157,3 @@ public class MPCustomLevelColorInfo
         this.color = color;
     }
 }
-

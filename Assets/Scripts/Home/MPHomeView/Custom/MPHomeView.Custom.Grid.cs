@@ -1,8 +1,76 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public partial class MPHomeView
 {
+    /// <summary>
+    /// 将仓库中选中的未上传关卡加载到主页编辑器。
+    /// 保存时继续使用原 ID，从而覆盖原关卡数据和像素图。
+    /// </summary>
+    private void BeginEditCustomLevel(MPCustomLevelInfo levelInfo)
+    {
+        if (!m_customInitialized || levelInfo == null || string.IsNullOrEmpty(levelInfo.ID))
+            return;
+
+        if (MPCustomLevelPublishManager.Instance.IsPublishPending(levelInfo.ID)
+            || MPCustomLevelPublishManager.Instance.IsLocalLevelPublished(levelInfo.ID))
+        {
+            Debug.LogWarning($"[MPHomeView] 已上传或正在上传的关卡不允许编辑：{levelInfo.ID}");
+            return;
+        }
+
+        CloseCustomPalette(false);
+        m_customPendingPublishLevelInfo = null;
+        m_customEditingLevelId = levelInfo.ID;
+
+        int targetSize = levelInfo.Size == 10 ? 10 : 5;
+        m_customIsTenSize = targetSize == 10;
+        CreateCustomGrid(targetSize);
+
+        if (m_customTitleInput != null)
+        {
+            m_customTitleInput.text = string.IsNullOrWhiteSpace(levelInfo.Title)
+                ? MPUser.instance.GetDefaultCustomLevelTitle()
+                : levelInfo.Title;
+        }
+
+        HashSet<int> filledIndexes = levelInfo.Block == null
+            ? new HashSet<int>()
+            : new HashSet<int>(levelInfo.Block);
+        Dictionary<int, Color> colors = new Dictionary<int, Color>();
+        if (levelInfo.Colors != null)
+        {
+            for (int i = 0; i < levelInfo.Colors.Count; i++)
+            {
+                MPCustomLevelColorInfo colorInfo = levelInfo.Colors[i];
+                if (colorInfo == null
+                    || colorInfo.Index < 0
+                    || colorInfo.Index >= m_customBlocks.Count
+                    || !ColorUtility.TryParseHtmlString(colorInfo.Color, out Color color))
+                {
+                    continue;
+                }
+
+                colors[colorInfo.Index] = color;
+            }
+        }
+
+        for (int i = 0; i < m_customBlocks.Count; i++)
+        {
+            MPCustomBlock block = m_customBlocks[i];
+            block.Fill(filledIndexes.Contains(i));
+            if (colors.TryGetValue(i, out Color color))
+                block.SetColor(color);
+            else
+                block.ClearColor();
+        }
+
+        RefreshCustomSizeState();
+        RefreshCustomModeState();
+        RefreshCustomPublishButtonState();
+    }
+
     private void CreateCustomGrid(int size)
     {
         if (!m_customInitialized || m_customBlockPool == null || m_customBlockGrid == null)

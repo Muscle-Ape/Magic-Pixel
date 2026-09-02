@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,6 +22,13 @@ public interface IMPCustomLevelPublishApi
     /// 获取公开自定义关卡详情。
     /// </summary>
     Task<MPCustomLevelPublicRecord> GetDetailAsync(string publicLevelId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 批量获取指定公开关卡的点赞数量。
+    /// </summary>
+    Task<MPCustomLevelStatsResult> GetStatsAsync(
+        IReadOnlyList<string> publicLevelIds,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 记录一次体验并返回公开自定义关卡详情。

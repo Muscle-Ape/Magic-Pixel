@@ -117,6 +117,7 @@ public class MPCustomLevelPublicRecord
             levelTitle,
             size,
             block == null ? new List<int>() : new List<int>(block),
-            colors == null ? new List<MPCustomLevelColorInfo>() : new List<MPCustomLevelColorInfo>(colors));
+            colors == null ? new List<MPCustomLevelColorInfo>() : new List<MPCustomLevelColorInfo>(colors),
+            updatedAtUtcTicks > 0 ? updatedAtUtcTicks : createdAtUtcTicks);
     }
 }

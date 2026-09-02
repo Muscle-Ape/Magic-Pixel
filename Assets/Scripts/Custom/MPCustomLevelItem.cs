@@ -1,5 +1,7 @@
-﻿using HQ.UIManager;
+﻿using DG.Tweening;
+using HQ.UIManager;
 using System;
+using System.IO;
 using System.Threading;
 using TMPro;
 using UnityEngine;
@@ -7,6 +9,8 @@ using UnityEngine.UI;
 
 public class MPCustomLevelItem : MonoBehaviour
 {
+    private const float EDITOR_BUTTON_SCALE_DURATION = 0.2f;
+
     /// <summary>
     /// 通关后显示的图片。
     /// </summary>
@@ -33,6 +37,24 @@ public class MPCustomLevelItem : MonoBehaviour
     private Button m_deleteBtn;
 
     /// <summary>
+    /// 重新编辑当前未上传关卡的按钮。
+    /// </summary>
+    private Button m_editorBtn;
+
+    /// <summary>
+    /// 编辑按钮预制体中配置的显示缩放。
+    /// </summary>
+    private Vector3 m_editorVisibleScale = Vector3.one;
+
+    /// <summary>
+    /// 编辑按钮显示/隐藏动画。
+    /// </summary>
+    private Tween m_editorButtonTween;
+
+    private bool m_editorStateInitialized;
+    private bool m_editorShouldBeVisible;
+
+    /// <summary>
     /// 关卡标题文本。
     /// </summary>
     private TMP_Text m_nameText;
@@ -41,6 +63,16 @@ public class MPCustomLevelItem : MonoBehaviour
     /// 关卡尺寸文本。
     /// </summary>
     private TMP_Text m_sizeText;
+
+    /// <summary>
+    /// 关卡最近一次创建或编辑完成时间。
+    /// </summary>
+    private TMP_Text m_updateTimeText;
+
+    /// <summary>
+    /// 公开关卡服务端点赞数量。
+    /// </summary>
+    private TMP_Text m_likedCountText;
 
     /// <summary>
     /// 当前自定义关卡数据。
@@ -56,6 +88,11 @@ public class MPCustomLevelItem : MonoBehaviour
     /// 关卡列表刷新回调。
     /// </summary>
     private Action m_refresh;
+
+    /// <summary>
+    /// 请求主页编辑指定自定义关卡的回调。
+    /// </summary>
+    private Action<MPCustomLevelInfo> m_edit;
 
     /// <summary>
     /// 当前列表像素预览使用的运行时贴图。
@@ -80,21 +117,34 @@ public class MPCustomLevelItem : MonoBehaviour
     /// <summary>
     /// 初始化自定义关卡列表项。
     /// </summary>
-    public void Initialize(Action refresh)
+    public void Initialize(Action refresh, Action<MPCustomLevelInfo> edit)
     {
         m_refresh = refresh;
+        m_edit = edit;
 
         m_pixel = transform.Find("Completed/Pixel").GetComponent<Image>();
         m_playBtn = transform.Find("PlayBtn").GetComponent<Button>();
         m_uploadBtn = transform.Find("UploadBtn").GetComponent<Button>();
         m_deleteBtn = transform.Find("DeleteBtn").GetComponent<Button>();
+        m_editorBtn = transform.Find("EditorBtn")?.GetComponent<Button>();
         m_uploadText = transform.Find("UploadBtn/Text")?.GetComponent<TMP_Text>();
         m_nameText = transform.Find("Name").GetComponent<TMP_Text>();
         m_sizeText = transform.Find("Size").GetComponent<TMP_Text>();
+        m_updateTimeText = transform.Find("UpdateTime")?.GetComponent<TMP_Text>();
+        m_likedCountText = transform.Find("LikedCount")?.GetComponent<TMP_Text>();
+
+        if (m_editorBtn != null)
+        {
+            m_editorVisibleScale = m_editorBtn.transform.localScale;
+            if (m_editorVisibleScale.sqrMagnitude <= Mathf.Epsilon)
+                m_editorVisibleScale = Vector3.one;
+        }
 
         m_playBtn.onClick.AddListener(OnLevelClick);
         m_uploadBtn.onClick.AddListener(OnUploadClick);
         m_deleteBtn.onClick.AddListener(OnDeleteClick);
+        if (m_editorBtn != null)
+            m_editorBtn.onClick.AddListener(OnEditorClick);
 
         MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
         MPCustomLevelPublishManager.Instance.PublishStateChanged += OnPublishStateChanged;
@@ -106,15 +156,68 @@ public class MPCustomLevelItem : MonoBehaviour
     /// <summary>
     /// 刷新自定义关卡列表项显示。
     /// </summary>
-    public void Refresh(MPCustomLevelInfo data, int index)
+    public void Refresh(MPCustomLevelInfo data, int index, int cachedLikeCount)
     {
         m_data = data;
         m_index = index;
 
         m_nameText.text = string.IsNullOrEmpty(m_data.Title) ? MPUser.instance.GetDefaultCustomLevelTitle() : m_data.Title;
         m_sizeText.text = $"{m_data.Size}x{m_data.Size}";
+        RefreshUpdateTime();
+        RefreshLikedCount(cachedLikeCount);
         RefreshCustomLevelPixel();
         RefreshUploadButtonState();
+    }
+
+    /// <summary>
+    /// 使用本地持久化的最后编辑时间刷新日期。旧开发数据缺少时间时使用像素文件时间兜底。
+    /// </summary>
+    private void RefreshUpdateTime()
+    {
+        if (m_updateTimeText == null)
+            return;
+
+        long updateTicks = m_data == null ? 0 : m_data.UpdatedAtUtcTicks;
+        if (updateTicks <= 0 && m_data != null)
+        {
+            try
+            {
+                string imagePath = MPUser.instance.GetCustomLevelImagePath(m_data.ID);
+                if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+                    updateTicks = File.GetLastWriteTimeUtc(imagePath).Ticks;
+            }
+            catch (Exception)
+            {
+                updateTicks = 0;
+            }
+        }
+
+        m_updateTimeText.text = FormatUpdateTime(updateTicks);
+    }
+
+    private static string FormatUpdateTime(long utcTicks)
+    {
+        if (utcTicks <= 0)
+            return "--";
+
+        try
+        {
+            DateTime utcTime = new DateTime(utcTicks, DateTimeKind.Utc);
+            return utcTime.ToLocalTime().ToString("yyyy.MM.dd");
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return "--";
+        }
+    }
+
+    /// <summary>
+    /// 显示页面打开时冻结的点赞缓存。本次页面生命周期内不接收后台同步结果。
+    /// </summary>
+    private void RefreshLikedCount(int cachedLikeCount)
+    {
+        if (m_likedCountText != null)
+            m_likedCountText.text = Mathf.Max(0, cachedLikeCount).ToString();
     }
 
 
@@ -185,8 +288,15 @@ public class MPCustomLevelItem : MonoBehaviour
             m_deleteBtn.onClick.RemoveListener(OnDeleteClick);
         }
 
+        if (m_editorBtn != null)
+        {
+            m_editorBtn.onClick.RemoveListener(OnEditorClick);
+        }
+
         MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
         MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
+        m_editorButtonTween?.Kill();
+        m_editorButtonTween = null;
         CancelPublishOperation();
         ClearCustomLevelPixelAsset();
     }
@@ -342,6 +452,22 @@ public class MPCustomLevelItem : MonoBehaviour
     }
 
     /// <summary>
+    /// 请求主页加载当前未上传关卡进行编辑。
+    /// </summary>
+    private void OnEditorClick()
+    {
+        if (m_data == null || m_edit == null || m_isPublishActionRunning)
+            return;
+
+        bool isPending = MPCustomLevelPublishManager.Instance.IsPublishPending(m_data.ID);
+        bool isPublished = MPCustomLevelPublishManager.Instance.IsLocalLevelPublished(m_data.ID);
+        if (isPending || isPublished)
+            return;
+
+        m_edit.Invoke(m_data);
+    }
+
+    /// <summary>
     /// 发布状态变化时刷新当前列表项按钮显示。
     /// </summary>
     private void OnPublishStateChanged(MPCustomLevelPublishLocalState state)
@@ -352,6 +478,8 @@ public class MPCustomLevelItem : MonoBehaviour
         }
 
         RefreshUploadButtonState();
+        if (!state.IsPublished)
+            RefreshLikedCount(0);
     }
 
     /// <summary>
@@ -372,19 +500,25 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     private void RefreshUploadButtonState()
     {
-        if (m_uploadBtn == null)
-        {
-            return;
-        }
-
         bool canUseCloudPublish = MPLoginManager.Instance != null && MPLoginManager.Instance.IsLoggedIn;
         bool isPublishPending = m_data != null && MPCustomLevelPublishManager.Instance.IsPublishPending(m_data.ID);
         bool isBusy = m_isPublishActionRunning || isPublishPending;
-        m_uploadBtn.interactable = !isBusy && canUseCloudPublish;
+        MPCustomLevelPublishLocalState state = m_data == null
+            ? null
+            : MPCustomLevelPublishManager.Instance.GetLocalState(m_data.ID);
+        bool isPublished = state != null && state.IsPublished;
+
+        if (m_uploadBtn != null)
+        {
+            m_uploadBtn.interactable = !isBusy && canUseCloudPublish;
+        }
+
         if (m_deleteBtn != null)
         {
             m_deleteBtn.interactable = !isBusy;
         }
+
+        RefreshEditorButtonState(m_data != null && m_edit != null && !isBusy && !isPublished);
 
         if (m_uploadText == null)
         {
@@ -397,8 +531,68 @@ public class MPCustomLevelItem : MonoBehaviour
             return;
         }
 
-        MPCustomLevelPublishLocalState state = m_data == null ? null : MPCustomLevelPublishManager.Instance.GetLocalState(m_data.ID);
-        m_uploadText.text = state != null && state.IsPublished ? "Revoke" : "Upload";
+        m_uploadText.text = isPublished ? "Revoke" : "Upload";
+    }
+
+    /// <summary>
+    /// 使用缩放动画切换编辑按钮。首次刷新直接应用最终状态，避免已上传关卡打开列表时闪现。
+    /// </summary>
+    private void RefreshEditorButtonState(bool shouldShow)
+    {
+        if (m_editorBtn == null)
+            return;
+
+        if (!m_editorStateInitialized)
+        {
+            m_editorStateInitialized = true;
+            m_editorShouldBeVisible = shouldShow;
+            m_editorBtn.transform.localScale = shouldShow ? m_editorVisibleScale : Vector3.zero;
+            m_editorBtn.gameObject.SetActive(shouldShow);
+            m_editorBtn.interactable = shouldShow;
+            return;
+        }
+
+        if (m_editorShouldBeVisible == shouldShow)
+            return;
+
+        m_editorShouldBeVisible = shouldShow;
+        m_editorButtonTween?.Kill();
+        m_editorButtonTween = null;
+
+        Transform editorTransform = m_editorBtn.transform;
+        m_editorBtn.interactable = false;
+
+        if (!editorTransform.gameObject.activeSelf)
+            editorTransform.gameObject.SetActive(true);
+
+        if (shouldShow)
+        {
+            editorTransform.localScale = Vector3.zero;
+            m_editorButtonTween = editorTransform
+                .DOScale(m_editorVisibleScale, EDITOR_BUTTON_SCALE_DURATION)
+                .SetEase(Ease.OutBack)
+                .SetUpdate(true)
+                .SetLink(gameObject)
+                .OnComplete(() =>
+                {
+                    m_editorButtonTween = null;
+                    if (m_editorShouldBeVisible && m_editorBtn != null)
+                        m_editorBtn.interactable = true;
+                });
+            return;
+        }
+
+        m_editorButtonTween = editorTransform
+            .DOScale(Vector3.zero, EDITOR_BUTTON_SCALE_DURATION)
+            .SetEase(Ease.InBack)
+            .SetUpdate(true)
+            .SetLink(gameObject)
+            .OnComplete(() =>
+            {
+                m_editorButtonTween = null;
+                if (!m_editorShouldBeVisible && editorTransform != null)
+                    editorTransform.gameObject.SetActive(false);
+            });
     }
 
     /// <summary>
@@ -415,5 +609,5 @@ public class MPCustomLevelItem : MonoBehaviour
         m_publishCancellation.Dispose();
         m_publishCancellation = null;
     }
-}
 
+}

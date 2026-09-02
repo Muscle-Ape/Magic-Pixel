@@ -24,6 +24,7 @@ public class CustomLevelPublishModule
     private const string CatalogKey = "mp_public_custom_level_catalog_v1";
     private const string RecordKeyPrefix = "mp_public_custom_level_";
     private const int MaxPageSize = 20;
+    private const int MaxStatsBatchSize = 20;
     private const int RetryCount = 3;
 
     private static readonly Regex ColorRegex = new("^#[0-9a-fA-F]{8}$", RegexOptions.Compiled);
@@ -191,6 +192,48 @@ public class CustomLevelPublishModule
         }
 
         return ToClientRecord(record, context.PlayerId);
+    }
+
+    /// <summary>
+    /// 批量获取指定公开关卡的点赞数量。
+    /// 只返回仍处于公开状态的关卡，避免客户端逐个请求完整关卡详情。
+    /// </summary>
+    [CloudCodeFunction("GetPublishedCustomLevelStats")]
+    public async Task<CustomLevelStatsResult> GetPublishedCustomLevelStats(
+        IExecutionContext context,
+        IGameApiClient gameApiClient,
+        List<string>? publicLevelIds)
+    {
+        EnsureSignedIn(context);
+
+        var ids = (publicLevelIds ?? new List<string>())
+            .Where(publicLevelId => !string.IsNullOrWhiteSpace(publicLevelId))
+            .Distinct(StringComparer.Ordinal)
+            .Take(MaxStatsBatchSize)
+            .ToList();
+        var records = await GetRecordsAsync(context, gameApiClient, ids);
+        var items = new List<CustomLevelStatsRecord>(ids.Count);
+        foreach (var publicLevelId in ids)
+        {
+            if (!records.TryGetValue(publicLevelId, out var record) ||
+                record.status != StatusPublished)
+            {
+                continue;
+            }
+
+            items.Add(new CustomLevelStatsRecord
+            {
+                publicLevelId = publicLevelId,
+                likeCount = Math.Max(0, record.likeCount)
+            });
+        }
+
+        return new CustomLevelStatsResult
+        {
+            success = true,
+            items = items,
+            message = string.Empty
+        };
     }
 
     /// <summary>

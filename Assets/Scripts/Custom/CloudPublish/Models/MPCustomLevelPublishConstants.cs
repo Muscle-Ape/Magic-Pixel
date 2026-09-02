@@ -31,6 +31,11 @@ public static class MPCustomLevelPublishConstants
     public const string GET_DETAIL_FUNCTION = "GetPublishedCustomLevel";
 
     /// <summary>
+    /// 批量拉取指定公开关卡点赞数量的函数名。
+    /// </summary>
+    public const string GET_STATS_FUNCTION = "GetPublishedCustomLevelStats";
+
+    /// <summary>
     /// 体验公开自定义关卡的 Cloud Code 函数名。
     /// 该函数会在服务端增加 playCount，并返回完整关卡数据。
     /// </summary>
@@ -55,6 +60,11 @@ public static class MPCustomLevelPublishConstants
     /// 单次列表请求允许的最大数量。
     /// </summary>
     public const int MAX_PAGE_SIZE = 20;
+
+    /// <summary>
+    /// 单次统计数据请求允许的最大关卡数量。
+    /// </summary>
+    public const int MAX_STATS_BATCH_SIZE = 20;
 
     /// <summary>
     /// 最新发布排序。

@@ -430,7 +430,8 @@ public partial class MPCustomView
             title,
             m_currentSize,
             blocks,
-            colors);
+            colors,
+            DateTime.UtcNow.Ticks);
 
         MPUser.instance.SaveCustomLevel(levelInfo);
         UploadCustomLevelImage(id);
@@ -742,7 +743,6 @@ public partial class MPCustomView
         MPLoad.ReleaseAll(this);
     }
 }
-
 
 
 

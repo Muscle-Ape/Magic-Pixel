@@ -102,6 +102,25 @@ public class CustomLevelListResult
     public string message { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// 公开关卡的轻量统计数据。
+/// </summary>
+public class CustomLevelStatsRecord
+{
+    public string publicLevelId { get; set; } = string.Empty;
+    public int likeCount { get; set; }
+}
+
+/// <summary>
+/// 批量拉取公开关卡统计数据的返回结果。
+/// </summary>
+public class CustomLevelStatsResult
+{
+    public bool success { get; set; }
+    public List<CustomLevelStatsRecord> items { get; set; } = new();
+    public string message { get; set; } = string.Empty;
+}
+
 public class CustomLevelLikeResult
 {
     public bool success { get; set; }

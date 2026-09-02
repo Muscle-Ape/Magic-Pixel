@@ -187,7 +187,18 @@ public partial class MPHomeView
                 "#" + ColorUtility.ToHtmlStringRGBA(block.color)));
         }
 
-        string id = MPUser.instance.CreateCustomLevelImageID();
+        bool isEditingExistingLevel = !string.IsNullOrEmpty(m_customEditingLevelId);
+        if (isEditingExistingLevel
+            && (MPCustomLevelPublishManager.Instance.IsPublishPending(m_customEditingLevelId)
+                || MPCustomLevelPublishManager.Instance.IsLocalLevelPublished(m_customEditingLevelId)))
+        {
+            Debug.LogWarning($"[MPHomeView] 关卡已上传或正在上传，无法保存编辑结果：{m_customEditingLevelId}");
+            return null;
+        }
+
+        string id = isEditingExistingLevel
+            ? m_customEditingLevelId
+            : MPUser.instance.CreateCustomLevelImageID();
         if (!SaveHomeCustomLevelImage(id))
             return null;
 
@@ -196,9 +207,11 @@ public partial class MPHomeView
             title,
             m_customCurrentSize,
             blocks,
-            colors);
+            colors,
+            DateTime.UtcNow.Ticks);
 
         MPUser.instance.SaveCustomLevel(levelInfo);
+        m_customEditingLevelId = null;
         UploadHomeCustomLevelImage(id);
         PlayCustomSaveAnimation(id);
         ClearCurrentHomeCustomGrid(cellCount);

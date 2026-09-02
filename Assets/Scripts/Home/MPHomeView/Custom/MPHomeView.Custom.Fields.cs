@@ -125,6 +125,7 @@ public partial class MPHomeView
     private Sequence m_customSaveAnimationSequence;
     private CancellationTokenSource m_customPublishCancellation;
     private MPCustomLevelInfo m_customPendingPublishLevelInfo;
+    private string m_customEditingLevelId;
     private Texture2D m_customSaveAnimationTexture;
     private Sprite m_customSaveAnimationSprite;
     private Sprite m_customBlockLeftTopSprite;
@@ -190,6 +191,7 @@ public partial class MPHomeView
         m_customIsTenSize = false;
         m_customPublishActionRunning = false;
         m_customPendingPublishLevelInfo = null;
+        m_customEditingLevelId = null;
         m_customCurrentSize = 5;
         if (m_customTitleInput != null)
             m_customTitleInput.text = MPUser.instance.GetDefaultCustomLevelTitle();
@@ -224,6 +226,7 @@ public partial class MPHomeView
         CancelCustomPublishOperation();
         m_customPublishActionRunning = false;
         m_customPendingPublishLevelInfo = null;
+        m_customEditingLevelId = null;
         CloseCustomPalette(false);
         ClearCustomSaveAnimation();
         ClearCustomGrid();

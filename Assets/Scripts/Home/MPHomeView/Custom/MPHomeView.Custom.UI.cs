@@ -391,7 +391,11 @@ public partial class MPHomeView
 
     private void OnCustomWarehouseClick()
     {
-        UIManager.Inst.ShowWindow<MPCustomLevelView>();
+        MPCustomLevelViewUIMsgData data = new MPCustomLevelViewUIMsgData
+        {
+            edit = BeginEditCustomLevel,
+        };
+        UIManager.Inst.ShowWindow<MPCustomLevelView>(data);
     }
 
     private void OnCustomCommunityClick()
