@@ -56,6 +56,12 @@ public class MPCustomLevelView : AWindow
         new Dictionary<string, int>();
 
     /// <summary>
+    /// 与点赞数量同步冻结的试玩次数快照，列表复用时也不读取后台的新缓存。
+    /// </summary>
+    private readonly Dictionary<string, int> m_playCountSnapshot =
+        new Dictionary<string, int>();
+
+    /// <summary>
     /// 将指定关卡加载到来源编辑器的回调。
     /// </summary>
     private System.Action<MPCustomLevelInfo> m_editAction;
@@ -103,7 +109,7 @@ public class MPCustomLevelView : AWindow
         MPCustomLevelViewUIMsgData data = uiMsg as MPCustomLevelViewUIMsgData;
         m_editAction = data?.edit;
         m_levelInfos = MPUser.instance.GetCustomLevels();
-        CaptureLikeCountSnapshot();
+        CaptureStatisticsSnapshot();
         m_loopGrid.InitGridView(m_levelInfos.Count, GetCustomLevelByRowColumn);
         RefreshEmptyTip();
 
@@ -113,7 +119,7 @@ public class MPCustomLevelView : AWindow
 
         // 只更新持久化缓存，不通知当前页面；下一次打开页面时才展示新数据。
         _ = MPCustomLevelPublishManager.Instance
-            .RefreshPublishedLocalLevelLikeCountCacheAsync();
+            .RefreshPublishedLocalLevelStatsCacheAsync();
     }
 
     public override void OnFocus(bool focus)
@@ -216,16 +222,22 @@ public class MPCustomLevelView : AWindow
             out int snapshotLikeCount)
             ? snapshotLikeCount
             : 0;
-        level.Refresh(levelInfo, index, cachedLikeCount);
+        int cachedPlayCount = m_playCountSnapshot.TryGetValue(
+            levelInfo.ID,
+            out int snapshotPlayCount)
+            ? snapshotPlayCount
+            : 0;
+        level.Refresh(levelInfo, index, cachedLikeCount, cachedPlayCount);
         return item;
     }
 
     /// <summary>
-    /// 冻结页面本次打开时的点赞数量。首次没有服务端缓存时使用 0。
+    /// 冻结页面本次打开时的点赞数量和试玩次数。首次没有服务端缓存时使用 0。
     /// </summary>
-    private void CaptureLikeCountSnapshot()
+    private void CaptureStatisticsSnapshot()
     {
         m_likeCountSnapshot.Clear();
+        m_playCountSnapshot.Clear();
         if (m_levelInfos == null)
             return;
 
@@ -237,6 +249,8 @@ public class MPCustomLevelView : AWindow
 
             m_likeCountSnapshot[levelInfo.ID] = MPCustomLevelPublishManager.Instance
                 .GetCachedLocalLevelLikeCount(levelInfo.ID);
+            m_playCountSnapshot[levelInfo.ID] = MPCustomLevelPublishManager.Instance
+                .GetCachedLocalLevelPlayCount(levelInfo.ID);
         }
     }
 
@@ -296,6 +310,7 @@ public class MPCustomLevelView : AWindow
         UnregisterButtons();
         m_editAction = null;
         m_likeCountSnapshot.Clear();
+        m_playCountSnapshot.Clear();
         base.OnRelease();
     }
 }

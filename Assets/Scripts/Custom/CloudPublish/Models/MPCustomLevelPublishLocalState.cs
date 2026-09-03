@@ -40,6 +40,16 @@ public class MPCustomLevelPublishLocalState
     public long likeCountSyncedAtUtcTicks;
 
     /// <summary>
+    /// 最近一次从服务端同步成功的试玩次数，首次无缓存时为 0。
+    /// </summary>
+    public int cachedPlayCount;
+
+    /// <summary>
+    /// 试玩次数最近一次同步成功的时间，UTC Ticks。
+    /// </summary>
+    public long playCountSyncedAtUtcTicks;
+
+    /// <summary>
     /// 最近一次发布或撤销失败信息。
     /// </summary>
     public string lastError;

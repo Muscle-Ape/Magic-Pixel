@@ -31,7 +31,7 @@ public static class MPCustomLevelPublishConstants
     public const string GET_DETAIL_FUNCTION = "GetPublishedCustomLevel";
 
     /// <summary>
-    /// 批量拉取指定公开关卡点赞数量的函数名。
+    /// 批量拉取指定公开关卡点赞数量和试玩次数的函数名。
     /// </summary>
     public const string GET_STATS_FUNCTION = "GetPublishedCustomLevelStats";
 

@@ -75,6 +75,11 @@ public class MPCustomLevelStatsRecord
     /// 服务端最新点赞数量。
     /// </summary>
     public int likeCount;
+
+    /// <summary>
+    /// 服务端最新试玩次数。旧接口未返回该字段时不覆盖已有缓存。
+    /// </summary>
+    public int? playCount;
 }
 
 /// <summary>

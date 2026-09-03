@@ -195,7 +195,7 @@ public class CustomLevelPublishModule
     }
 
     /// <summary>
-    /// 批量获取指定公开关卡的点赞数量。
+    /// 批量获取指定公开关卡的点赞数量和试玩次数。
     /// 只返回仍处于公开状态的关卡，避免客户端逐个请求完整关卡详情。
     /// </summary>
     [CloudCodeFunction("GetPublishedCustomLevelStats")]
@@ -224,7 +224,8 @@ public class CustomLevelPublishModule
             items.Add(new CustomLevelStatsRecord
             {
                 publicLevelId = publicLevelId,
-                likeCount = Math.Max(0, record.likeCount)
+                likeCount = Math.Max(0, record.likeCount),
+                playCount = Math.Max(0, record.playCount)
             });
         }
 

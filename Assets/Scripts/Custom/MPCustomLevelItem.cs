@@ -75,6 +75,11 @@ public class MPCustomLevelItem : MonoBehaviour
     private TMP_Text m_likedCountText;
 
     /// <summary>
+    /// 公开关卡服务端试玩次数。
+    /// </summary>
+    private TMP_Text m_lookCountText;
+
+    /// <summary>
     /// 当前自定义关卡数据。
     /// </summary>
     private MPCustomLevelInfo m_data;
@@ -132,6 +137,7 @@ public class MPCustomLevelItem : MonoBehaviour
         m_sizeText = transform.Find("Size").GetComponent<TMP_Text>();
         m_updateTimeText = transform.Find("UpdateTime")?.GetComponent<TMP_Text>();
         m_likedCountText = transform.Find("LikedCount")?.GetComponent<TMP_Text>();
+        m_lookCountText = transform.Find("LookCount")?.GetComponent<TMP_Text>();
 
         if (m_editorBtn != null)
         {
@@ -156,7 +162,7 @@ public class MPCustomLevelItem : MonoBehaviour
     /// <summary>
     /// 刷新自定义关卡列表项显示。
     /// </summary>
-    public void Refresh(MPCustomLevelInfo data, int index, int cachedLikeCount)
+    public void Refresh(MPCustomLevelInfo data, int index, int cachedLikeCount, int cachedPlayCount)
     {
         m_data = data;
         m_index = index;
@@ -164,7 +170,7 @@ public class MPCustomLevelItem : MonoBehaviour
         m_nameText.text = string.IsNullOrEmpty(m_data.Title) ? MPUser.instance.GetDefaultCustomLevelTitle() : m_data.Title;
         m_sizeText.text = $"{m_data.Size}x{m_data.Size}";
         RefreshUpdateTime();
-        RefreshLikedCount(cachedLikeCount);
+        RefreshStatistics(cachedLikeCount, cachedPlayCount);
         RefreshCustomLevelPixel();
         RefreshUploadButtonState();
     }
@@ -212,12 +218,14 @@ public class MPCustomLevelItem : MonoBehaviour
     }
 
     /// <summary>
-    /// 显示页面打开时冻结的点赞缓存。本次页面生命周期内不接收后台同步结果。
+    /// 显示页面打开时冻结的点赞和试玩缓存。本次页面生命周期内不接收后台同步结果。
     /// </summary>
-    private void RefreshLikedCount(int cachedLikeCount)
+    private void RefreshStatistics(int cachedLikeCount, int cachedPlayCount)
     {
         if (m_likedCountText != null)
             m_likedCountText.text = Mathf.Max(0, cachedLikeCount).ToString();
+        if (m_lookCountText != null)
+            m_lookCountText.text = Mathf.Max(0, cachedPlayCount).ToString();
     }
 
 
@@ -479,7 +487,7 @@ public class MPCustomLevelItem : MonoBehaviour
 
         RefreshUploadButtonState();
         if (!state.IsPublished)
-            RefreshLikedCount(0);
+            RefreshStatistics(0, 0);
     }
 
     /// <summary>

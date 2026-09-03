@@ -24,7 +24,7 @@ public interface IMPCustomLevelPublishApi
     Task<MPCustomLevelPublicRecord> GetDetailAsync(string publicLevelId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 批量获取指定公开关卡的点赞数量。
+    /// 批量获取指定公开关卡的点赞数量和试玩次数。
     /// </summary>
     Task<MPCustomLevelStatsResult> GetStatsAsync(
         IReadOnlyList<string> publicLevelIds,

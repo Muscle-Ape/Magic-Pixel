@@ -109,6 +109,7 @@ public class CustomLevelStatsRecord
 {
     public string publicLevelId { get; set; } = string.Empty;
     public int likeCount { get; set; }
+    public int playCount { get; set; }
 }
 
 /// <summary>
