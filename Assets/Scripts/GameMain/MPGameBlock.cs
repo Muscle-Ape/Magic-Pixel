@@ -25,6 +25,7 @@ public class MPGameBlock : MonoBehaviour
     /// 填充节点下用于普通游戏状态显示的颜色块。
     /// </summary>
     private GameObject m_fillColor;
+    private Image m_fillColorImage;
 
     /// <summary>
     /// 空白标记模式提示
@@ -99,6 +100,8 @@ public class MPGameBlock : MonoBehaviour
         if (fillColor != null)
         {
             m_fillColor = fillColor.gameObject;
+            m_fillColorImage = fillColor.GetComponent<Image>();
+            SetFillColor(MPUser.instance.gameFillColor);
         }
 
         m_blank = transform.Find("Blank").gameObject;
@@ -120,6 +123,12 @@ public class MPGameBlock : MonoBehaviour
             return;
 
         m_frame.sprite = sprite;
+    }
+
+    public void SetFillColor(Color color)
+    {
+        if (m_fillColorImage != null)
+            m_fillColorImage.color = color;
     }
 
     public void Fill(bool playAnimation = true)

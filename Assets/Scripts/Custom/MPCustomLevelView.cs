@@ -306,6 +306,7 @@ public class MPCustomLevelView : AWindow
 
     public override void OnRelease()
     {
+        MPNoNetworkPop.DismissLevelEntry(this);
         m_initialized = false;
         UnregisterButtons();
         m_editAction = null;

@@ -431,11 +431,12 @@ public class MPMainLevelItem : MonoBehaviour
             return;
         }
 
-        if (!MPUser.instance.TryClaimMainLevelBoxAward(m_data))
+        if (!MPUser.instance.TryClaimMainLevelBoxAward(m_data, out MPRewardReceipt receipt))
             return;
 
         RefreshBox(m_index);
         m_refresh?.Invoke();
+        MPRewardsClaimPop.Show(receipt);
     }
 
     private void PlayBoxClaimedShake()
@@ -534,7 +535,7 @@ public class MPMainLevelItem : MonoBehaviour
                 index = m_index,
                 refresh = m_refresh,
             };
-            MPTransitionView.OpenWindow<MPGameView>(data, GetComponentInParent<AWindow>());
+            MPNewGamePop.EnterMainLevel(data, GetComponentInParent<AWindow>());
             return;
         }
 

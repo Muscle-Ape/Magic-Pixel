@@ -375,7 +375,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
             index = m_index,
             refresh = m_refresh,
         };
-        MPTransitionView.OpenWindow<MPLargeImageGameView>(data, GetComponentInParent<AWindow>());
+        MPNewGamePop.EnterLargeImageLevel(data, GetComponentInParent<AWindow>());
     }
 
     private void OnDestroy()

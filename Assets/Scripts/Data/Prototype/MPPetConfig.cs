@@ -43,6 +43,12 @@ public class MPPetConfig
     [JsonProperty]
     private string unlockText;
 
+    [JsonProperty]
+    private string tag;
+
+    [JsonProperty]
+    private string claimSkillText;
+
     public string ID => id;
     public string Name => string.IsNullOrWhiteSpace(name) ? id : name;
     public string Icon => icon;
@@ -50,6 +56,11 @@ public class MPPetConfig
     public string OptionText => string.IsNullOrWhiteSpace(optionText) ? Option : optionText;
     public int SkillUseCount => Math.Max(0, skillUseCount);
     public string Unlock => unlock ?? string.Empty;
+    public string Tag => string.IsNullOrWhiteSpace(tag) ? "Companion" : tag;
+    public string ClaimSkillText => !string.IsNullOrWhiteSpace(claimSkillText) ? claimSkillText
+        : Option == MPPetSkillOption.Hint ? "Helps you complete an unfinished block."
+        : Option == MPPetSkillOption.RecoverLife ? "Restores a lost life during a puzzle."
+        : "A new companion for your puzzles.";
     public bool DefaultUnlocked => string.Equals(Unlock.Trim(), "default", StringComparison.OrdinalIgnoreCase)
         || string.Equals(Unlock.Trim(), "free", StringComparison.OrdinalIgnoreCase)
         || string.Equals(Unlock.Trim(), "unlocked", StringComparison.OrdinalIgnoreCase);

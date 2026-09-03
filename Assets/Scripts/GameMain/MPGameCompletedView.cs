@@ -1070,11 +1070,7 @@ public class MPGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        MPTransitionView.Play(() =>
-        {
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPGameView>(data, true);
-        });
+        MPNewGamePop.EnterMainLevel(data, this, closeSource: true);
     }
 
     /// <summary>
@@ -1095,11 +1091,7 @@ public class MPGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        MPTransitionView.Play(() =>
-        {
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
-        });
+        MPNewGamePop.EnterLargeImageLevel(data, this, closeSource: true);
     }
 
     /// <summary>
@@ -1121,11 +1113,7 @@ public class MPGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        MPTransitionView.Play(() =>
-        {
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPGameView>(data, true);
-        });
+        MPNewGamePop.EnterCustomLevel(data, this, closeSource: true);
     }
 
     /// <summary>
@@ -1144,6 +1132,7 @@ public class MPGameCompletedView : AWindow
 
     public override void OnRelease()
     {
+        MPNoNetworkPop.DismissLevelEntry(this);
         UnregisterUI();
         m_enterSequence?.Kill();
         ClearPixelGrid();

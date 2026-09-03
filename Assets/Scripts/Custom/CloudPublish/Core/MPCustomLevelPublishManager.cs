@@ -923,7 +923,7 @@ public class MPCustomLevelPublishManager
             index = -1,
             refresh = null
         };
-        MPTransitionView.OpenWindow<MPGameView>(data, sourceWindow);
+        MPNewGamePop.EnterCustomLevel(data, sourceWindow);
     }
 
     /// <summary>

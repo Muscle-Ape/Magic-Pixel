@@ -11,17 +11,26 @@ public partial class MPGameView
         if (m_isCustomLevel)
             return;
 
-        MPLevelProgressCacheInfo cacheInfo = MPUser.instance.GetMainLevelProgressCache(m_blockInfo.ID);
+        MPLevelProgressCacheInfo cacheInfo = m_progressCacheValidated
+            ? m_entryProgressCache
+            : MPUser.instance.GetMainLevelProgressCache(m_blockInfo.ID);
+        cacheInfo = cacheInfo?.GetValidIncompleteCopy(m_size, false, m_loves.Count);
         if (cacheInfo == null)
             return;
 
         m_isRestoringProgress = true;
 
-        RestoreLoves(cacheInfo.UsedLoves);
-        RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
-        RestoreBlocks(cacheInfo.CompletedBlocks);
-
-        m_isRestoringProgress = false;
+        try
+        {
+            RestoreLoves(cacheInfo.UsedLoves);
+            RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
+            RestoreBlocks(cacheInfo.CompletedBlocks);
+        }
+        finally
+        {
+            m_isRestoringProgress = false;
+            m_entryProgressCache = null;
+        }
     }
 
     /// <summary>

@@ -1,0 +1,9 @@
+[
+  { "id": "sign_in_001", "type": "coin", "amount": 100, "icon": "popup_reward_coin" },
+  { "id": "sign_in_002", "type": "hint", "amount": 1, "icon": "popup_reward_hint" },
+  { "id": "sign_in_003", "type": "coin", "amount": 200, "icon": "popup_reward_coin" },
+  { "id": "sign_in_004", "type": "diamond", "amount": 10, "icon": "popup_reward_diamond" },
+  { "id": "sign_in_005", "type": "life", "amount": 1, "icon": "popup_reward_life" },
+  { "id": "sign_in_006", "type": "coin", "amount": 300, "icon": "popup_reward_coin" },
+  { "id": "sign_in_007", "type": "diamond", "amount": 30, "icon": "popup_reward_diamond" }
+]

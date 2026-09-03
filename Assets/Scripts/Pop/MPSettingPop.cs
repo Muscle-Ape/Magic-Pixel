@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using DG.Tweening;
 using HQ.UIManager;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 [Component("MPSettingPop")]
@@ -97,6 +101,43 @@ public class MPSettingPop : AWindow
     [TransformPath("View/Window/LogOut")]
     private Button m_logOutBtn;
 
+    [TransformPath("View/Window/ReplayBtn")]
+    private Button m_replayBtn;
+
+    [TransformPath("View/Window/AccountStatus")]
+    private TMP_Text m_accountStatus;
+
+    [TransformPath("View/Window/GameOptions")]
+    private RectTransform m_gameOptions;
+
+    [TransformPath("View/Window/GameOptions/CurrentColor")]
+    private Image m_currentColor;
+
+    [TransformPath("View/Window/GameOptions/Colors")]
+    private RectTransform m_colors;
+
+    private static readonly Color[] FILL_COLORS =
+    {
+        Color.white,
+        new Color(1f, 0.64f, 0.25f),
+        new Color(0.5f, 1f, 0.55f),
+        new Color(0.83f, 0.6f, 1f),
+        new Color(1f, 0.52f, 0.73f),
+        new Color(0.28f, 0.3f, 0.36f),
+    };
+
+    private static readonly string[] FILL_COLOR_ICONS =
+    {
+        "popup_fill_blue", "popup_fill_orange", "popup_fill_green",
+        "popup_fill_purple", "popup_fill_pink", "popup_fill_gray",
+    };
+
+    private readonly Dictionary<Button, UnityAction> m_colorListeners = new Dictionary<Button, UnityAction>();
+    private readonly Sprite[] m_fillColorSprites = new Sprite[FILL_COLORS.Length];
+    private MPSettingPopUIMsgData m_gameData;
+    private bool m_isActionPromptShowing;
+    private bool m_isClosing;
+
     /// <summary>
     /// 通用弹窗缩放动画组件。
     /// </summary>
@@ -117,12 +158,17 @@ public class MPSettingPop : AWindow
     /// 当前是否正在执行登录相关按钮操作，用于防止重复点击。
     /// </summary>
     private bool m_isLoginActionRunning;
+    private bool m_logoutCommitted;
+    private MPLocalLoginProfile m_logoutProfile;
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
+        m_gameData = uiMsg as MPSettingPopUIMsgData;
+        m_isClosing = false;
 
         RegisterUI();
+        RefreshGameOptions();
         RefreshAllSwitches(false);
         RefreshLoginButtons();
     }
@@ -135,6 +181,11 @@ public class MPSettingPop : AWindow
         KillSwitchTween(m_bgmSwitchBtn, m_bgmSwitchOn);
         KillSwitchTween(m_soundSwitchBtn, m_soundSwitchOn);
         KillSwitchTween(m_vibrationSwitchBtn, m_vibrationSwitchOn);
+        ClearColorListeners();
+        Array.Clear(m_fillColorSprites, 0, m_fillColorSprites.Length);
+        m_gameData = null;
+        m_logoutProfile = null;
+        MPLoad.ReleaseAll(this);
     }
 
     /// <summary>
@@ -178,6 +229,12 @@ public class MPSettingPop : AWindow
             m_logOutBtn.onClick.AddListener(OnLogOutClick);
         }
 
+        if (m_replayBtn != null)
+        {
+            m_replayBtn.onClick.RemoveListener(OnReplayClick);
+            m_replayBtn.onClick.AddListener(OnReplayClick);
+        }
+
         MPLoginManager.Instance.LoginSucceeded -= OnLoginSucceeded;
         MPLoginManager.Instance.LoginSucceeded += OnLoginSucceeded;
         MPLoginManager.Instance.LoggedOut -= OnLoggedOut;
@@ -218,6 +275,8 @@ public class MPSettingPop : AWindow
         {
             m_logOutBtn.onClick.RemoveListener(OnLogOutClick);
         }
+        if (m_replayBtn != null)
+            m_replayBtn.onClick.RemoveListener(OnReplayClick);
 
         MPLoginManager.Instance.LoginSucceeded -= OnLoginSucceeded;
         MPLoginManager.Instance.LoggedOut -= OnLoggedOut;
@@ -337,42 +396,55 @@ public class MPSettingPop : AWindow
     /// 点击登出按钮。
     /// clearCredentials 使用 true，确保下一次打开登录页不会立刻自动恢复到刚退出的账号。
     /// </summary>
-    private async void OnLogOutClick()
+    private void OnLogOutClick()
     {
-        if (m_isLoginActionRunning)
+        if (m_isLoginActionRunning || m_isActionPromptShowing)
         {
             return;
         }
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+        m_isActionPromptShowing = true;
+        m_logoutCommitted = false;
+        m_logoutProfile = null;
+        MPSecondConfirmationPop.Show(
+            "Log Out?",
+            "Your current progress will be saved to the cloud before signing out. If saving fails, you will stay signed in.",
+            "Log Out",
+            ConfirmLogoutAsync,
+            OnActionPromptCancelled,
+            "Stay Signed In",
+            OnLogoutConfirmed);
+    }
+
+    private async Task<bool> ConfirmLogoutAsync(CancellationToken confirmationToken)
+    {
+        if (this == null || IsDestoried || m_isLoginActionRunning)
+            return false;
+
         m_isLoginActionRunning = true;
         SetLoginButtonsInteractable(false);
         CancelLogoutOperation();
-        m_logoutCancellation = new CancellationTokenSource();
+        m_logoutCancellation = CancellationTokenSource.CreateLinkedTokenSource(confirmationToken);
         CancellationTokenSource cancellation = m_logoutCancellation;
 
         try
         {
             MPLocalLoginProfile profile = await MPLoginManager.Instance.LoadLocalProfileAsync(cancellation.Token);
-            await MPCloudSaveManager.Instance.FlushAsync(cancellation.Token);
+            bool saved = await MPCloudSaveManager.Instance.FlushAsync(cancellation.Token);
+            if (!saved)
+                throw new InvalidOperationException("Cloud save failed. Your account is still signed in. Please retry or cancel.");
             await MPLoginManager.Instance.LogoutAsync(clearCredentials: true, cancellationToken: cancellation.Token);
 
             if (IsDestoried || cancellation.IsCancellationRequested)
             {
-                return;
+                return false;
             }
 
-            OpenLoginSelectionPage(profile, "已登出，请选择登录方式。");
-            CloseSettingPop();
-        }
-        catch (OperationCanceledException)
-        {
-            // 弹窗关闭时取消登出任务，不需要额外提示。
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError($"[MPSettingPop] 登出失败：{exception}");
-            RefreshLoginButtons();
+            // 此阶段只提交业务结果。等确认弹窗彻底关闭后再切换 UI 历史栈。
+            m_logoutProfile = profile;
+            m_logoutCommitted = true;
+            return true;
         }
         finally
         {
@@ -382,7 +454,7 @@ public class MPSettingPop : AWindow
                 cancellation.Dispose();
             }
 
-            if (!IsDestoried)
+            if (this != null && !IsDestoried && !m_logoutCommitted)
             {
                 m_isLoginActionRunning = false;
                 SetLoginButtonsInteractable(true);
@@ -390,19 +462,30 @@ public class MPSettingPop : AWindow
         }
     }
 
+    private void OnLogoutConfirmed()
+    {
+        if (this == null || IsDestoried || m_isClosing || !m_logoutCommitted)
+            return;
+
+        MPLocalLoginProfile profile = m_logoutProfile;
+        CloseSettingPop(() => OpenLoginSelectionPage(profile, "已登出，请选择登录方式。"));
+    }
+
+    private void OnActionPromptCancelled()
+    {
+        if (this == null || IsDestoried)
+            return;
+        m_isActionPromptShowing = false;
+    }
+
     /// <summary>
     /// 点击关闭按钮。
     /// </summary>
     private void OnCloseClick()
     {
-        if (m_popScaleAnimation != null)
-        {
-            m_popScaleAnimation.Close(null);
+        if (m_isLoginActionRunning || m_isClosing)
             return;
-        }
-
-        DestroyWindow();
-
+        CloseSettingPop();
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
@@ -477,6 +560,13 @@ public class MPSettingPop : AWindow
         bool showLogOut = ShouldShowLogOut(profile);
         SetButtonVisible(m_logInBtn, !showLogOut);
         SetButtonVisible(m_logOutBtn, showLogOut);
+        if (m_accountStatus != null)
+        {
+            m_accountStatus.text = !MPLoginManager.Instance.IsLoggedIn
+                ? "Offline — sign in to protect your progress."
+                : showLogOut ? "Account linked — progress can be restored."
+                : "Guest account — link an account before changing devices.";
+        }
     }
 
     /// <summary>
@@ -550,7 +640,7 @@ public class MPSettingPop : AWindow
     /// </summary>
     /// <param name="profile">用于登录页展示偏好的本地资料。</param>
     /// <param name="message">登录页状态提示。</param>
-    private void OpenLoginSelectionPage(MPLocalLoginProfile profile, string message)
+    private static void OpenLoginSelectionPage(MPLocalLoginProfile profile, string message)
     {
         MPLoginProvider preferredProvider = profile == null ? MPLoginProvider.Unknown : profile.lastLoginProvider;
         MPLoginStartupResult startupResult = MPLoginStartupResult.ShowLoginSelection(profile, preferredProvider, message);
@@ -560,15 +650,19 @@ public class MPSettingPop : AWindow
     /// <summary>
     /// 关闭当前设置弹窗。
     /// </summary>
-    private void CloseSettingPop()
+    private void CloseSettingPop(Action afterClose = null)
     {
+        if (m_isClosing || IsDestoried)
+            return;
+        m_isClosing = true;
         if (m_popScaleAnimation != null)
         {
-            m_popScaleAnimation.Close(null);
+            m_popScaleAnimation.Close(afterClose);
             return;
         }
 
         DestroyWindow();
+        afterClose?.Invoke();
     }
 
     /// <summary>
@@ -609,6 +703,123 @@ public class MPSettingPop : AWindow
     {
         SetButtonInteractable(m_logInBtn, interactable);
         SetButtonInteractable(m_logOutBtn, interactable);
+        SetButtonInteractable(m_closeBtn, !m_isLoginActionRunning && !m_isClosing);
+        SetButtonInteractable(m_replayBtn, !m_isLoginActionRunning && !m_isClosing);
+    }
+
+    private void RefreshGameOptions()
+    {
+        bool inGame = m_gameData != null && m_gameData.isInGame;
+        SetButtonVisible(m_replayBtn, inGame && m_gameData.replayAction != null);
+        if (m_gameOptions != null)
+            m_gameOptions.gameObject.SetActive(inGame);
+        ClearColorListeners();
+        if (!inGame || m_colors == null)
+            return;
+
+        for (int i = 0; i < m_colors.childCount; i++)
+        {
+            Transform option = m_colors.GetChild(i);
+            bool valid = i < FILL_COLORS.Length;
+            option.gameObject.SetActive(valid);
+            if (!valid)
+                continue;
+            Button button = option.GetComponent<Button>();
+            Image image = option.GetComponent<Image>();
+            Color color = FILL_COLORS[i];
+            if (m_fillColorSprites[i] == null)
+                m_fillColorSprites[i] = MPRewardPopupIcons.LoadSprite(FILL_COLOR_ICONS[i], this, FILL_COLOR_ICONS[0]);
+            MPRewardPopupIcons.Apply(image, m_fillColorSprites[i]);
+            Transform select = option.Find("Select");
+            if (select != null)
+                MPRewardPopupIcons.Load(select.GetComponent<Image>(), "popup_selection_frame", this, null);
+            if (button != null)
+            {
+                UnityAction listener = () => OnFillColorClick(color);
+                m_colorListeners.Add(button, listener);
+                button.onClick.AddListener(listener);
+            }
+        }
+        RefreshColorSelection();
+    }
+
+    private void OnFillColorClick(Color color)
+    {
+        if (m_isClosing || m_gameData == null || !m_gameData.isInGame)
+            return;
+        MPUser.instance.SetGameFillColor(color);
+        m_gameData.fillColorChanged?.Invoke(color);
+        RefreshColorSelection();
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
+    }
+
+    private void RefreshColorSelection()
+    {
+        Color color = MPUser.instance.gameFillColor;
+        int selectedIndex = FindFillColorIndex(color);
+        MPRewardPopupIcons.Apply(m_currentColor, m_fillColorSprites[selectedIndex]);
+        if (m_colors == null)
+            return;
+        for (int i = 0; i < m_colors.childCount && i < FILL_COLORS.Length; i++)
+        {
+            Transform select = m_colors.GetChild(i).Find("Select");
+            if (select != null)
+                select.gameObject.SetActive(i == selectedIndex);
+        }
+    }
+
+    private static int FindFillColorIndex(Color color)
+    {
+        int selectedIndex = 0;
+        float minDistance = float.MaxValue;
+        for (int i = 0; i < FILL_COLORS.Length; i++)
+        {
+            Color difference = color - FILL_COLORS[i];
+            float distance = difference.r * difference.r + difference.g * difference.g + difference.b * difference.b;
+            if (distance >= minDistance)
+                continue;
+            selectedIndex = i;
+            minDistance = distance;
+        }
+        // 存档转十六进制后会有颜色精度差异；只选择最接近的预览，不改写玩家的填色值。
+        return selectedIndex;
+    }
+
+    private void ClearColorListeners()
+    {
+        foreach (KeyValuePair<Button, UnityAction> pair in m_colorListeners)
+            if (pair.Key != null)
+                pair.Key.onClick.RemoveListener(pair.Value);
+        m_colorListeners.Clear();
+    }
+
+    private void OnReplayClick()
+    {
+        if (m_gameData?.replayAction == null || m_isClosing || m_isActionPromptShowing)
+            return;
+
+        m_isActionPromptShowing = true;
+        MPSecondConfirmationPop.Show(
+            "Restart Level?",
+            $"Restart {m_gameData.levelTitle}? All unfinished progress in this level will be discarded. Other levels are not affected.",
+            "Restart",
+            token =>
+            {
+                token.ThrowIfCancellationRequested();
+                if (this == null || IsDestoried)
+                    return Task.FromResult(false);
+                return Task.FromResult(m_gameData?.replayAction != null);
+            },
+            OnActionPromptCancelled,
+            "Continue Playing",
+            () =>
+            {
+                if (this == null || IsDestoried || m_isClosing)
+                    return;
+                Action replay = m_gameData?.replayAction;
+                if (replay != null)
+                    CloseSettingPop(replay);
+            });
     }
 
     /// <summary>
@@ -772,4 +983,13 @@ public class MPSettingPop : AWindow
             button.interactable = interactable;
         }
     }
+}
+
+/// <summary>仅游戏页传入局内上下文；主页/关卡列表不传即隐藏局内设置。</summary>
+public sealed class MPSettingPopUIMsgData : UIMsgData
+{
+    public bool isInGame;
+    public string levelTitle;
+    public Action replayAction;
+    public Action<Color> fillColorChanged;
 }

@@ -660,11 +660,7 @@ public class MPLargeImageGameCompletedView : AWindow
             refresh = m_refreshAction,
         };
 
-        MPTransitionView.Play(() =>
-        {
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
-        });
+        MPNewGamePop.EnterLargeImageLevel(data, this, closeSource: true);
     }
 
     /// <summary>
@@ -679,6 +675,12 @@ public class MPLargeImageGameCompletedView : AWindow
 
             MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
         });
+    }
+
+    public override void OnRelease()
+    {
+        MPNoNetworkPop.DismissLevelEntry(this);
+        base.OnRelease();
     }
 
     private void OnDestroy()

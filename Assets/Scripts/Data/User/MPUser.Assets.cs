@@ -107,14 +107,30 @@ public partial class MPUser
     /// </summary>
     public bool TryClaimHomeReward()
     {
+        return TryClaimHomeReward(out _);
+    }
+
+    public bool TryClaimHomeReward(out MPRewardReceipt receipt)
+    {
+        receipt = null;
         EnsureHomeRewardCountdown();
         long nowTicks = DateTime.UtcNow.Ticks;
         if (nowTicks < m_homeRewardReadyAtUtcTicks)
             return false;
 
-        m_homeRewardReadyAtUtcTicks = nowTicks + HOME_REWARD_INTERVAL_TICKS;
-        ES3.Save(m_key_home_reward_ready_at_utc_ticks, m_homeRewardReadyAtUtcTicks);
-        AddCoins(HOME_REWARD_COIN_AMOUNT);
+        long nextReadyAt = nowTicks + HOME_REWARD_INTERVAL_TICKS;
+        var result = new MPRewardReceipt
+        {
+            sourceId = "home_timed_reward",
+            sourceName = "Timed reward",
+            transactionId = "home_reward:" + m_homeRewardReadyAtUtcTicks,
+            rewards = new List<MPRewardItem> { new MPRewardItem("coin", HOME_REWARD_COIN_AMOUNT) }
+        };
+        if (!TryCommitReward(result, null,
+            file => file.Save(m_key_home_reward_ready_at_utc_ticks, nextReadyAt),
+            () => m_homeRewardReadyAtUtcTicks = nextReadyAt, MPCloudSaveDirtyReason.Assets))
+            return false;
+        receipt = result;
         return true;
     }
 

@@ -8,20 +8,29 @@ public partial class MPLargeImageGameView
     /// </summary>
     protected override void RestoreProgressCache()
     {
-        MPLevelProgressCacheInfo cacheInfo = MPUser.instance.GetLargeImageLevelProgressCache(m_blockInfo.ID);
+        MPLevelProgressCacheInfo cacheInfo = m_progressCacheValidated
+            ? m_entryProgressCache
+            : MPUser.instance.GetLargeImageLevelProgressCache(m_blockInfo.ID);
+        cacheInfo = cacheInfo?.GetValidIncompleteCopy(m_size, true, m_loves.Count);
         if (cacheInfo == null)
             return;
 
         m_isRestoringProgress = true;
 
-        RestoreLoves(cacheInfo.UsedLoves);
-        RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
-        RestoreBlockStatues(cacheInfo.CompletedBlocks);
-        RestoreViewPosition(cacheInfo.ViewX, cacheInfo.ViewY);
-        RefreshContent();
-        RecalculateCompletedCount();
-
-        m_isRestoringProgress = false;
+        try
+        {
+            RestoreLoves(cacheInfo.UsedLoves);
+            RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
+            RestoreBlockStatues(cacheInfo.CompletedBlocks);
+            RestoreViewPosition(cacheInfo.ViewX, cacheInfo.ViewY);
+            RefreshContent();
+            RecalculateCompletedCount();
+        }
+        finally
+        {
+            m_isRestoringProgress = false;
+            m_entryProgressCache = null;
+        }
     }
 
     /// <summary>

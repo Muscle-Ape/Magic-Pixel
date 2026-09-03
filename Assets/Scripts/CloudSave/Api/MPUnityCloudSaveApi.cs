@@ -10,6 +10,17 @@ using Unity.Services.CloudSave.Models;
 /// </summary>
 public class MPUnityCloudSaveApi : IMPCloudSaveApi
 {
+    public async Task<Dictionary<string, string>> SaveSnapshotPairAsync(MPUserCloudSnapshot user, string userWriteLock,
+        MPCustomLevelCloudSnapshot custom, string customWriteLock, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return await CloudSaveService.Instance.Data.Player.SaveAsync(new Dictionary<string, SaveItem>
+        {
+            { MPCloudSaveConstants.USER_SNAPSHOT_KEY, new SaveItem(user, userWriteLock) },
+            { MPCloudSaveConstants.CUSTOM_LEVEL_SNAPSHOT_KEY, new SaveItem(custom, customWriteLock) }
+        });
+    }
+
     /// <inheritdoc />
     public async Task<MPCloudSaveLoadResult<T>> LoadPlayerDataAsync<T>(string key, CancellationToken cancellationToken = default)
     {

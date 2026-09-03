@@ -45,6 +45,11 @@ public class MPUserCloudSnapshot
     /// </summary>
     public string clientVersion;
 
+    /// <summary>设备型号，仅用于比较存档来源，不保存设备唯一标识。</summary>
+    public string deviceModel;
+
+    public MPRewardProgressSnapshot rewardProgress;
+
     /// <summary>
     /// 金币、钻石、道具等资产数据。
     /// </summary>
@@ -91,6 +96,7 @@ public class MPUserCloudSnapshot
             hasBoundIdentity = hasBoundIdentity,
             updatedAtUtcTicks = DateTime.UtcNow.Ticks,
             clientVersion = Application.version,
+            deviceModel = SystemInfo.deviceModel,
             assets = new MPUserAssetsSnapshot
             {
                 coins = 200,
@@ -140,6 +146,9 @@ public class MPUserAssetsSnapshot
 [Serializable]
 public class MPUserSettingsSnapshot
 {
+    /// <summary>填充颜色，旧存档缺失时保留本地设置。</summary>
+    public string gameFillColor;
+
     /// <summary>是否开启背景音乐。</summary>
     public bool isMusic = true;
 

@@ -6,6 +6,14 @@ using static UnityEngine.EventSystems.EventTrigger;
 
 public partial class MPLargeImageGameView
 {
+    protected override void ApplyFillColorToBlocks(Color color)
+    {
+        if (m_blocks == null)
+            return;
+        foreach (MPLargeImageGameBlock block in m_blocks)
+            if (block != null)
+                block.SetFillColor(color);
+    }
 
     /// <summary>
     /// 数字栏拖拽移动一格需要累计的屏幕距离。
@@ -411,6 +419,8 @@ public partial class MPLargeImageGameView
 
         MPTransitionView.Play(() =>
         {
+            if (this == null || IsDestoried)
+                return;
             DestroyWindow();
             UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
         });

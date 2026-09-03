@@ -76,12 +76,12 @@ public class MPLoginManager
     /// <summary>
     /// 当前登录状态，兼容旧代码中的 LoginState 命名。
     /// </summary>
-    public MPLoginState LoginState => m_inner.State;
+    public MPLoginState LoginState => State;
 
     /// <summary>
     /// 当前登录状态。
     /// </summary>
-    public MPLoginState State => m_inner.State;
+    public MPLoginState State => MPAccountConflictService.IsResolving ? MPLoginState.ResolvingAccountConflict : m_inner.State;
 
     /// <summary>
     /// 当前完整登录会话；未登录时为 null。
@@ -101,7 +101,14 @@ public class MPLoginManager
     /// <summary>
     /// 当前玩家名。
     /// </summary>
-    public string PlayerName => m_inner.CurrentSession == null ? string.Empty : m_inner.CurrentSession.playerName;
+    public string PlayerName
+    {
+        get
+        {
+            string displayName = MPUser.instance.GetProfileName();
+            return !string.IsNullOrWhiteSpace(displayName) ? displayName : m_inner.CurrentSession?.playerName ?? string.Empty;
+        }
+    }
 
     /// <summary>
     /// 当前账号密码用户名。

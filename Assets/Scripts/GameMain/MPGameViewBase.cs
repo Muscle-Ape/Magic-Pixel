@@ -2,6 +2,7 @@ using DG.Tweening;
 using HQ.UIManager;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -172,6 +173,10 @@ public abstract class MPGameViewBase : AWindow
     /// <summary>当前关卡是否已经完成，完成后不再保存进度。</summary>
     protected bool m_hasCompleted;
 
+    private MPSecondConfirmationPop m_exitConfirmation;
+    private MPGameFailPop m_failPop;
+    private bool m_isReturningToLevelList;
+
     /// <summary>模式切换滑块相对中心点的移动距离。</summary>
     private float m_modeSwitchDistance = 78;
 
@@ -194,6 +199,10 @@ public abstract class MPGameViewBase : AWindow
     /// 当前模式是否显示并允许使用道具，默认与生命值规则保持一致。
     /// </summary>
     protected virtual bool UsesProps => UsesLives;
+
+    /// <summary>退出提示必须与模式实际的缓存能力一致。</summary>
+    protected virtual string ExitProgressNotice =>
+        "Your puzzle progress, remaining lives and pet skill usage will be saved. You can continue this level later.";
 
     /// <summary>解析页面消息并保存当前模式的关卡数据。</summary>
     protected abstract void LoadLevelData(UIMsgData uiMsg);
@@ -240,6 +249,8 @@ public abstract class MPGameViewBase : AWindow
     /// <summary>按照当前模式的数据类型重新打开本关。</summary>
     protected abstract void RestartLevel();
 
+    protected abstract void ApplyFillColorToBlocks(Color color);
+
     /// <summary>
     /// 模式专属 UI 注册入口。大图模式在这里注册数字栏拖拽。
     /// </summary>
@@ -284,6 +295,7 @@ public abstract class MPGameViewBase : AWindow
         m_hasCompleted = false;
         m_isRestoringProgress = false;
         m_isFailPopShowing = false;
+        m_isReturningToLevelList = false;
         m_hvCompleted = 0;
 
         LoadLevelData(uiMsg);
@@ -308,6 +320,8 @@ public abstract class MPGameViewBase : AWindow
         RestoreProgressCache();
 
         MPAudioManager.Instance.StopBGM(MPMusic.MPBGMMain);
+        if (UsesLives && m_lovesCount <= 0)
+            OpenFailPop();
     }
 
     /// <summary>加载两个模式共用的数字提示预制体。</summary>
@@ -521,14 +535,12 @@ public abstract class MPGameViewBase : AWindow
     /// <summary>从关卡缓存恢复本次游戏已经使用的宠物技能次数。</summary>
     protected void RestorePetSkillUsage(string petId, int usedCount)
     {
-        if (m_activePetConfig == null
-            || string.IsNullOrEmpty(petId)
-            || m_activePetConfig.ID != petId)
-        {
-            return;
-        }
-
-        int totalUses = m_activePetConfig.SkillUseCount;
+        // 继续旧局时使用缓存中的宠物，而非主页后来选中的宠物，避免技能次数被重置。
+        m_activePetConfig = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+            config => config != null && config.ID == petId);
+        if (m_petSkillIcon != null)
+            m_petSkillIcon.sprite = null;
+        int totalUses = m_activePetConfig == null ? 0 : m_activePetConfig.SkillUseCount;
         m_petSkillRemainingUses = totalUses - Mathf.Clamp(usedCount, 0, totalUses);
         RefreshPropButtons();
     }
@@ -694,11 +706,17 @@ public abstract class MPGameViewBase : AWindow
             restoreLifeAction = OnFailRestoreLifeClick,
         };
 
-        UIManager.Inst.ShowWindow<MPGameFailPop>(data, true, UILayer.Top);
+        m_failPop = UIManager.Inst.ShowWindow<MPGameFailPop>(data, true, UILayer.Top);
     }
 
     private void OnFailExitClick()
     {
+        if (this == null || IsDestoried || m_isReturningToLevelList)
+            return;
+
+        // 失败弹窗已经完成退出确认，这里只执行一次原有的弃局逻辑。
+        m_isReturningToLevelList = true;
+        m_failPop = null;
         m_isFailPopShowing = false;
         m_hasCompleted = true;
         ClearProgressCache();
@@ -708,6 +726,13 @@ public abstract class MPGameViewBase : AWindow
 
     private void OnFailReplayClick()
     {
+        if (this == null || IsDestoried || m_isReturningToLevelList)
+            return;
+        if (!MPNoNetworkPop.CheckLevelEntry(this, OnFailReplayClick))
+            return;
+
+        m_isReturningToLevelList = true;
+        m_failPop = null;
         m_isFailPopShowing = false;
         m_hasCompleted = true;
         ClearProgressCache();
@@ -729,6 +754,7 @@ public abstract class MPGameViewBase : AWindow
         }
 
         AddLoves();
+        m_failPop = null;
         m_isFailPopShowing = false;
         return true;
     }
@@ -762,16 +788,75 @@ public abstract class MPGameViewBase : AWindow
 
     private void OnSettingClick()
     {
-        UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
+        UIManager.Inst.ShowWindow<MPSettingPop>(new MPSettingPopUIMsgData
+        {
+            isInGame = !m_hasCompleted,
+            levelTitle = LevelTitle,
+            replayAction = RestartFromSettings,
+            fillColorChanged = color =>
+            {
+                if (this != null && !IsDestoried && !m_hasCompleted)
+                    ApplyFillColorToBlocks(color);
+            },
+        }, true, UILayer.Top);
     }
 
-    /// <summary>保存进度后返回上一层，并恢复主页背景音乐。</summary>
+    private void RestartFromSettings()
+    {
+        if (this == null || IsDestoried || m_hasCompleted)
+            return;
+        if (!MPNoNetworkPop.CheckLevelEntry(this, RestartFromSettings))
+            return;
+
+        // OnRelease 不能把旧局再次存回刚清除的缓存。
+        ClearProgressCache();
+        m_hasCompleted = true;
+        m_isFailPopShowing = false;
+        RestartLevel();
+    }
+
+    /// <summary>先确认退出，取消时保持当前局与缓存不变。</summary>
     private void OnBackClick()
     {
-        SaveProgressCache();
+        if (this == null || IsDestoried || m_hasCompleted || m_isFailPopShowing || m_isReturningToLevelList
+            || (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried))
+            return;
+
+        m_exitConfirmation = MPSecondConfirmationPop.Show(
+            "Leave level?",
+            $"{LevelTitle}\n{ExitProgressNotice}",
+            "Exit",
+            token =>
+            {
+                if (token.IsCancellationRequested || this == null || IsDestoried
+                    || m_hasCompleted || m_isReturningToLevelList)
+                    return Task.FromResult(false);
+
+                // 存档失败时由确认弹窗保持显示，不能先切走页面。
+                SaveProgressCache();
+                return Task.FromResult(true);
+            },
+            onCancel: () => m_exitConfirmation = null,
+            cancelText: "Continue playing",
+            onConfirmed: ReturnToLevelList);
+    }
+
+    /// <summary>确认弹窗完全关闭之后再转场，防止两个关闭动画与页面焦点冲突。</summary>
+    private void ReturnToLevelList()
+    {
+        m_exitConfirmation = null;
+        if (this == null || IsDestoried || m_hasCompleted || m_isReturningToLevelList)
+            return;
+
+        m_isReturningToLevelList = true;
+        if (m_viewCanvasGroup != null)
+            m_viewCanvasGroup.interactable = false;
 
         MPTransitionView.Play(() =>
         {
+            if (this == null || IsDestoried)
+                return;
+
             DestroyWindow();
             OnReturnedToLevelList();
             MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
@@ -781,6 +866,14 @@ public abstract class MPGameViewBase : AWindow
     /// <summary>页面释放时保存进度、清理 Tween 和当前页面持有的资源。</summary>
     public override void OnRelease()
     {
+        MPNoNetworkPop.DismissLevelEntry(this);
+        m_isReturningToLevelList = true;
+        if (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried)
+            m_exitConfirmation.DestroyWindow();
+        m_exitConfirmation = null;
+        if (m_failPop != null && !m_failPop.IsDestoried)
+            m_failPop.DestroyWindow();
+        m_failPop = null;
         SaveProgressCache();
         m_modeSwitchTween?.Kill();
         UnregisterCommonUI();

@@ -8,7 +8,7 @@ using UnityEngine;
 /// 云存储模块对外门面。
 /// 负责登录后拉取云端快照、本地变更延迟上传、写锁冲突处理和生命周期 flush。
 /// </summary>
-public class MPCloudSaveManager
+public partial class MPCloudSaveManager
 {
     /// <summary>
     /// 本地数据变化后延迟上传的毫秒数，避免连续多次 ES3.Save 触发多次网络请求。
@@ -129,6 +129,9 @@ public class MPCloudSaveManager
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (MPLoginManager.Instance.PlayerId != playerId)
+                return false;
+
             m_playerId = playerId;
             m_meta = await m_metaRepository.LoadAsync(playerId, cancellationToken);
             m_meta.playerId = playerId;
@@ -148,6 +151,19 @@ public class MPCloudSaveManager
             if (customCloudResult == null)
             {
                 return false;
+            }
+
+            bool? comparisonResult = await ResolveHighRiskInitializationAsync(
+                userCloudResult, customCloudResult, accountSwitched, profile, cancellationToken);
+            if (comparisonResult.HasValue)
+            {
+                if (comparisonResult.Value)
+                {
+                    m_metaRepository.SaveActivePlayerId(playerId);
+                    m_initialized = true;
+                    _ = RefreshPlayerProfileSafeAsync();
+                }
+                return comparisonResult.Value;
             }
 
             bool userSynced = await SyncUserSnapshotOnInitializeAsync(userCloudResult, accountSwitched, profile, cancellationToken);
@@ -182,6 +198,8 @@ public class MPCloudSaveManager
 
             m_metaRepository.SaveActivePlayerId(playerId);
             m_initialized = true;
+            m_assetComparisonNeedsResolution = false;
+            _ = RefreshPlayerProfileSafeAsync();
             Debug.Log($"[MPCloudSave] Initialize completed. PlayerId: {playerId}");
             return true;
         }
@@ -247,6 +265,13 @@ public class MPCloudSaveManager
     /// </summary>
     public async Task<bool> FlushAsync(CancellationToken cancellationToken = default)
     {
+        // 人工存档选择未完成时，生命周期/延迟上传不能绕过确认覆盖任意一侧。
+        if (m_assetComparisonPending)
+            return false;
+
+        if (m_assetComparisonNeedsResolution)
+            return await InitializeAfterUserLoadedAsync(cancellationToken);
+
         if (!MPLoginManager.Instance.IsLoggedIn || string.IsNullOrEmpty(MPLoginManager.Instance.PlayerId))
         {
             return false;
@@ -257,6 +282,8 @@ public class MPCloudSaveManager
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (m_assetComparisonPending)
+                return false;
             m_playerId = playerId;
             if (m_meta == null || m_meta.playerId != playerId)
             {
@@ -335,6 +362,8 @@ public class MPCloudSaveManager
     /// </summary>
     private void OnLoginSucceeded(MPUserSession session)
     {
+        if (m_assetComparisonCancellation != null && m_assetComparisonPlayerId != session?.userId)
+            m_assetComparisonCancellation.Cancel();
         if (m_isUserDataReady)
         {
             _ = InitializeAfterUserLoadedAsync();
@@ -346,6 +375,9 @@ public class MPCloudSaveManager
     /// </summary>
     private void OnLoggedOut()
     {
+        m_assetComparisonCancellation?.Cancel();
+        m_assetComparisonPending = false;
+        m_assetComparisonNeedsResolution = false;
         CancelDebouncedFlush();
         m_initialized = false;
         m_playerId = string.Empty;

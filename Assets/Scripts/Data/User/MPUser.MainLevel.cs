@@ -183,6 +183,12 @@ public partial class MPUser
     /// </summary>
     public bool TryClaimMainLevelBoxAward(MPMainBlockInfo levelInfo)
     {
+        return TryClaimMainLevelBoxAward(levelInfo, out _);
+    }
+
+    public bool TryClaimMainLevelBoxAward(MPMainBlockInfo levelInfo, out MPRewardReceipt receipt)
+    {
+        receipt = null;
         MPMainLevelBoxAward award = levelInfo?.BoxAward;
         if (levelInfo == null
             || string.IsNullOrEmpty(levelInfo.ID)
@@ -194,21 +200,20 @@ public partial class MPUser
             return false;
         }
 
-        switch (award.Type.Trim().ToLowerInvariant())
+        var claimed = new List<string>(m_mainlevel_box_award_claimed) { levelInfo.ID };
+        var result = new MPRewardReceipt
         {
-            case "coin":
-                m_mainlevel_box_award_claimed.Add(levelInfo.ID);
-                ES3.Save(
-                    m_key_mainlevel_box_award_claimed,
-                    m_mainlevel_box_award_claimed);
-                NotifyCloudSaveDirty(MPCloudSaveDirtyReason.MainLevel);
-                AddCoins(award.Count);
-                return true;
-            default:
-                Debug.LogWarning(
-                    $"不支持的主线宝箱奖励类型：{award.Type}，关卡：{levelInfo.ID}");
-                return false;
-        }
+            sourceId = levelInfo.ID,
+            sourceName = "Level chest",
+            transactionId = "main_chest:" + levelInfo.ID,
+            rewards = new List<MPRewardItem> { new MPRewardItem(award.Type, award.Count) }
+        };
+        if (!TryCommitReward(result, null,
+            file => file.Save(m_key_mainlevel_box_award_claimed, claimed),
+            () => m_mainlevel_box_award_claimed = claimed, MPCloudSaveDirtyReason.MainLevel))
+            return false;
+        receipt = result;
+        return true;
     }
     #endregion
 }

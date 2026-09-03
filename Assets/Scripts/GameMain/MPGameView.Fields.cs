@@ -21,6 +21,9 @@ public partial class MPGameView : MPGameViewBase
     /// </summary>
     private bool m_isCustomLevel;
 
+    private bool m_progressCacheValidated;
+    private MPLevelProgressCacheInfo m_entryProgressCache;
+
     /// <summary>
     /// 当前自定义关卡数据，用于结算时读取本地缓存的完成图片。
     /// </summary>
@@ -113,6 +116,8 @@ public partial class MPGameView : MPGameViewBase
         }
 
         m_isCustomLevel = data.isCustomLevel;
+        m_progressCacheValidated = data.progressCacheValidated;
+        m_entryProgressCache = data.progressCache;
         m_customLevelInfo = m_isCustomLevel ? data.customLevelInfo : null;
         if (m_isCustomLevel && m_customLevelInfo == null)
         {
@@ -193,6 +198,10 @@ public class MPGameViewUIMsgData : UIMsgData
     /// 是否打开自定义关卡。
     /// </summary>
     public bool isCustomLevel;
+
+    /// <summary>进入选择弹窗校验后的只读缓存；已选择重新开始时为 null。</summary>
+    public MPLevelProgressCacheInfo progressCache;
+    public bool progressCacheValidated;
 
     /// <summary>当前关卡在主线或自定义列表中的下标。</summary>
     public int index;

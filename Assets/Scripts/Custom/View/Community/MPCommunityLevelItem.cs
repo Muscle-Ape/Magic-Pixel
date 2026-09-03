@@ -286,6 +286,16 @@ public class MPCommunityLevelItem : MonoBehaviour
 
         string publicLevelId = m_record.publicLevelId;
         int bindingVersion = m_bindingVersion;
+        AWindow sourceWindow = GetComponentInParent<AWindow>();
+        Action retryEntry = () =>
+        {
+            // 弹窗关闭后列表获得焦点会重新绑定同一关卡，版本号也会改变；
+            // 重试按稳定 ID 校验，异步响应仍使用下方的 bindingVersion 防止串关卡。
+            if (this != null && m_record?.publicLevelId == publicLevelId)
+                OnPlayClick();
+        };
+        if (!MPNoNetworkPop.CheckLevelEntry(sourceWindow, retryEntry))
+            return;
         CancellationTokenSource cancellation = BeginOperation();
         CancellationToken cancellationToken = cancellation.Token;
 
@@ -304,7 +314,6 @@ public class MPCommunityLevelItem : MonoBehaviour
             }
 
             ApplyRecord(latestRecord);
-            AWindow sourceWindow = GetComponentInParent<AWindow>();
             MPCustomLevelPublishManager.Instance.OpenPublicLevelGame(m_record, sourceWindow);
         }
         catch (OperationCanceledException)
@@ -313,6 +322,9 @@ public class MPCommunityLevelItem : MonoBehaviour
         }
         catch (Exception exception)
         {
+            // 请求途中断网也回到同一入口重试；设备在线时保留原有云服务错误处理。
+            if (IsCurrentBinding(publicLevelId, bindingVersion, cancellation))
+                MPNoNetworkPop.CheckLevelEntry(sourceWindow, retryEntry);
             Debug.LogError(
                 $"[MPCommunityLevelItem] 打开公开关卡异常：{MPCustomLevelPublishManager.FormatExceptionForLog(exception)}");
         }

@@ -28,6 +28,9 @@ public partial class MPLargeImageGameView : MPGameViewBase
     /// <summary>当前大图关卡配置。</summary>
     private MPLargeImageBlockInfo m_blockInfo;
 
+    private bool m_progressCacheValidated;
+    private MPLevelProgressCacheInfo m_entryProgressCache;
+
     /// <summary>主游戏与大图模式共用的格子预制体。</summary>
     private GameObject m_blockPrefab;
 
@@ -98,6 +101,8 @@ public partial class MPLargeImageGameView : MPGameViewBase
         }
 
         m_blockInfo = data.blockInfo;
+        m_progressCacheValidated = data.progressCacheValidated;
+        m_entryProgressCache = data.progressCache;
         m_index = data.index;
         m_refreshAction = data.refresh;
         m_isFill = true;
@@ -146,6 +151,9 @@ public partial class MPLargeImageGameView : MPGameViewBase
 /// <summary>打开大图模式游戏页时使用的消息数据。</summary>
 public class MPLargeImageGameViewUIMsgData : UIMsgData
 {
+    public MPLevelProgressCacheInfo progressCache;
+    public bool progressCacheValidated;
+
     /// <summary>当前大图关卡配置。</summary>
     public MPLargeImageBlockInfo blockInfo;
 

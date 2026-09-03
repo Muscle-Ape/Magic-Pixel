@@ -141,6 +141,7 @@ public class MPCommunityView : AWindow
 
     public override void OnRelease()
     {
+        MPNoNetworkPop.DismissLevelEntry(this);
         m_initialized = false;
         UnregisterButtons();
         UnregisterCommunityEvents();

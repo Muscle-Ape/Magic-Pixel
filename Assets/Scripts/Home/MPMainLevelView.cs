@@ -1042,6 +1042,7 @@ public class MPMainLevelView : AWindow
 
     public override void OnRelease()
     {
+        MPNoNetworkPop.DismissLevelEntry(this);
         m_listInitialized = false;
         m_levelLineInitialized = false;
         ClearLevelLine();

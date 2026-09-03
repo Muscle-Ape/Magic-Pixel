@@ -174,20 +174,35 @@ public partial class MPUser
     /// <returns>本次是否成功领取奖励。</returns>
     public bool TryClaimLargeImageLevelCoinAward(MPLargeImageBlockInfo levelInfo)
     {
+        return TryClaimLargeImageLevelCoinAward(levelInfo, out _);
+    }
+
+    public bool TryClaimLargeImageLevelCoinAward(MPLargeImageBlockInfo levelInfo, out MPRewardReceipt receipt)
+    {
+        receipt = null;
         if (levelInfo == null || string.IsNullOrEmpty(levelInfo.ID) || levelInfo.AwardCoin <= 0)
         {
             return false;
         }
 
-        if (m_largeimagelevel_coin_award_claimed.Contains(levelInfo.ID))
+        if (!LargeImageLevelIsPass(levelInfo.ID) || m_largeimagelevel_coin_award_claimed.Contains(levelInfo.ID))
         {
             return false;
         }
 
-        m_largeimagelevel_coin_award_claimed.Add(levelInfo.ID);
-        ES3.Save(m_key_largeimagelevel_coin_award_claimed, m_largeimagelevel_coin_award_claimed);
-        NotifyCloudSaveDirty(MPCloudSaveDirtyReason.LargeImageLevel);
-        AddCoins(levelInfo.AwardCoin);
+        var claimed = new List<string>(m_largeimagelevel_coin_award_claimed) { levelInfo.ID };
+        var result = new MPRewardReceipt
+        {
+            sourceId = levelInfo.ID,
+            sourceName = "Large image completed",
+            transactionId = "large_completed:" + levelInfo.ID,
+            rewards = new List<MPRewardItem> { new MPRewardItem("coin", levelInfo.AwardCoin) }
+        };
+        if (!TryCommitReward(result, null,
+            file => file.Save(m_key_largeimagelevel_coin_award_claimed, claimed),
+            () => m_largeimagelevel_coin_award_claimed = claimed, MPCloudSaveDirtyReason.LargeImageLevel))
+            return false;
+        receipt = result;
         return true;
     }
     #endregion

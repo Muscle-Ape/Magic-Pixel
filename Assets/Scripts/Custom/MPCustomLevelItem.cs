@@ -456,7 +456,7 @@ public class MPCustomLevelItem : MonoBehaviour
             index = m_index,
             refresh = m_refresh,
         };
-        MPTransitionView.OpenWindow<MPGameView>(data, GetComponentInParent<AWindow>());
+        MPNewGamePop.EnterCustomLevel(data, GetComponentInParent<AWindow>());
     }
 
     /// <summary>

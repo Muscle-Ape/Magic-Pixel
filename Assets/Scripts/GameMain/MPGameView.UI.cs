@@ -3,6 +3,19 @@ using UnityEngine;
 
 public partial class MPGameView
 {
+    protected override string ExitProgressNotice => m_isCustomLevel
+        ? "This custom/community play session cannot be resumed. Leaving will discard this session's puzzle progress; the level itself will not be deleted."
+        : base.ExitProgressNotice;
+
+    protected override void ApplyFillColorToBlocks(Color color)
+    {
+        if (m_blocks == null)
+            return;
+        foreach (MPGameBlock block in m_blocks)
+            if (block != null)
+                block.SetFillColor(color);
+    }
+
     /// <summary>
     /// 自定义关卡会隐藏右侧道具区域，因此底部模式切换按钮需要居中显示。
     /// </summary>
@@ -121,6 +134,8 @@ public partial class MPGameView
 
         MPTransitionView.Play(() =>
         {
+            if (this == null || IsDestoried)
+                return;
             DestroyWindow();
             UIManager.Inst.ShowWindow<MPGameView>(data, true);
         });

@@ -82,6 +82,12 @@ public class MPLargeImageLevelView : AWindow
         }
     }
 
+    public override void OnRelease()
+    {
+        MPNoNetworkPop.DismissLevelEntry(this);
+        base.OnRelease();
+    }
+
     /// <summary>
     /// 刷新顶部资源显示。
     /// </summary>

@@ -1,11 +1,16 @@
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 /// <summary>
 /// Cloud Save SDK 访问抽象，隔离 Unity SDK 具体调用方式。
 /// </summary>
 public interface IMPCloudSaveApi
 {
+    /// <summary>同一个带写锁请求提交主存档和自定义存档，避免客户端分两次覆盖。</summary>
+    Task<Dictionary<string, string>> SaveSnapshotPairAsync(MPUserCloudSnapshot user, string userWriteLock,
+        MPCustomLevelCloudSnapshot custom, string customWriteLock, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 读取当前登录玩家的单个 Player Data。
     /// </summary>

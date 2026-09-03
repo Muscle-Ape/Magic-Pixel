@@ -1,5 +1,6 @@
 using HQ.UIManager;
 using System;
+using System.Threading.Tasks;
 using UnityEngine.UI;
 
 [Component("MPGameFailPop")]
@@ -48,6 +49,9 @@ public class MPGameFailPop : AWindow
     /// </summary>
     private MPPopScaleAnimation m_popScaleAnimation;
 
+    private MPSecondConfirmationPop m_exitConfirmation;
+    private bool m_isClosing;
+
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
@@ -92,7 +96,22 @@ public class MPGameFailPop : AWindow
     /// </summary>
     private void OnExitClick()
     {
-        ClosePop(m_exitAction);
+        if (m_isClosing || (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried))
+            return;
+
+        m_exitConfirmation = MPSecondConfirmationPop.Show(
+            "Leave this attempt?",
+            "This attempt has no lives left. Leaving will clear only this level's unfinished progress. Your other levels and rewards will not change.",
+            "Leave level",
+            token => Task.FromResult(!token.IsCancellationRequested && this != null && !IsDestoried && !m_isClosing),
+            onCancel: () => m_exitConfirmation = null,
+            cancelText: "Stay here",
+            onConfirmed: () =>
+            {
+                m_exitConfirmation = null;
+                if (this != null && !IsDestoried)
+                    ClosePop(m_exitAction);
+            });
     }
 
     /// <summary>
@@ -100,6 +119,9 @@ public class MPGameFailPop : AWindow
     /// </summary>
     private void OnReplayClick()
     {
+        if (m_isClosing || (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried))
+            return;
+
         ClosePop(m_replayAction);
     }
 
@@ -108,6 +130,9 @@ public class MPGameFailPop : AWindow
     /// </summary>
     private void OnRestoreLifeClick()
     {
+        if (m_isClosing || (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried))
+            return;
+
         if (m_restoreLifeAction != null && m_restoreLifeAction.Invoke())
         {
             ClosePop(null);
@@ -120,6 +145,17 @@ public class MPGameFailPop : AWindow
     /// <param name="onClosed">弹窗关闭后的回调。</param>
     private void ClosePop(Action onClosed)
     {
+        if (m_isClosing)
+            return;
+
+        m_isClosing = true;
+        if (m_exitBtn != null)
+            m_exitBtn.interactable = false;
+        if (m_replayBtn != null)
+            m_replayBtn.interactable = false;
+        if (m_restoreLifeBtn != null)
+            m_restoreLifeBtn.interactable = false;
+
         if (m_popScaleAnimation != null)
         {
             m_popScaleAnimation.Close(onClosed);
@@ -128,6 +164,19 @@ public class MPGameFailPop : AWindow
 
         DestroyWindow();
         onClosed?.Invoke();
+    }
+
+    public override void OnRelease()
+    {
+        if (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried)
+            m_exitConfirmation.DestroyWindow();
+        m_exitConfirmation = null;
+        if (m_exitBtn != null)
+            m_exitBtn.onClick.RemoveListener(OnExitClick);
+        if (m_replayBtn != null)
+            m_replayBtn.onClick.RemoveListener(OnReplayClick);
+        if (m_restoreLifeBtn != null)
+            m_restoreLifeBtn.onClick.RemoveListener(OnRestoreLifeClick);
     }
 }
 

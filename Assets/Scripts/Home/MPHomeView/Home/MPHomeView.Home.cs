@@ -69,28 +69,35 @@ public partial class MPHomeView
     private EventTrigger.Entry m_petScrollBeginDragEntry;
     private readonly List<MPPetItem> m_homePetItems = new List<MPPetItem>();
     private List<MPPetConfig> m_petConfigs;
+    private Button m_signInBtn;
+    private Coroutine m_homePopupCoroutine;
+    private static readonly HashSet<string> s_signInAutoShownDays = new HashSet<string>();
 
     private void InitializeHomePage()
     {
         InitializeHomePets();
         StartHomeRewardCountdown();
+        ScheduleHomePopup();
     }
 
     private void RefreshHomePage()
     {
         RefreshHomePets();
         StartHomeRewardCountdown();
+        ScheduleHomePopup();
     }
 
     private void BlurHomePage()
     {
         StopHomeRewardCountdown();
+        CancelHomePopup();
     }
 
     private void ReleaseHomePage()
     {
         StopHomeRewardCountdown();
         KillPetTipTween();
+        CancelHomePopup();
     }
 
     private void RegisterHomeListeners()
@@ -98,6 +105,9 @@ public partial class MPHomeView
         m_newGameBtn.onClick.AddListener(OnNewGameClick);
         m_threeDBtn.onClick.AddListener(OnThreeDClick);
         m_rewardBtn.onClick.AddListener(OnHomeRewardClick);
+        m_signInBtn = transform.Find("View/Center/Home/Widgets/SignInBtn")?.GetComponent<Button>();
+        if (m_signInBtn != null)
+            m_signInBtn.onClick.AddListener(OnSignInClick);
         RegisterPetScrollBeginDrag();
     }
 
@@ -109,6 +119,8 @@ public partial class MPHomeView
             m_threeDBtn.onClick.RemoveListener(OnThreeDClick);
         if (m_rewardBtn != null)
             m_rewardBtn.onClick.RemoveListener(OnHomeRewardClick);
+        if (m_signInBtn != null)
+            m_signInBtn.onClick.RemoveListener(OnSignInClick);
         UnregisterPetScrollBeginDrag();
     }
 
@@ -494,7 +506,7 @@ public partial class MPHomeView
 
     private void OnHomeRewardClick()
     {
-        if (!MPUser.instance.TryClaimHomeReward())
+        if (!MPUser.instance.TryClaimHomeReward(out MPRewardReceipt receipt))
         {
             RefreshHomeRewardButton();
             return;
@@ -502,6 +514,56 @@ public partial class MPHomeView
 
         RefreshCurrency();
         RefreshHomeRewardButton();
+        MPRewardsClaimPop.Show(receipt);
+    }
+
+    private void OnSignInClick()
+    {
+        // 主动查看不受可领取条件限制；空配置、今日已领、全部领完都允许打开。
+        // 记录本次已查看，关闭后不会立刻被首页的自动提示再次打断。
+        try
+        {
+            MPSignInStatus status = MPUser.instance.GetSignInStatus();
+            s_signInAutoShownDays.Add(MPUser.instance.GetRewardProgressOwner() + ":" + status.day);
+        }
+        catch (Exception exception)
+        {
+            // 读取失败也保留入口，由签到页显示不可领取的状态和关闭按钮。
+            Debug.LogWarning($"[MPHomeView] Sign-in status unavailable: {exception.Message}");
+        }
+        UIManager.Inst.ShowWindow<MPSignInPop>(null, true, UILayer.Top);
+    }
+
+    private void ScheduleHomePopup()
+    {
+        CancelHomePopup();
+        m_homePopupCoroutine = StartCoroutine(ShowHomePopupNextFrame());
+    }
+
+    private void CancelHomePopup()
+    {
+        if (m_homePopupCoroutine == null) return;
+        StopCoroutine(m_homePopupCoroutine);
+        m_homePopupCoroutine = null;
+    }
+
+    private IEnumerator ShowHomePopupNextFrame()
+    {
+        // UIManager 必须先完成当前页面的焦点与历史栈更新，不能在 Load 里嵌套开弹窗。
+        yield return null;
+        m_homePopupCoroutine = null;
+        if (!IsFocus || IsDestoried || !m_initialized) yield break;
+        try
+        {
+            MPSignInStatus signIn = MPUser.instance.GetSignInStatus();
+            string dayKey = MPUser.instance.GetRewardProgressOwner() + ":" + signIn.day;
+            if (signIn.CanClaim && s_signInAutoShownDays.Add(dayKey))
+                OnSignInClick();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPHomeView] Reward popup unavailable: {exception.Message}");
+        }
     }
 
     private void OnNewGameClick()

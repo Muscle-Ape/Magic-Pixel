@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// 关卡游戏进度缓存数据。
@@ -36,6 +37,47 @@ public class MPLevelProgressCacheInfo
     /// 大图关卡当前窗口左上角所在列下标。
     /// </summary>
     public int ViewY;
+
+    /// <summary>最近一次保存时间（UTC Unix 秒）；旧缓存缺失时不展示时间。</summary>
+    public long SavedAtUtc;
+
+    /// <summary>只读校验后的副本，不回写源缓存；损坏、空或已完成缓存不继续恢复。</summary>
+    public MPLevelProgressCacheInfo GetValidIncompleteCopy(int size, bool largeImage, int maxLives = 3)
+    {
+        if (size <= 0 || size > 4096)
+            return null;
+
+        int total = size * size;
+        HashSet<int> valid = new HashSet<int>();
+        if (CompletedBlocks != null)
+        {
+            foreach (int index in CompletedBlocks)
+            {
+                if (index >= 0 && index < total)
+                    valid.Add(index);
+            }
+        }
+
+        if (valid.Count >= total)
+            return null;
+
+        MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(item => item != null && item.ID == PetId);
+        int usedSkill = Mathf.Clamp(UsedPetSkillCount, 0, pet == null ? 0 : pet.SkillUseCount);
+        int maxView = largeImage ? Mathf.Max(0, size - 10) : 0;
+        MPLevelProgressCacheInfo copy = new MPLevelProgressCacheInfo
+        {
+            CompletedBlocks = new List<int>(valid),
+            UsedLoves = Mathf.Clamp(UsedLoves, 0, Mathf.Max(0, maxLives)),
+            PetId = pet == null ? null : pet.ID,
+            UsedPetSkillCount = usedSkill,
+            ViewX = Mathf.Clamp(ViewX, 0, maxView),
+            ViewY = Mathf.Clamp(ViewY, 0, maxView),
+            SavedAtUtc = SavedAtUtc > 0 && SavedAtUtc <= DateTimeOffset.UtcNow.ToUnixTimeSeconds() ? SavedAtUtc : 0,
+        };
+        return copy.CompletedBlocks.Count > 0 || copy.UsedLoves > 0 || usedSkill > 0 || copy.ViewX > 0 || copy.ViewY > 0
+            ? copy
+            : null;
+    }
 }
 
 public partial class MPUser
@@ -138,6 +180,7 @@ public partial class MPUser
         if (string.IsNullOrEmpty(key) || cacheInfo == null)
             return;
 
+        cacheInfo.SavedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         ES3.Save(key, JsonConvert.SerializeObject(cacheInfo));
     }
 
@@ -151,12 +194,12 @@ public partial class MPUser
         if (string.IsNullOrEmpty(key))
             return null;
 
-        string json = ES3.Load<string>(key, defaultValue: null);
-        if (string.IsNullOrEmpty(json))
-            return null;
-
         try
         {
+            string json = ES3.Load<string>(key, defaultValue: null);
+            if (string.IsNullOrEmpty(json))
+                return null;
+
             return JsonConvert.DeserializeObject<MPLevelProgressCacheInfo>(json);
         }
         catch (Exception)

@@ -9,6 +9,7 @@ using UnityEngine.UI;
 /// </summary>
 public partial class MPLargeImageGameView
 {
+    private MPRewardReceipt m_completedRewardReceipt;
     /// <summary>
     /// 结算数字提示框渐隐时长。
     /// </summary>
@@ -35,7 +36,7 @@ public partial class MPLargeImageGameView
 
         // 1、记录当前已通关关卡
         MPUser.instance.LargeImageLevelPass(m_blockInfo.ID, m_lovesCount);
-        MPUser.instance.TryClaimLargeImageLevelCoinAward(m_blockInfo);
+        MPUser.instance.TryClaimLargeImageLevelCoinAward(m_blockInfo, out m_completedRewardReceipt);
 
         // 2、更新解锁到的关卡位置，解锁新关卡
         if (m_index == MPUser.instance.GetLargeImageLevlPassIndex())
@@ -159,6 +160,7 @@ public partial class MPLargeImageGameView
 
         UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
         DestroyWindow();
+        MPRewardsClaimPop.Show(m_completedRewardReceipt);
     }
 
     /// <summary>

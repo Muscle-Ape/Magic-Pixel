@@ -27,6 +27,8 @@ public partial class MPUser
             schemaVersion = MPCloudSaveConstants.USER_SNAPSHOT_SCHEMA_VERSION,
             updatedAtUtcTicks = DateTime.UtcNow.Ticks,
             clientVersion = Application.version,
+            deviceModel = SystemInfo.deviceModel,
+            rewardProgress = CreateRewardProgressSnapshot(),
             assets = new MPUserAssetsSnapshot
             {
                 coins = Mathf.Max(0, m_coins),
@@ -39,7 +41,8 @@ public partial class MPUser
             {
                 isMusic = m_isMusic,
                 isSound = m_isSound,
-                isVibration = m_isVibration
+                isVibration = m_isVibration,
+                gameFillColor = "#" + ColorUtility.ToHtmlStringRGBA(gameFillColor)
             },
             mainLevel = new MPUserMainLevelSnapshot
             {
@@ -100,6 +103,7 @@ public partial class MPUser
             ApplyMainLevelSnapshot(snapshot.mainLevel);
             ApplyLargeImageLevelSnapshot(snapshot.largeImageLevel);
             ApplyPetsSnapshot(snapshot.pets);
+            ApplyRewardProgressSnapshot(snapshot.rewardProgress);
         }
         finally
         {
@@ -179,6 +183,8 @@ public partial class MPUser
         m_isMusic = snapshot.isMusic;
         m_isSound = snapshot.isSound;
         m_isVibration = snapshot.isVibration;
+        if (!string.IsNullOrEmpty(snapshot.gameFillColor) && ColorUtility.TryParseHtmlString(snapshot.gameFillColor, out Color fillColor))
+            SetGameFillColor(fillColor);
 
         ES3.Save(m_key_isMusic, m_isMusic);
         ES3.Save(m_key_isSound, m_isSound);

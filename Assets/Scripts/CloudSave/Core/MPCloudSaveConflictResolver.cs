@@ -34,9 +34,34 @@ public class MPCloudSaveConflictResolver
         result.mainLevel = MergeMainLevel(local.mainLevel, cloud.mainLevel);
         result.largeImageLevel = MergeLargeImageLevel(local.largeImageLevel, cloud.largeImageLevel);
         result.pets = localIsNewer ? SafePets(local.pets) : SafePets(cloud.pets);
+        result.rewardProgress = MergeRewardProgress(local.rewardProgress, cloud.rewardProgress);
         result.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
         result.clientVersion = Application.version;
         return result;
+    }
+
+    private static MPRewardProgressSnapshot MergeRewardProgress(MPRewardProgressSnapshot local, MPRewardProgressSnapshot cloud)
+    {
+        local = local ?? new MPRewardProgressSnapshot();
+        cloud = cloud ?? new MPRewardProgressSnapshot();
+        return new MPRewardProgressSnapshot
+        {
+            transactionIds = UnionList(local.transactionIds, cloud.transactionIds),
+            unlockedPetIds = UnionList(local.unlockedPetIds, cloud.unlockedPetIds),
+            notifiedPetIds = UnionList(local.notifiedPetIds, cloud.notifiedPetIds),
+            signInLastClaimDay = Math.Max(local.signInLastClaimDay, cloud.signInLastClaimDay),
+            signInClaimedDays = Math.Max(local.signInClaimedDays, cloud.signInClaimedDays),
+            signInLatestObservedUtcTicks = Math.Max(local.signInLatestObservedUtcTicks, cloud.signInLatestObservedUtcTicks),
+            signInClaimedEntryIds = UnionList(local.signInClaimedEntryIds, cloud.signInClaimedEntryIds),
+            signInLegacyClaimedDays = Math.Max(LegacySignInClaimedDays(local), LegacySignInClaimedDays(cloud)),
+            signInLegacyMappedDays = Math.Max(local.signInLegacyMappedDays, cloud.signInLegacyMappedDays)
+        };
+    }
+
+    private static int LegacySignInClaimedDays(MPRewardProgressSnapshot value)
+    {
+        return Math.Max(value.signInLegacyClaimedDays,
+            value.signInClaimedEntryIds == null ? value.signInClaimedDays : 0);
     }
 
     /// <summary>
