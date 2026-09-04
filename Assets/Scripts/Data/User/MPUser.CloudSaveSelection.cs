@@ -37,7 +37,7 @@ public partial class MPUser
         Color fillColor = m_gameFillColor;
         if (!string.IsNullOrEmpty(settings.gameFillColor) && ColorUtility.TryParseHtmlString(settings.gameFillColor, out Color parsedColor))
             fillColor = parsedColor;
-        fillColor.a = 1f;
+        fillColor = NormalizeGameFillColor(fillColor);
 
         main.passIndex = Mathf.Max(0, main.passIndex);
         main.unlockList = CopyStringList(main.unlockList);

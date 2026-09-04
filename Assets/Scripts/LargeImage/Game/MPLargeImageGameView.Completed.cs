@@ -75,6 +75,7 @@ public partial class MPLargeImageGameView
 
         FadeNumberFrames();
         FadeSettlementUI();
+        FadeCompletedFrame(SETTLEMENT_NUMBER_FADE_DURATION);
         FadeContentFrame();
 
         yield return new WaitForSeconds(SETTLEMENT_NUMBER_FADE_DURATION * 0.5f);
@@ -223,12 +224,8 @@ public partial class MPLargeImageGameView
         FadeGraphics(m_titleText.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
 
-        if (m_modeSwitchFrame != null)
-        {
-            FadeGraphics(m_modeSwitchFrame.transform as RectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
-        }
-
-        FadeGraphics(m_props, SETTLEMENT_NUMBER_FADE_DURATION);
+        // 四个按钮已合并到 Btns，只遍历一次，避免对子节点重复创建淡出动画。
+        FadeGraphics(m_btns, SETTLEMENT_NUMBER_FADE_DURATION);
     }
 
     /// <summary>

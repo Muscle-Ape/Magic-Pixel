@@ -34,7 +34,10 @@ public partial class MPUser
     private bool m_isVibration;
     public bool isVibration => m_isVibration;
 
-    private Color m_gameFillColor = Color.white;
+    /// <summary>Color1 蓝色底图的主体色（#426E99），也是首次进入游戏的默认填充色。</summary>
+    public static readonly Color DefaultGameFillColor = new Color32(66, 110, 153, 255);
+
+    private Color m_gameFillColor = DefaultGameFillColor;
     public Color gameFillColor => m_gameFillColor;
     #endregion
 
@@ -44,10 +47,14 @@ public partial class MPUser
         m_isMusic = ES3.Load<bool>(m_key_isMusic, true);
         m_isSound = ES3.Load<bool>(m_key_isSound, true);
         m_isVibration = ES3.Load<bool>(m_key_isVibration, true);
-        string colorText = ES3.Load<string>(GAME_FILL_COLOR_KEY, defaultValue: "#FFFFFFFF");
-        if (!ColorUtility.TryParseHtmlString(colorText, out m_gameFillColor))
-            m_gameFillColor = Color.white;
-        m_gameFillColor.a = 1f;
+        string colorText = ES3.Load<string>(GAME_FILL_COLOR_KEY,
+            defaultValue: "#" + ColorUtility.ToHtmlStringRGBA(DefaultGameFillColor));
+        if (!ColorUtility.TryParseHtmlString(colorText, out Color savedColor))
+            savedColor = DefaultGameFillColor;
+        m_gameFillColor = NormalizeGameFillColor(savedColor);
+        // 旧 Color1 曾错误保存为白色，只修正这一错误值，保留其他已选颜色。
+        if (savedColor.r == 1f && savedColor.g == 1f && savedColor.b == 1f)
+            ES3.Save(GAME_FILL_COLOR_KEY, "#" + ColorUtility.ToHtmlStringRGBA(m_gameFillColor));
     }
 
 
@@ -79,12 +86,19 @@ public partial class MPUser
     /// <summary>填充块着色仅是表现设置，不修改答案像素颜色。</summary>
     public void SetGameFillColor(Color color)
     {
-        color = new Color(Mathf.Clamp01(color.r), Mathf.Clamp01(color.g), Mathf.Clamp01(color.b), 1f);
+        color = NormalizeGameFillColor(color);
         if (m_gameFillColor == color)
             return;
         m_gameFillColor = color;
         ES3.Save(GAME_FILL_COLOR_KEY, "#" + ColorUtility.ToHtmlStringRGBA(color));
         NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Settings);
+    }
+
+    /// <summary>统一处理本地设置与云存档颜色，避免旧 Color1 的白色值在同步后再次生效。</summary>
+    private static Color NormalizeGameFillColor(Color color)
+    {
+        color = new Color(Mathf.Clamp01(color.r), Mathf.Clamp01(color.g), Mathf.Clamp01(color.b), 1f);
+        return color.r == 1f && color.g == 1f && color.b == 1f ? DefaultGameFillColor : color;
     }
     #endregion
 }

@@ -124,6 +124,19 @@ public class MPLargeImageGameBlock : MonoBehaviour
         m_frame.sprite = sprite;
     }
 
+    /// <summary>
+    /// 替换 Fill/Color 的白色底图，保留初始化或设置弹窗已应用的填充色。
+    /// 可视区域滚动时复用同一张图片，不随完整大图尺寸变化。
+    /// </summary>
+    public void SetFillSprite(Sprite sprite)
+    {
+        if (m_fillColorImage == null || sprite == null || m_fillColorImage.sprite == sprite)
+            return;
+
+        m_fillColorImage.sprite = sprite;
+    }
+
+    /// <summary>仅更新 Fill/Color 的着色，保留底图及关卡答案的原始像素颜色。</summary>
     public void SetFillColor(Color color)
     {
         if (m_fillColorImage != null)

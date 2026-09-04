@@ -118,7 +118,8 @@ public class MPSettingPop : AWindow
 
     private static readonly Color[] FILL_COLORS =
     {
-        Color.white,
+        // Color1 展示 popup_fill_blue，实际填充也必须使用蓝色，不能用白色占位。
+        MPUser.DefaultGameFillColor,
         new Color(1f, 0.64f, 0.25f),
         new Color(0.5f, 1f, 0.55f),
         new Color(0.83f, 0.6f, 1f),

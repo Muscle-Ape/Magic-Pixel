@@ -121,13 +121,13 @@ public class MPGameCompletedView : AWindow
     /// <summary>
     /// 标题节点。
     /// </summary>
-    [TransformPath("View/Title")]
+    [TransformPath("View/TitleFrame")]
     private RectTransform m_title;
 
     /// <summary>
     /// 标题文本，用于淡入显示。
     /// </summary>
-    [TransformPath("View/Title")]
+    [TransformPath("View/TitleFrame/Title")]
     private TMP_Text m_titleText;
 
     /// <summary>

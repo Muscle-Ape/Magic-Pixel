@@ -81,7 +81,7 @@ public partial class MPGameView
 
         FadeNumberFrames();
         FadeSettlementUI();
-        FadeCompletedFrame();
+        FadeCompletedFrame(SETTLEMENT_NUMBER_FADE_DURATION);
 
         transform.Find("View/Content/Frame").GetComponent<Image>().DOFade(0, SETTLEMENT_NUMBER_FADE_DURATION);
 
@@ -142,9 +142,6 @@ public partial class MPGameView
     }
 
     /// <summary>
-    /// 淡入结算完成图片框。
-    /// </summary>
-    /// <summary>
     /// 游戏完成瞬间锁定页面交互，避免结算动画播放期间继续点击按钮。
     /// </summary>
     private void LockCompletedInteraction()
@@ -164,12 +161,8 @@ public partial class MPGameView
         FadeGraphics(m_titleText.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
 
-        if (m_modeSwitchFrame != null)
-        {
-            FadeGraphics(m_modeSwitchFrame.transform as RectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
-        }
-
-        FadeGraphics(m_props, SETTLEMENT_NUMBER_FADE_DURATION);
+        // 四个按钮已合并到 Btns，只遍历一次，避免对子节点重复创建淡出动画。
+        FadeGraphics(m_btns, SETTLEMENT_NUMBER_FADE_DURATION);
     }
 
     /// <summary>
@@ -191,18 +184,6 @@ public partial class MPGameView
             graphics[i].DOKill();
             graphics[i].DOFade(0f, duration).SetEase(Ease.Linear).SetLink(graphics[i].gameObject);
         }
-    }
-
-    private void FadeCompletedFrame()
-    {
-        if (m_completedFrame == null)
-            return;
-
-        m_completedFrame.DOKill();
-        Color color = m_completedFrame.color;
-        color.a = 0;
-        m_completedFrame.color = color;
-        m_completedFrame.DOFade(1f, SETTLEMENT_NUMBER_FADE_DURATION).SetEase(Ease.Linear).SetLink(m_completedFrame.gameObject);
     }
 
     /// <summary>

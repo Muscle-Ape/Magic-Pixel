@@ -125,6 +125,19 @@ public class MPGameBlock : MonoBehaviour
         m_frame.sprite = sprite;
     }
 
+    /// <summary>
+    /// 替换 Fill/Color 的白色底图，保留 Init 或设置弹窗已应用的 Image.color。
+    /// 未传入图片时保留预制体默认填充图片。
+    /// </summary>
+    public void SetFillSprite(Sprite sprite)
+    {
+        if (m_fillColorImage == null || sprite == null || m_fillColorImage.sprite == sprite)
+            return;
+
+        m_fillColorImage.sprite = sprite;
+    }
+
+    /// <summary>对白色填充底图着色；初始化读取存档设置，局内设置回调也通过此方法即时刷新。</summary>
     public void SetFillColor(Color color)
     {
         if (m_fillColorImage != null)

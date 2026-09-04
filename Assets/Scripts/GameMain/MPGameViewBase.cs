@@ -50,16 +50,16 @@ public abstract class MPGameViewBase : AWindow
     [TransformPath("View/Content/Input")]
     protected RectTransform m_input;
 
-    [TransformPath("View/ModeSwitch")]
+    [TransformPath("View/Btns/ModeSwitch")]
     protected Button m_modeSwitchFrame;
 
-    [TransformPath("View/ModeSwitch/Btn")]
+    [TransformPath("View/Btns/ModeSwitch/Btn")]
     protected RectTransform m_modeSwitchBtn;
 
-    [TransformPath("View/ModeSwitch/Btn/Fill")]
+    [TransformPath("View/Btns/ModeSwitch/Btn/Fill")]
     protected Image m_modeSwitchFill;
 
-    [TransformPath("View/ModeSwitch/Btn/Blank")]
+    [TransformPath("View/Btns/ModeSwitch/Btn/Blank")]
     protected Image m_modeSwitchBlank;
 
     [TransformPath("View/Head/BackBtn")]
@@ -68,28 +68,26 @@ public abstract class MPGameViewBase : AWindow
     [TransformPath("View/Head/SettingBtn")]
     protected Button m_settingBtn;
 
-    [TransformPath("View/Props")]
-    protected RectTransform m_props;
+    /// <summary>模式切换、道具与宠物技能共用的按钮容器。</summary>
+    [TransformPath("View/Btns")]
+    protected RectTransform m_btns;
 
-    [TransformPath("View/Props/HintBtn")]
+    [TransformPath("View/Btns/HintBtn")]
     protected Button m_hintPropBtn;
 
-    [TransformPath("View/Props/HintBtn/CountFrame/Count")]
+    [TransformPath("View/Btns/HintBtn/CountFrame/Count")]
     protected TMP_Text m_hintPropCountText;
 
-    [TransformPath("View/Props/RecoverBtn")]
+    [TransformPath("View/Btns/RecoverBtn")]
     protected Button m_loveRecoverPropBtn;
 
-    [TransformPath("View/Props/RecoverBtn/CountFrame/Count")]
+    [TransformPath("View/Btns/RecoverBtn/CountFrame/Count")]
     protected TMP_Text m_loveRecoverPropCountText;
 
-    [TransformPath("View/PetSkillBtn")]
+    [TransformPath("View/Btns/PetSkillBtn")]
     protected Button m_petSkillBtn;
 
-    [TransformPath("View/PetSkillBtn/Icon")]
-    protected Image m_petSkillIcon;
-
-    [TransformPath("View/PetSkillBtn/Count")]
+    [TransformPath("View/Btns/PetSkillBtn/CountFrame/Count")]
     protected TMP_Text m_petSkillCountText;
 
     /// <summary>进入本关时选中的宠物配置。</summary>
@@ -297,6 +295,7 @@ public abstract class MPGameViewBase : AWindow
         m_isFailPopShowing = false;
         m_isReturningToLevelList = false;
         m_hvCompleted = 0;
+        ResetCompletedFrame();
 
         LoadLevelData(uiMsg);
         InitializePetSkillSession();
@@ -322,6 +321,32 @@ public abstract class MPGameViewBase : AWindow
         MPAudioManager.Instance.StopBGM(MPMusic.MPBGMMain);
         if (UsesLives && m_lovesCount <= 0)
             OpenFailPop();
+    }
+
+    /// <summary>新关卡开始或页面释放时清理完成框动画，并恢复为隐藏状态。</summary>
+    private void ResetCompletedFrame()
+    {
+        if (m_completedFrame == null)
+            return;
+
+        m_completedFrame.DOKill();
+        Color color = m_completedFrame.color;
+        color.a = 0f;
+        m_completedFrame.color = color;
+        m_completedFrame.gameObject.SetActive(false);
+    }
+
+    /// <summary>通关像素动画开始时显示完成框；预制体默认关闭，必须先激活再淡入。</summary>
+    protected void FadeCompletedFrame(float duration)
+    {
+        if (m_completedFrame == null)
+            return;
+
+        ResetCompletedFrame();
+        m_completedFrame.gameObject.SetActive(true);
+        m_completedFrame.DOFade(1f, duration)
+            .SetEase(Ease.Linear)
+            .SetLink(m_completedFrame.gameObject);
     }
 
     /// <summary>加载两个模式共用的数字提示预制体。</summary>
@@ -350,10 +375,13 @@ public abstract class MPGameViewBase : AWindow
         }
 
         m_lovesCount = m_loves.Count;
-        if (m_props != null)
-        {
-            m_props.gameObject.SetActive(UsesProps);
-        }
+        // Btns 还包含模式切换和独立宠物技能，不能随道具一起隐藏整个容器。
+        if (m_btns != null)
+            m_btns.gameObject.SetActive(true);
+        if (m_hintPropBtn != null)
+            m_hintPropBtn.gameObject.SetActive(UsesProps);
+        if (m_loveRecoverPropBtn != null)
+            m_loveRecoverPropBtn.gameObject.SetActive(UsesProps);
     }
 
     /// <summary>注册共享按钮事件并刷新共享界面数据。</summary>
@@ -461,9 +489,6 @@ public abstract class MPGameViewBase : AWindow
         m_petSkillRemainingUses = m_activePetConfig == null
             ? 0
             : m_activePetConfig.SkillUseCount;
-
-        if (m_petSkillIcon != null)
-            m_petSkillIcon.sprite = null;
     }
 
     private void RefreshPetSkillButton()
@@ -484,24 +509,7 @@ public abstract class MPGameViewBase : AWindow
         m_petSkillBtn.interactable = !m_hasCompleted
             && m_petSkillRemainingUses > 0
             && CanExecutePetSkill();
-        if (m_petSkillIcon == null
-            || m_petSkillIcon.sprite != null
-            || string.IsNullOrWhiteSpace(m_activePetConfig.Icon))
-            return;
-
-        try
-        {
-            Sprite sprite = MPLoad.Load<Sprite>(m_activePetConfig.Icon, this);
-            if (sprite != null)
-            {
-                m_petSkillIcon.sprite = sprite;
-                m_petSkillIcon.preserveAspect = true;
-            }
-        }
-        catch (Exception exception)
-        {
-            Debug.LogWarning($"局内宠物图标加载失败：{exception.Message}");
-        }
+        // 新预制体使用按钮自身的固定技能图片，不再查找或覆盖旧的 Icon 子节点。
     }
 
     /// <summary>
@@ -538,8 +546,6 @@ public abstract class MPGameViewBase : AWindow
         // 继续旧局时使用缓存中的宠物，而非主页后来选中的宠物，避免技能次数被重置。
         m_activePetConfig = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
             config => config != null && config.ID == petId);
-        if (m_petSkillIcon != null)
-            m_petSkillIcon.sprite = null;
         int totalUses = m_activePetConfig == null ? 0 : m_activePetConfig.SkillUseCount;
         m_petSkillRemainingUses = totalUses - Mathf.Clamp(usedCount, 0, totalUses);
         RefreshPropButtons();
@@ -876,6 +882,7 @@ public abstract class MPGameViewBase : AWindow
         m_failPop = null;
         SaveProgressCache();
         m_modeSwitchTween?.Kill();
+        ResetCompletedFrame();
         UnregisterCommonUI();
         ReleaseModeSpecificResources();
         MPLoad.ReleaseAll(this);

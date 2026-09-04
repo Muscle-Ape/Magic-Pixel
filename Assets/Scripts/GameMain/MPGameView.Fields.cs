@@ -35,19 +35,12 @@ public partial class MPGameView : MPGameViewBase
     private GameObject m_blockPrefab;
 
     /// <summary>
-    /// 游戏网格使用的四角外框图片。
+    /// 当前尺寸的格子、顶部与左侧数字框共用的外框图片，创建前只加载一次。
     /// </summary>
-    private Sprite m_blockLeftTopSprite;
-    private Sprite m_blockRightTopSprite;
-    private Sprite m_blockLeftDownSprite;
-    private Sprite m_blockRightDownSprite;
+    private Sprite m_blockFrameSprite;
 
-    /// <summary>
-    /// 数字提示框使用的角部外框图片。
-    /// </summary>
-    private Sprite m_numberLeftTopSprite;
-    private Sprite m_numberRightTopSprite;
-    private Sprite m_numberLeftDownSprite;
+    /// <summary>当前尺寸的白色填充底图，所有格子共用，实际填充色由设置决定。</summary>
+    private Sprite m_blockFillSprite;
 
     /// <summary>
     /// 当前像素图是否为运行时读取的本地自定义图片，页面释放时需要主动销毁。
@@ -140,13 +133,6 @@ public partial class MPGameView : MPGameViewBase
     protected override void LoadLevelAssets()
     {
         m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock", this);
-        m_blockLeftTopSprite = LoadOptionalFrameSprite("game_block_lt");
-        m_blockRightTopSprite = LoadOptionalFrameSprite("game_block_rt");
-        m_blockLeftDownSprite = LoadOptionalFrameSprite("game_block_ld");
-        m_blockRightDownSprite = LoadOptionalFrameSprite("game_block_rd");
-        m_numberLeftTopSprite = LoadOptionalFrameSprite("game_number_lt");
-        m_numberRightTopSprite = LoadOptionalFrameSprite("game_number_rt");
-        m_numberLeftDownSprite = LoadOptionalFrameSprite("game_number_ld");
 
         if (m_isCustomLevel)
         {
@@ -160,16 +146,26 @@ public partial class MPGameView : MPGameViewBase
             m_isRuntimePixelTexture = false;
             m_size = m_pixel == null ? 0 : m_pixel.height;
         }
+
+        // 主线、自定义和社区试玩均按实际 Size 选图，所有位置使用同一张，不再区分四角。
+        // 未提供专用图片的尺寸保留预制体默认图片；图片按页面加载，不在每个格子中重复读取。
+        bool hasSizeSprite = m_size == 5 || m_size == 10 || m_size == 15;
+        m_blockFrameSprite = hasSizeSprite
+            ? LoadOptionalBlockSprite($"game_block_{m_size}")
+            : null;
+        m_blockFillSprite = hasSizeSprite
+            ? LoadOptionalBlockSprite($"game_block_fill_{m_size}")
+            : null;
     }
 
     /// <summary>
-    /// 加载可选外框图片。资源尚未加入 YooAsset 清单时保留预制体默认图片，避免阻断页面创建。
+    /// 加载可选外框或填充图片。资源尚未加入 YooAsset 清单时保留预制体默认图片，避免阻断页面创建。
     /// </summary>
-    private Sprite LoadOptionalFrameSprite(string location)
+    private Sprite LoadOptionalBlockSprite(string location)
     {
         if (!YooAssets.CheckLocationValid(location))
         {
-            Debug.LogWarning($"游戏外框资源不存在或尚未加入 YooAsset 清单：{location}");
+            Debug.LogWarning($"游戏格子图片不存在或尚未加入 YooAsset 清单：{location}");
             return null;
         }
 

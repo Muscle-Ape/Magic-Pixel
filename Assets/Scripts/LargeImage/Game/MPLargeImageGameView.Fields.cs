@@ -34,16 +34,11 @@ public partial class MPLargeImageGameView : MPGameViewBase
     /// <summary>主游戏与大图模式共用的格子预制体。</summary>
     private GameObject m_blockPrefab;
 
-    /// <summary>游戏网格使用的四角外框图片。</summary>
-    private Sprite m_blockLeftTopSprite;
-    private Sprite m_blockRightTopSprite;
-    private Sprite m_blockLeftDownSprite;
-    private Sprite m_blockRightDownSprite;
+    /// <summary>可视网格固定为 10×10，格子与顶部、左侧数字框共用 game_block_10。</summary>
+    private Sprite m_blockFrameSprite;
 
-    /// <summary>数字提示框使用的角部外框图片。</summary>
-    private Sprite m_numberLeftTopSprite;
-    private Sprite m_numberRightTopSprite;
-    private Sprite m_numberLeftDownSprite;
+    /// <summary>大图可视区域固定使用 game_block_fill_10，填充色由玩家设置决定。</summary>
+    private Sprite m_blockFillSprite;
 
     /// <summary>当前 10×10 可视区域中的格子列表。</summary>
     private List<MPLargeImageGameBlock> m_blocks;
@@ -114,13 +109,8 @@ public partial class MPLargeImageGameView : MPGameViewBase
     protected override void LoadLevelAssets()
     {
         m_blockPrefab = MPLoad.Load<GameObject>("MPGameBlock", this);
-        m_blockLeftTopSprite = LoadOptionalFrameSprite("game_block_lt");
-        m_blockRightTopSprite = LoadOptionalFrameSprite("game_block_rt");
-        m_blockLeftDownSprite = LoadOptionalFrameSprite("game_block_ld");
-        m_blockRightDownSprite = LoadOptionalFrameSprite("game_block_rd");
-        m_numberLeftTopSprite = LoadOptionalFrameSprite("game_number_lt");
-        m_numberRightTopSprite = LoadOptionalFrameSprite("game_number_rt");
-        m_numberLeftDownSprite = LoadOptionalFrameSprite("game_number_ld");
+        m_blockFrameSprite = LoadOptionalBlockSprite("game_block_10");
+        m_blockFillSprite = LoadOptionalBlockSprite("game_block_fill_10");
         m_pixel = MPLoad.Load<Texture2D>(m_blockInfo.ID, this);
         m_size = m_pixel == null ? 0 : m_pixel.height;
 
@@ -134,13 +124,13 @@ public partial class MPLargeImageGameView : MPGameViewBase
     }
 
     /// <summary>
-    /// 加载可选外框图片。资源尚未加入 YooAsset 清单时保留预制体默认图片，避免阻断页面创建。
+    /// 加载可选外框或填充图片。资源尚未加入 YooAsset 清单时保留预制体默认图片，避免阻断页面创建。
     /// </summary>
-    private Sprite LoadOptionalFrameSprite(string location)
+    private Sprite LoadOptionalBlockSprite(string location)
     {
         if (!YooAssets.CheckLocationValid(location))
         {
-            Debug.LogWarning($"游戏外框资源不存在或尚未加入 YooAsset 清单：{location}");
+            Debug.LogWarning($"游戏格子图片不存在或尚未加入 YooAsset 清单：{location}");
             return null;
         }
 
