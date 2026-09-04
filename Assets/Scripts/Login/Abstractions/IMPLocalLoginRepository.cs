@@ -17,6 +17,10 @@ public interface IMPLocalLoginRepository
     /// </summary>
     Task SaveAsync(MPLocalLoginProfile profile, CancellationToken cancellationToken = default);
 
+    /// <summary>独立游客的资料槽；切换第三方账号时仍保留，不存储明文 Token。</summary>
+    Task<MPLocalLoginProfile> LoadGuestProfileAsync(CancellationToken cancellationToken = default);
+    Task SaveGuestProfileAsync(MPLocalLoginProfile profile, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 清理活动会话资料。
     /// keepRecoveryData 为 true 时保留 AnonymousId、历史 PlayerId 和最近登录方式，避免误丢账号恢复线索。

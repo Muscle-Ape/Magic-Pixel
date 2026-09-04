@@ -44,6 +44,8 @@ public class MPLoginManager
     /// 当前正在执行的游客登录任务，用于合并并发游客登录请求。
     /// </summary>
     private Task<bool> m_guestLoginTask;
+    private bool m_loginFlowRunning;
+    public bool IsLoginFlowRunning => m_loginFlowRunning;
 
     private MPLoginManager()
     {
@@ -250,10 +252,9 @@ public class MPLoginManager
     /// <summary>
     /// 执行启动登录策略，返回明确的下一步动作。
     /// </summary>
-    public async Task<MPLoginStartupResult> StartLoginFlowAsync(CancellationToken cancellationToken = default)
+    public Task<MPLoginStartupResult> StartLoginFlowAsync(CancellationToken cancellationToken = default)
     {
-        LastStartupResult = await m_flowController.StartAsync(cancellationToken);
-        return LastStartupResult;
+        return RunLoginFlowAsync(m_flowController.StartAsync, false, cancellationToken);
     }
 
     /// <summary>
@@ -267,10 +268,19 @@ public class MPLoginManager
     /// <summary>
     /// 用户明确选择创建新的游客账号。
     /// </summary>
-    public async Task<MPLoginStartupResult> ContinueAsNewGuestAsync(CancellationToken cancellationToken = default)
+    public Task<MPLoginStartupResult> ContinueAsNewGuestAsync(CancellationToken cancellationToken = default)
     {
-        LastStartupResult = await m_flowController.ContinueAsNewGuestAsync(cancellationToken);
-        return LastStartupResult;
+        return RunLoginFlowAsync(m_flowController.ContinueAsNewGuestAsync, true, cancellationToken);
+    }
+
+    public async Task<MPLoginStartupResult> ContinueAsGuestAsync(CancellationToken cancellationToken = default)
+    {
+        MPLocalLoginProfile current = await m_localLoginRepository.LoadAsync(cancellationToken);
+        MPLocalLoginProfile guest = await m_localLoginRepository.LoadGuestProfileAsync(cancellationToken);
+        bool sameGuest = current?.IsIndependentGuest == true &&
+            (guest == null || (guest.IsIndependentGuest && guest.playerId == current.playerId));
+        // 原游客断网后重试不属于切号；必须允许先恢复它，才能继续同步它的 dirty 数据。
+        return await RunLoginFlowAsync(m_flowController.ContinueAsGuestAsync, !sameGuest, cancellationToken);
     }
 
     /// <summary>
@@ -278,8 +288,58 @@ public class MPLoginManager
     /// </summary>
     public async Task<MPLoginStartupResult> LoginWithProviderAsync(MPLoginType loginType, MPThirdPartyLoginRequest request, CancellationToken cancellationToken = default)
     {
-        LastStartupResult = await m_flowController.LoginWithProviderAsync(loginType, request, cancellationToken);
-        return LastStartupResult;
+        MPLocalLoginProfile previous = await m_localLoginRepository.LoadAsync(cancellationToken);
+        string reauthenticatePlayerId = CanReauthenticate(previous, loginType) ? previous.playerId : null;
+        MPThirdPartyLoginRequest safeRequest = request ?? new MPThirdPartyLoginRequest();
+        return await RunLoginFlowAsync(token =>
+        {
+            safeRequest.expectedPlayerId = MPCloudSaveManager.Instance.RequiredPlayerIdForAccountSwitch;
+            return m_flowController.LoginWithProviderAsync(loginType, safeRequest, token);
+        }, true, cancellationToken, reauthenticatePlayerId);
+    }
+
+    private static bool CanReauthenticate(MPLocalLoginProfile profile, MPLoginType loginType)
+    {
+        if (profile == null || string.IsNullOrEmpty(profile.playerId)) return false;
+        if (profile.lastLoginProvider == ToProvider(loginType)) return true;
+        switch (loginType)
+        {
+            case MPLoginType.Apple: return profile.hasAppleBinding;
+            case MPLoginType.Google: return profile.hasGoogleBinding;
+            case MPLoginType.GooglePlayGames: return profile.hasGooglePlayGamesBinding;
+            case MPLoginType.Facebook: return profile.hasFacebookBinding;
+            case MPLoginType.UsernamePassword: return profile.hasUsernamePasswordBinding;
+            default: return false;
+        }
+    }
+
+    private async Task<MPLoginStartupResult> RunLoginFlowAsync(
+        Func<CancellationToken, Task<MPLoginStartupResult>> operation, bool switchingAccount, CancellationToken cancellationToken,
+        string reauthenticatePlayerId = null)
+    {
+        if (m_loginFlowRunning)
+            return MPLoginStartupResult.Failed(MPLoginError.Create(MPLoginErrorCodes.LoginInProgress, "登录正在进行，请稍候。"));
+        m_loginFlowRunning = true;
+        IDisposable switchGuard = null;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (switchingAccount)
+            {
+                switchGuard = await MPCloudSaveManager.Instance.BeginAccountSwitchAsync(cancellationToken, reauthenticatePlayerId);
+                if (switchGuard == null)
+                    return LastStartupResult = MPLoginStartupResult.Failed(MPLoginError.Create(MPLoginErrorCodes.ServerError,
+                        "原账号还有未同步的数据，请先恢复原账号并完成同步，再切换登录。", true),
+                        await m_localLoginRepository.LoadAsync(cancellationToken));
+            }
+            LastStartupResult = await operation(cancellationToken);
+            return LastStartupResult;
+        }
+        finally
+        {
+            switchGuard?.Dispose();
+            m_loginFlowRunning = false;
+        }
     }
 
     /// <summary>
@@ -463,7 +523,8 @@ public class MPLoginManager
     public async Task LogoutAsync(bool clearCredentials = false, CancellationToken cancellationToken = default)
     {
         await m_inner.LogoutAsync(clearCredentials, cancellationToken);
-        await m_localLoginRepository.ClearActiveSessionAsync(keepRecoveryData: true, cancellationToken);
+        if (clearCredentials)
+            await m_localLoginRepository.ClearActiveSessionAsync(keepRecoveryData: true, cancellationToken);
     }
 
     public void SignOut(bool clearCredentials = false)
@@ -534,7 +595,8 @@ public class MPLoginManager
             profile.anonymousIdempotencyKey = await m_localLoginRepository.GetOrCreateAnonymousIdempotencyKeyAsync(cancellationToken);
         }
 
-        bool shouldMarkAsBound = markAsBound || IsBoundProvider(provider) || profile.hasBoundIdentity;
+        bool shouldMarkAsBound = markAsBound || IsBoundProvider(provider) ||
+            (profile.playerId == result.playerId && profile.hasBoundIdentity);
         profile.ApplySession(result.session, provider, shouldMarkAsBound);
         await m_localLoginRepository.SaveAsync(profile, cancellationToken);
     }

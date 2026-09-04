@@ -23,8 +23,39 @@ public static class MPLoginExceptionMapper
             return MPLoginError.Create(MPLoginErrorCodes.RequestTimeout, "请求超时，请检查网络后重试。", true, 0, exception, true);
         }
 
+        // 先按服务错误码区分网络/超时，不能因为异常来自 Authentication 就判断为凭证失效。
+        if (exception is RequestFailedException serviceException)
+        {
+            switch (serviceException.ErrorCode)
+            {
+                case CommonErrorCodes.TransportError:
+                    return MPLoginError.Create(MPLoginErrorCodes.NetworkUnavailable, "网络暂时不可用，请检查网络后重试。",
+                        true, serviceException.ErrorCode, exception, true);
+                case CommonErrorCodes.Timeout:
+                    return MPLoginError.Create(MPLoginErrorCodes.RequestTimeout, "请求超时，请检查网络后重试。",
+                        true, serviceException.ErrorCode, exception, true);
+                case CommonErrorCodes.ServiceUnavailable:
+                case CommonErrorCodes.TooManyRequests:
+                case CommonErrorCodes.Unknown:
+                    return MPLoginError.Create(MPLoginErrorCodes.ServerError, "登录服务暂时不可用，请稍后重试。",
+                        true, serviceException.ErrorCode, exception, true);
+            }
+        }
+
         if (exception is AuthenticationException authenticationException)
         {
+            if (authenticationException.ErrorCode == AuthenticationErrorCodes.ClientNoActiveSession)
+            {
+                return MPLoginError.Create(MPLoginErrorCodes.NoLocalSession, "本地不存在可用的登录凭证。",
+                    false, authenticationException.ErrorCode, exception);
+            }
+
+            if (authenticationException.ErrorCode == AuthenticationErrorCodes.InvalidSessionToken)
+            {
+                return MPLoginError.Create(MPLoginErrorCodes.SessionInvalid, "原账号登录凭证已失效，请使用已绑定的登录方式。",
+                    false, authenticationException.ErrorCode, exception);
+            }
+
             if (authenticationException.ErrorCode == AuthenticationErrorCodes.AccountAlreadyLinked)
             {
                 return MPLoginError.Create(
@@ -80,6 +111,7 @@ public static class MPLoginExceptionMapper
             exception == null ? "登录失败，请稍后重试。" : exception.Message,
             true,
             0,
-            exception);
+            exception,
+            true);
     }
 }

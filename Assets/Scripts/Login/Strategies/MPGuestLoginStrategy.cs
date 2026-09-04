@@ -33,7 +33,10 @@ public class MPGuestLoginStrategy : IMPLoginStrategy
 
         try
         {
-            MPUserSession session = await m_authApi.SignInAnonymouslyAsync(cancellationToken);
+            MPGuestLoginRequest guest = request as MPGuestLoginRequest;
+            MPUserSession session = guest != null && !string.IsNullOrEmpty(guest.unityProfile)
+                ? await m_authApi.SignInGuestAsync(guest, cancellationToken)
+                : await m_authApi.SignInAnonymouslyAsync(cancellationToken);
             return MPLoginResult.Success(session);
         }
         catch (System.Exception exception)

@@ -23,6 +23,9 @@ public interface IMPLoginFlowController
     /// </summary>
     Task<MPLoginStartupResult> StartAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>主动选择游客：复用本机独立游客，仅在从未建立游客时创建。</summary>
+    Task<MPLoginStartupResult> ContinueAsGuestAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 用户明确选择创建新的游客账号。
     /// </summary>

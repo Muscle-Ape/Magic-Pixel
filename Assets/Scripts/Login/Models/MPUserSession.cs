@@ -24,6 +24,8 @@ public class MPUserSession
     public string profile;
     /// <summary>是否游客/匿名账号。</summary>
     public bool isGuest;
+    /// <summary>Unity 玩家信息中是否存在绑定身份。</summary>
+    public bool hasBoundIdentity;
 
     /// <summary>
     /// 判断业务层记录的 AccessToken 是否过期。

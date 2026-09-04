@@ -394,7 +394,7 @@ public class MPSettingPop : AWindow
 
     /// <summary>
     /// 点击登出按钮。
-    /// clearCredentials 使用 true，确保下一次打开登录页不会立刻自动恢复到刚退出的账号。
+    /// 保留各账号的本地凭证；打开的登录选择页不会自行恢复，只有用户点击才继续登录。
     /// </summary>
     private void OnLogOutClick()
     {
@@ -434,7 +434,7 @@ public class MPSettingPop : AWindow
             bool saved = await MPCloudSaveManager.Instance.FlushAsync(cancellation.Token);
             if (!saved)
                 throw new InvalidOperationException("Cloud save failed. Your account is still signed in. Please retry or cancel.");
-            await MPLoginManager.Instance.LogoutAsync(clearCredentials: true, cancellationToken: cancellation.Token);
+            await MPLoginManager.Instance.LogoutAsync(clearCredentials: false, cancellationToken: cancellation.Token);
 
             if (IsDestoried || cancellation.IsCancellationRequested)
             {
@@ -644,7 +644,7 @@ public class MPSettingPop : AWindow
     {
         MPLoginProvider preferredProvider = profile == null ? MPLoginProvider.Unknown : profile.lastLoginProvider;
         MPLoginStartupResult startupResult = MPLoginStartupResult.ShowLoginSelection(profile, preferredProvider, message);
-        UIManager.Inst.ShowWindow<MPLoginView>(new MPLoginViewUIMsgData(startupResult, null), true, UILayer.Top);
+        UIManager.Inst.ShowWindow<MPLoadingView>(new MPLoadingViewUIMsgData(startupResult), true, UILayer.Top);
     }
 
     /// <summary>

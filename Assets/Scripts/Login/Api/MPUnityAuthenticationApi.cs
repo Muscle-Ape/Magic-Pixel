@@ -79,7 +79,7 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     }
 
     /// <summary>
-    /// 匿名登录。游客统一使用 guest profile，避免和后续正式账号本地凭证混在一起。
+    /// 兼容旧调用的固定游客槽；加载页使用 SignInGuestAsync 选择持久化的独立游客槽。
     /// </summary>
     public async Task<MPUserSession> SignInAnonymouslyAsync(CancellationToken cancellationToken = default)
     {
@@ -97,6 +97,78 @@ public class MPUnityAuthenticationApi : IMPAuthApi
             await service.SignInAnonymouslyAsync();
         }
 
+        return await GetCurrentSessionAsync(MPLoginType.Guest, cancellationToken);
+    }
+
+    public Task<MPUserSession> SignInGuestAsync(MPGuestLoginRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request == null || string.IsNullOrEmpty(request.unityProfile))
+            throw new System.ArgumentException("A guest profile is required.");
+        return SignInOnProfileAsync(request.unityProfile, MPLoginType.Guest, async () =>
+        {
+            IAuthenticationService service = AuthenticationService.Instance;
+            if (request.requireExistingAccount && !service.SessionTokenExists)
+                throw AuthenticationException.Create(AuthenticationErrorCodes.ClientNoActiveSession, "Saved guest credentials are missing.");
+
+            await service.SignInAnonymouslyAsync();
+            if (!string.IsNullOrEmpty(request.expectedPlayerId) && service.PlayerId != request.expectedPlayerId)
+                throw AuthenticationException.Create(AuthenticationErrorCodes.InvalidSessionToken, "Guest identity does not match the saved player.");
+
+            if (request.requireExistingAccount)
+            {
+                PlayerInfo info = await service.GetPlayerInfoAsync();
+                if (!string.IsNullOrEmpty(info.Username) || info.Identities?.Count > 0)
+                    throw AuthenticationException.Create(AuthenticationErrorCodes.AccountAlreadyLinked, "This guest has already been linked. Sign in with its linked provider.");
+            }
+        }, cancellationToken);
+    }
+
+    /// <summary>切换凭证槽但不清除旧 Token；取消/失败后切回原槽，最近成功账号资料由上层保存。</summary>
+    private async Task<MPUserSession> SignInOnProfileAsync(string profile, MPLoginType loginType,
+        System.Func<Task> signIn, CancellationToken cancellationToken, string expectedPlayerId = null)
+    {
+        await InitializeAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        IAuthenticationService service = AuthenticationService.Instance;
+        string previousProfile = service.Profile;
+        try
+        {
+            if (service.IsSignedIn) service.SignOut(false);
+            if (service.Profile != profile) service.SwitchProfile(profile);
+            m_requestedProfile = profile;
+            await signIn();
+            cancellationToken.ThrowIfCancellationRequested();
+            MPUserSession session = await GetCurrentSessionAsync(loginType, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.IsNullOrEmpty(expectedPlayerId) && session.userId != expectedPlayerId)
+                throw AuthenticationException.Create(AuthenticationErrorCodes.InvalidSessionToken, "Unsynced progress belongs to another account. Sign in to the original account first.");
+            if (loginType == MPLoginType.Guest && session.hasBoundIdentity)
+                throw AuthenticationException.Create(AuthenticationErrorCodes.AccountAlreadyLinked, "This player is no longer an independent guest.");
+            return session;
+        }
+        catch
+        {
+            // SDK 的登录请求不可中途取消：等其结束后保留返回的凭证，下次仍复用同一游客。
+            if (service.IsSignedIn) service.SignOut(false);
+            if (service.Profile != previousProfile) service.SwitchProfile(previousProfile);
+            m_requestedProfile = previousProfile;
+            throw;
+        }
+    }
+
+    /// <summary>匿名 API 也负责恢复第三方会话，但必须留在历史 Profile，不能切到 guest。</summary>
+    public async Task<MPUserSession> RestoreSessionAsync(CancellationToken cancellationToken = default)
+    {
+        await InitializeAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        IAuthenticationService service = AuthenticationService.Instance;
+        if (!service.IsAuthorized)
+        {
+            if (!service.SessionTokenExists)
+                throw new System.InvalidOperationException("No saved session is available to restore.");
+            await service.SignInAnonymouslyAsync();
+        }
+        cancellationToken.ThrowIfCancellationRequested();
         return await GetCurrentSessionAsync(MPLoginType.Guest, cancellationToken);
     }
 
@@ -123,30 +195,30 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// <summary>
     /// 第三方登录。不同平台需要的凭证类型不同：Google/Apple 用 IdentityToken，Google Play Games 用 AuthCode，Facebook 用 AccessToken。
     /// </summary>
-    public async Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default)
+    public Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default, string expectedPlayerId = null)
     {
-        await InitializeAsync(cancellationToken);
         SignInOptions options = new SignInOptions { CreateAccount = createAccount };
-
-        switch (loginType)
+        // 第三方登录不能覆盖游客槽的 SessionToken；绑定接口则继续使用当前槽。
+        return SignInOnProfileAsync("login_" + loginType.ToString().ToLowerInvariant(), loginType, async () =>
         {
-            case MPLoginType.Google:
-                await AuthenticationService.Instance.SignInWithGoogleAsync(authResult.identityToken, options);
-                break;
-            case MPLoginType.GooglePlayGames:
-                await AuthenticationService.Instance.SignInWithGooglePlayGamesAsync(authResult.authorizationCode, options);
-                break;
-            case MPLoginType.Apple:
-                await AuthenticationService.Instance.SignInWithAppleAsync(authResult.identityToken, options);
-                break;
-            case MPLoginType.Facebook:
-                await AuthenticationService.Instance.SignInWithFacebookAsync(authResult.accessToken, options);
-                break;
-            default:
-                throw new System.NotSupportedException($"Third party login is not supported: {loginType}");
-        }
-
-        return await GetCurrentSessionAsync(loginType, cancellationToken);
+            switch (loginType)
+            {
+                case MPLoginType.Google:
+                    await AuthenticationService.Instance.SignInWithGoogleAsync(authResult.identityToken, options);
+                    break;
+                case MPLoginType.GooglePlayGames:
+                    await AuthenticationService.Instance.SignInWithGooglePlayGamesAsync(authResult.authorizationCode, options);
+                    break;
+                case MPLoginType.Apple:
+                    await AuthenticationService.Instance.SignInWithAppleAsync(authResult.identityToken, options);
+                    break;
+                case MPLoginType.Facebook:
+                    await AuthenticationService.Instance.SignInWithFacebookAsync(authResult.accessToken, options);
+                    break;
+                default:
+                    throw new System.NotSupportedException($"Third party login is not supported: {loginType}");
+            }
+        }, cancellationToken, expectedPlayerId);
     }
 
     /// <summary>
@@ -230,7 +302,9 @@ public class MPUnityAuthenticationApi : IMPAuthApi
             accessTokenExpiresAtUtc = System.DateTime.MaxValue,
             loginType = loginType,
             profile = service.Profile,
-            isGuest = loginType == MPLoginType.Guest || loginType == MPLoginType.Anonymous
+            hasBoundIdentity = !string.IsNullOrEmpty(playerInfo?.Username) || playerInfo?.Identities?.Count > 0,
+            isGuest = (loginType == MPLoginType.Guest || loginType == MPLoginType.Anonymous) &&
+                      string.IsNullOrEmpty(playerInfo?.Username) && !(playerInfo?.Identities?.Count > 0)
         };
     }
 

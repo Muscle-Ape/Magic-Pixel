@@ -32,6 +32,12 @@ public interface IMPAuthApi
     /// </summary>
     Task<MPUserSession> SignInAnonymouslyAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>登录指定的独立游客 Profile；已有游客必须恢复原 PlayerId，不能静默重建。</summary>
+    Task<MPUserSession> SignInGuestAsync(MPGuestLoginRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>只恢复当前 Profile 的已有凭证，不切换为 guest，也不创建新账号。</summary>
+    Task<MPUserSession> RestoreSessionAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 使用用户名和密码登录。
     /// </summary>
@@ -45,7 +51,7 @@ public interface IMPAuthApi
     /// <summary>
     /// 使用第三方授权结果登录。
     /// </summary>
-    Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default);
+    Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default, string expectedPlayerId = null);
 
     /// <summary>
     /// 给当前账号添加用户名和密码登录方式。

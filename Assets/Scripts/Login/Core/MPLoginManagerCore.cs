@@ -127,6 +127,8 @@ public class MPLoginManagerCore : IMPLoginManager
             return result;
         }
 
+        // 底层可能已经退出当前认证并回滚到原凭证槽，不能让 Status 使用旧内存 Session 跳过恢复。
+        m_sessionService.Clear();
         ChangeState(MPLoginState.Failed);
         LastError = result.error;
         LoginFailed?.Invoke(result.error);
@@ -138,6 +140,10 @@ public class MPLoginManagerCore : IMPLoginManager
     /// </summary>
     public async Task<MPLoginResult> AutoLoginAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsBusy())
+            return MPLoginResult.Failed(MPLoginType.None, MPLoginError.Create(MPLoginErrorCodes.LoginInProgress, "登录流程正在进行中。"));
+
         if (CurrentSession != null && !CurrentSession.IsAccessTokenExpired)
         {
             ChangeState(MPLoginState.Authenticated);
@@ -145,12 +151,16 @@ public class MPLoginManagerCore : IMPLoginManager
             return MPLoginResult.Success(CurrentSession);
         }
 
+        ChangeState(MPLoginState.RestoringSession);
+        LastError = null;
         try
         {
             await m_authApi.InitializeAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             if (m_authApi.IsAuthorized)
             {
                 MPUserSession session = await m_authApi.GetCurrentSessionAsync(MPLoginType.Guest, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 m_sessionService.SetSession(session);
                 ChangeState(MPLoginState.Authenticated);
                 LoginSucceeded?.Invoke(session);
@@ -162,7 +172,13 @@ public class MPLoginManagerCore : IMPLoginManager
                 return PublishFailure(MPLoginType.None, MPLoginError.Create(MPLoginErrorCodes.NoLocalSession, "本地不存在可用的登录凭证。"));
             }
 
-            return await LoginAsync(MPLoginType.Guest, new MPGuestLoginRequest(), cancellationToken);
+            // 会话恢复不能走新游客策略；后者会切换 guest Profile，可能误创建另一个玩家。
+            MPUserSession restoredSession = await m_authApi.RestoreSessionAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            m_sessionService.SetSession(restoredSession);
+            ChangeState(MPLoginState.Authenticated);
+            LoginSucceeded?.Invoke(restoredSession);
+            return MPLoginResult.Success(restoredSession);
         }
         catch (Exception exception)
         {
@@ -197,12 +213,13 @@ public class MPLoginManagerCore : IMPLoginManager
 
             if (m_authApi.SessionTokenExists)
             {
-                MPLoginResult result = await LoginAsync(MPLoginType.Guest, new MPGuestLoginRequest(), cancellationToken);
-                if (result.isSuccess)
-                {
-                    TokenRefreshed?.Invoke();
-                    return true;
-                }
+                MPLoginType loginType = CurrentSession == null ? MPLoginType.None : CurrentSession.loginType;
+                MPUserSession restored = await m_authApi.RestoreSessionAsync(cancellationToken);
+                restored.loginType = loginType;
+                m_sessionService.SetSession(restored);
+                ChangeState(MPLoginState.Authenticated);
+                TokenRefreshed?.Invoke();
+                return true;
             }
         }
         catch (Exception exception)

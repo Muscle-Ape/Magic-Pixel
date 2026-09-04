@@ -10,8 +10,11 @@ public class MPLaunchYoo
 
     private string m_packageName = "Main";
 
+    public bool IsInitialized { get; private set; }
+
     public IEnumerator Initialize()
     {
+        IsInitialized = false;
         // 初始化资源系统
         YooAssets.Initialize();
 
@@ -29,35 +32,30 @@ public class MPLaunchYoo
         EPlayMode playMode = EPlayMode.OfflinePlayMode;
 #endif
 
-        InitializationOperation operation = null;
-        switch (playMode)
+        if (package.InitializeStatus != EOperationStatus.Succeed)
         {
-            case EPlayMode.EditorSimulateMode:
-                {
+            InitializationOperation operation = null;
+            switch (playMode)
+            {
+                case EPlayMode.EditorSimulateMode:
                     operation = EditorInitializeYooAsset(package);
                     break;
-                }
-            case EPlayMode.OfflinePlayMode:
-                {
+                case EPlayMode.OfflinePlayMode:
                     operation = SingleInitializeYooAsset(package);
                     break;
-                }
-            case EPlayMode.HostPlayMode:
-                {
-                    break;
-                }
-        }
+            }
 
-        yield return operation;
+            yield return operation;
 
-        if (operation.Status == EOperationStatus.Succeed)
-        {
-            Log("资源包初始化成功！");
-        }
-        else
-        {
-            Debug.LogError($"资源包初始化失败：{operation.Error}");
-            yield break;
+            if (operation != null && operation.Status == EOperationStatus.Succeed)
+            {
+                Log("资源包初始化成功！");
+            }
+            else
+            {
+                Debug.LogError($"资源包初始化失败：{operation?.Error}");
+                yield break;
+            }
         }
 
         var op = package.RequestPackageVersionAsync();
@@ -73,7 +71,15 @@ public class MPLaunchYoo
             yield break;
         }
 
-        yield return package.UpdatePackageManifestAsync(op.PackageVersion);
+        var manifest = package.UpdatePackageManifestAsync(op.PackageVersion);
+        yield return manifest;
+        if (manifest.Status != EOperationStatus.Succeed)
+        {
+            Debug.LogError($"资源清单初始化失败：{manifest.Error}");
+            yield break;
+        }
+
+        IsInitialized = true;
 
         yield return null;
     }

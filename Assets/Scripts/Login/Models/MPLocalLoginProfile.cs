@@ -55,6 +55,10 @@ public sealed class MPLocalLoginProfile
     /// <summary>最近一次更新本地资料的 UTC ticks。</summary>
     public long updatedAtUtcTicks;
 
+    /// <summary>游客绑定第三方后已不再是独立游客，不能作为另一个游客入口复用。</summary>
+    public bool IsIndependentGuest => lastLoginProvider == MPLoginProvider.Anonymous &&
+        accountType != MPAccountType.Bound && !HasBoundProviderHistory;
+
     /// <summary>是否存在任何历史账号线索。</summary>
     public bool HasAnyHistory
     {
@@ -111,12 +115,21 @@ public sealed class MPLocalLoginProfile
             return;
         }
 
+        if (!string.IsNullOrEmpty(playerId) && playerId != session.userId)
+        {
+            // 绑定信息属于 PlayerId，不能把 A 的 Apple/Google 绑定标记带给 B。
+            hasBoundIdentity = hasUsernamePasswordBinding = hasGoogleBinding = false;
+            hasGooglePlayGamesBinding = hasAppleBinding = hasFacebookBinding = false;
+            refreshToken = string.Empty;
+            anonymousId = anonymousIdempotencyKey = string.Empty;
+            lastLoginProvider = MPLoginProvider.Unknown;
+        }
         playerId = session.userId;
         unityProfile = session.profile;
         hasUnitySessionToken = !string.IsNullOrEmpty(session.sessionToken);
         lastLoginProvider = provider == MPLoginProvider.Unknown ? lastLoginProvider : provider;
 
-        if (markAsBound)
+        if (markAsBound || session.hasBoundIdentity)
         {
             hasBoundIdentity = true;
         }

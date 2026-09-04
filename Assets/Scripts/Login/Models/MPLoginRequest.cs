@@ -14,6 +14,12 @@ public abstract class MPLoginRequest
 /// </summary>
 public class MPGuestLoginRequest : MPLoginRequest
 {
+    /// <summary>独立游客的 Unity 凭证槽。</summary>
+    public string unityProfile;
+    /// <summary>已有游客必须恢复，凭证缺失时不能静默创建另一个玩家。</summary>
+    public bool requireExistingAccount;
+    public string expectedPlayerId;
+
     /// <summary>
     /// 客户端持久化的匿名身份 Id。
     /// 当前 Unity Authentication 不直接使用，预留给后续游戏服务器匿名恢复接口。
@@ -94,6 +100,8 @@ public class MPPasswordLoginRequest : MPLoginRequest
 /// </summary>
 public class MPThirdPartyLoginRequest : MPLoginRequest
 {
+    /// <summary>旧账号有未同步数据时，只允许重新授权为该 PlayerId。</summary>
+    public string expectedPlayerId;
     /// <summary>第三方平台类型。</summary>
     public MPLoginType provider;
     /// <summary>授权码，例如 Google Play Games 使用 Auth Code。</summary>

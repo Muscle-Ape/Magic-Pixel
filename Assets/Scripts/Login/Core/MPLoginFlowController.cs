@@ -9,7 +9,7 @@ using UnityEngine;
 /// </summary>
 public class MPLoginFlowController : IMPLoginFlowController
 {
-    /// <summary>游客登录使用的 Unity Authentication Profile 名称。</summary>
+    /// <summary>旧游客资料未记录 Profile 时使用的兼容名称。</summary>
     private const string GUEST_PROFILE = "guest";
 
     /// <summary>核心登录管理器。</summary>
@@ -68,13 +68,29 @@ public class MPLoginFlowController : IMPLoginFlowController
         MPLoginResult restoreResult = await m_loginManager.AutoLoginAsync(cancellationToken);
         if (restoreResult.isSuccess)
         {
-            await SaveSuccessfulSessionAsync(restoreResult, ToProvider(restoreResult.loginType), profile.hasBoundIdentity, cancellationToken);
+            if (!string.IsNullOrEmpty(profile.playerId) && profile.playerId != restoreResult.playerId)
+            {
+                await m_loginManager.LogoutAsync(false, cancellationToken);
+                return MPLoginStartupResult.Failed(MPLoginError.Create(MPLoginErrorCodes.SessionInvalid,
+                    "恢复的账号与上次账号不一致，请使用原登录方式重新登录。"), profile);
+            }
+            // Unity 用匿名 API 恢复所有类型的 SessionToken；API 名称不代表用户改用了游客登录。
+            // 仅同一 PlayerId 才沿用原登录方式，防止恢复后把 Apple/Google 等偏好覆盖成 Anonymous。
+            MPLoginProvider provider = profile.playerId == restoreResult.playerId && profile.lastLoginProvider != MPLoginProvider.Unknown
+                ? profile.lastLoginProvider : ToProvider(restoreResult.loginType);
+            RestoreProviderMetadata(restoreResult, provider);
+            await SaveSuccessfulSessionAsync(restoreResult, provider, profile.hasBoundIdentity, cancellationToken);
             ChangeState(MPLoginState.Authenticated);
             MPLocalLoginProfile updatedProfile = await m_localLoginRepository.LoadAsync(cancellationToken);
             return MPLoginStartupResult.EnterGame(restoreResult, updatedProfile);
         }
 
         return await HandleRestoreFailureAsync(profile, restoreResult.error, cancellationToken);
+    }
+
+    public Task<MPLoginStartupResult> ContinueAsGuestAsync(CancellationToken cancellationToken = default)
+    {
+        return LoginAnonymouslyForStartupAsync(false, cancellationToken);
     }
 
     public async Task<MPLoginStartupResult> ContinueAsNewGuestAsync(CancellationToken cancellationToken = default)
@@ -103,6 +119,7 @@ public class MPLoginFlowController : IMPLoginFlowController
         }
 
         ChangeState(MPLoginState.AuthenticatingThirdParty);
+        await PreserveGuestHistoryAsync(cancellationToken);
         MPThirdPartyLoginRequest safeRequest = request ?? new MPThirdPartyLoginRequest();
         safeRequest.loginType = loginType;
         safeRequest.provider = loginType;
@@ -161,7 +178,8 @@ public class MPLoginFlowController : IMPLoginFlowController
         MPInstallationState installationState = await m_installationService.GetInstallationStateAsync(cancellationToken);
         await m_installationService.MarkLoginFlowStartedAsync(cancellationToken);
 
-        bool hasOnlyAnonymousDraft = profile != null && !profile.HasAnyHistory;
+        MPLocalLoginProfile savedGuest = await m_localLoginRepository.LoadGuestProfileAsync(cancellationToken);
+        bool hasOnlyAnonymousDraft = (profile != null && !profile.HasAnyHistory) || savedGuest?.IsIndependentGuest == true;
         if ((installationState == MPInstallationState.FirstInstall || hasOnlyAnonymousDraft) &&
             m_configuration.AutoAnonymousOnFirstInstall &&
             m_configuration.EnableAnonymousLogin)
@@ -204,11 +222,16 @@ public class MPLoginFlowController : IMPLoginFlowController
         if (ShouldShowAnonymousRecovery(profile, error))
         {
             ChangeState(MPLoginState.WaitingForLoginSelection);
-            return MPLoginStartupResult.ShowAnonymousRecovery(error, profile, m_configuration.AllowCreateNewGuestAfterRecoveryFailure);
+            // 自动恢复失败不代表用户同意放弃旧账号，不能在启动失败页开放新建游客。
+            return MPLoginStartupResult.ShowAnonymousRecovery(error, profile, false);
         }
 
         ChangeState(MPLoginState.WaitingForLoginSelection);
-        return MPLoginStartupResult.ShowLoginSelection(profile, profile == null ? MPLoginProvider.Unknown : profile.lastLoginProvider, "登录状态已失效，请重新登录。");
+        MPLoginStartupResult selection = MPLoginStartupResult.ShowLoginSelection(
+            profile, profile == null ? MPLoginProvider.Unknown : profile.lastLoginProvider, "暂时无法恢复登录，请重试或使用原账号绑定的登录方式。");
+        selection.error = error;
+        selection.canCreateNewGuest = false;
+        return selection;
     }
 
     /// <summary>
@@ -216,37 +239,37 @@ public class MPLoginFlowController : IMPLoginFlowController
     /// </summary>
     private async Task<MPLoginStartupResult> LoginAnonymouslyForStartupAsync(bool forceNewGuest, CancellationToken cancellationToken)
     {
-        ChangeState(MPLoginState.LoggingInAnonymously);
+        MPLocalLoginProfile previous = await m_localLoginRepository.LoadAsync(cancellationToken);
+        if (!m_configuration.EnableAnonymousLogin)
+            return MPLoginStartupResult.Failed(MPLoginError.Create(MPLoginErrorCodes.UnsupportedLoginType, "当前配置不允许游客登录。"), previous);
 
-        if (forceNewGuest)
+        await PreserveGuestHistoryAsync(cancellationToken);
+        MPLocalLoginProfile guest = await m_localLoginRepository.LoadGuestProfileAsync(cancellationToken);
+        if (forceNewGuest || guest == null || !guest.IsIndependentGuest)
         {
-            await m_loginManager.LogoutAsync(clearCredentials: true, cancellationToken);
-            m_loginManager.SwitchProfile(GUEST_PROFILE);
-            m_loginManager.ClearSessionToken();
+            // 独立的新槽不会删除旧游客/第三方的 Token。请求失败或取消后重复使用此草稿槽。
+            guest = new MPLocalLoginProfile
+            {
+                unityProfile = "guest_" + Guid.NewGuid().ToString("N").Substring(0, 20),
+                installationId = await m_localLoginRepository.GetOrCreateInstallationIdAsync(cancellationToken),
+                anonymousId = "anon_" + Guid.NewGuid().ToString("N"),
+                anonymousIdempotencyKey = "idem_" + Guid.NewGuid().ToString("N"),
+                lastLoginProvider = MPLoginProvider.Anonymous,
+                accountType = MPAccountType.Anonymous
+            };
+            await m_localLoginRepository.SaveGuestProfileAsync(guest, cancellationToken);
         }
 
-        string installationId = await m_localLoginRepository.GetOrCreateInstallationIdAsync(cancellationToken);
-        string anonymousId = forceNewGuest
-            ? await m_localLoginRepository.ResetAnonymousIdAsync(cancellationToken)
-            : await m_localLoginRepository.GetOrCreateAnonymousIdAsync(cancellationToken);
-        string idempotencyKey = forceNewGuest
-            ? await m_localLoginRepository.ResetAnonymousIdempotencyKeyAsync(cancellationToken)
-            : await m_localLoginRepository.GetOrCreateAnonymousIdempotencyKeyAsync(cancellationToken);
-
-        MPLocalLoginProfile draftProfile = await m_localLoginRepository.LoadAsync(cancellationToken) ?? new MPLocalLoginProfile();
-        draftProfile.installationId = installationId;
-        draftProfile.anonymousId = anonymousId;
-        draftProfile.anonymousIdempotencyKey = idempotencyKey;
-        draftProfile.lastLoginProvider = MPLoginProvider.Anonymous;
-        draftProfile.accountType = MPAccountType.Anonymous;
-        await m_localLoginRepository.SaveAsync(draftProfile, cancellationToken);
-
+        ChangeState(MPLoginState.LoggingInAnonymously);
         MPLoginResult loginResult = await m_loginManager.LoginAsync(MPLoginType.Guest, new MPGuestLoginRequest
         {
-            anonymousId = anonymousId,
-            installationId = installationId,
-            idempotencyKey = idempotencyKey,
-            deviceId = installationId,
+            unityProfile = guest.unityProfile,
+            requireExistingAccount = !string.IsNullOrEmpty(guest.playerId) || guest.hasUnitySessionToken,
+            expectedPlayerId = guest.playerId,
+            anonymousId = guest.anonymousId,
+            installationId = guest.installationId,
+            idempotencyKey = guest.anonymousIdempotencyKey,
+            deviceId = guest.installationId,
             deviceModel = SystemInfo.deviceModel,
             operatingSystem = SystemInfo.operatingSystem
         }, cancellationToken);
@@ -262,11 +285,20 @@ public class MPLoginFlowController : IMPLoginFlowController
         if (IsTemporaryError(loginResult.error))
         {
             ChangeState(MPLoginState.TemporaryUnavailable);
-            return MPLoginStartupResult.ShowNetworkRetry(loginResult.error, draftProfile);
+            return MPLoginStartupResult.ShowNetworkRetry(loginResult.error, previous);
         }
 
         ChangeState(MPLoginState.Failed);
-        return MPLoginStartupResult.Failed(loginResult.error, draftProfile);
+        return MPLoginStartupResult.Failed(loginResult.error, previous);
+    }
+
+    private async Task PreserveGuestHistoryAsync(CancellationToken cancellationToken)
+    {
+        if (await m_localLoginRepository.LoadGuestProfileAsync(cancellationToken) != null) return;
+        MPLocalLoginProfile previous = await m_localLoginRepository.LoadAsync(cancellationToken);
+        if (previous?.IsIndependentGuest != true) return;
+        if (string.IsNullOrEmpty(previous.unityProfile)) previous.unityProfile = GUEST_PROFILE;
+        await m_localLoginRepository.SaveGuestProfileAsync(previous, cancellationToken);
     }
 
     /// <summary>
@@ -353,6 +385,15 @@ public class MPLoginFlowController : IMPLoginFlowController
         }
 
         MPLocalLoginProfile profile = await m_localLoginRepository.LoadAsync(cancellationToken) ?? new MPLocalLoginProfile();
+        if (provider == MPLoginProvider.Anonymous)
+        {
+            MPLocalLoginProfile guest = await m_localLoginRepository.LoadGuestProfileAsync(cancellationToken);
+            if (guest != null && guest.unityProfile == result.session.profile &&
+                (string.IsNullOrEmpty(guest.playerId) || guest.playerId == result.playerId))
+                profile = guest;
+        }
+        if (!string.IsNullOrEmpty(profile.playerId) && profile.playerId != result.playerId)
+            profile = new MPLocalLoginProfile { installationId = profile.installationId };
         if (string.IsNullOrEmpty(profile.installationId))
         {
             profile.installationId = await m_localLoginRepository.GetOrCreateInstallationIdAsync(cancellationToken);
@@ -365,6 +406,8 @@ public class MPLoginFlowController : IMPLoginFlowController
 
         profile.ApplySession(result.session, provider, markAsBound);
         await m_localLoginRepository.SaveAsync(profile, cancellationToken);
+        if (provider == MPLoginProvider.Anonymous && profile.IsIndependentGuest)
+            await m_localLoginRepository.SaveGuestProfileAsync(profile, cancellationToken);
     }
 
     /// <summary>
@@ -415,7 +458,8 @@ public class MPLoginFlowController : IMPLoginFlowController
             return false;
         }
 
-        return error.isTemporary ||
+        // 未知但允许重试的异常也不能被当作账号永久失效；保留原 Profile 和登录凭证。
+        return error.isTemporary || error.retryable ||
                error.code == MPLoginErrorCodes.NetworkUnavailable ||
                error.code == MPLoginErrorCodes.RequestTimeout ||
                (error.code == MPLoginErrorCodes.ServerError && error.retryable);
@@ -438,8 +482,29 @@ public class MPLoginFlowController : IMPLoginFlowController
     }
 
     /// <summary>
-    /// 将登录类型转换为本地偏好使用的 Provider。
+    /// 恢复 SDK 会话后，还原业务层记录的原登录方式。
     /// </summary>
+    private static void RestoreProviderMetadata(MPLoginResult result, MPLoginProvider provider)
+    {
+        MPLoginType loginType;
+        switch (provider)
+        {
+            case MPLoginProvider.Anonymous: loginType = MPLoginType.Guest; break;
+            case MPLoginProvider.UsernamePassword: loginType = MPLoginType.UsernamePassword; break;
+            case MPLoginProvider.Google: loginType = MPLoginType.Google; break;
+            case MPLoginProvider.GooglePlayGames: loginType = MPLoginType.GooglePlayGames; break;
+            case MPLoginProvider.Apple: loginType = MPLoginType.Apple; break;
+            case MPLoginProvider.Facebook: loginType = MPLoginType.Facebook; break;
+            default: return;
+        }
+        result.loginType = loginType;
+        if (result.session != null)
+        {
+            result.session.loginType = loginType;
+            result.session.isGuest = loginType == MPLoginType.Guest && !result.session.hasBoundIdentity;
+        }
+    }
+
     private static MPLoginProvider ToProvider(MPLoginType loginType)
     {
         switch (loginType)

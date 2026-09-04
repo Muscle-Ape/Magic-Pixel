@@ -65,7 +65,8 @@ public class MPThirdPartyLoginStrategy : IMPLoginStrategy
                     errorCode != MPLoginErrorCodes.UserCancelled));
             }
 
-            MPUserSession session = await m_authApi.SignInWithThirdPartyAsync(LoginType, authResult, thirdPartyRequest.createAccount, cancellationToken);
+            MPUserSession session = await m_authApi.SignInWithThirdPartyAsync(LoginType, authResult, thirdPartyRequest.createAccount,
+                cancellationToken, thirdPartyRequest.expectedPlayerId);
             return MPLoginResult.Success(session);
         }
         catch (System.Exception exception)

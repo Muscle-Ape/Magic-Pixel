@@ -12,6 +12,7 @@ public class MPEasySaveLocalLoginRepository : IMPLocalLoginRepository
 {
     /// <summary>本地登录资料 JSON 的 ES3 Key。</summary>
     private const string PROFILE_KEY = "MPLogin.LocalProfileJson";
+    private const string GUEST_PROFILE_KEY = "MPLogin.GuestProfileJson";
 
     /// <summary>安装实例 Id 的 ES3 Key。</summary>
     private const string INSTALLATION_ID_KEY = "MPLogin.InstallationId";
@@ -43,6 +44,7 @@ public class MPEasySaveLocalLoginRepository : IMPLocalLoginRepository
             return ClearActiveSessionAsync(keepRecoveryData: false, cancellationToken);
         }
 
+        MPLocalLoginProfile guest = LoadGuestProfileUnsafe();
         profile.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
         ES3.Save(PROFILE_KEY, JsonConvert.SerializeObject(profile));
 
@@ -52,7 +54,41 @@ public class MPEasySaveLocalLoginRepository : IMPLocalLoginRepository
         SaveIfNotEmpty(HISTORY_PLAYER_ID_KEY, profile.playerId);
         ES3.Save(LAST_PROVIDER_KEY, (int)profile.lastLoginProvider);
 
+        if ((guest == null && profile.IsIndependentGuest) ||
+            (guest != null && ((!string.IsNullOrEmpty(profile.playerId) && guest.playerId == profile.playerId) ||
+                               (!string.IsNullOrEmpty(profile.unityProfile) && guest.unityProfile == profile.unityProfile))))
+        {
+            // 游客后来绑定第三方时也更新此槽的绑定标记，但不删除旧 Profile 的凭证。
+            ES3.Save(GUEST_PROFILE_KEY, JsonConvert.SerializeObject(profile));
+        }
+
         return Task.CompletedTask;
+    }
+
+    public Task<MPLocalLoginProfile> LoadGuestProfileAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(LoadGuestProfileUnsafe());
+    }
+
+    public Task SaveGuestProfileAsync(MPLocalLoginProfile profile, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (profile == null || string.IsNullOrEmpty(profile.unityProfile))
+            throw new ArgumentException("Guest profile must have a Unity profile name.");
+        ES3.Save(GUEST_PROFILE_KEY, JsonConvert.SerializeObject(profile));
+        return Task.CompletedTask;
+    }
+
+    private MPLocalLoginProfile LoadGuestProfileUnsafe()
+    {
+        string json = ES3.Load<string>(GUEST_PROFILE_KEY, defaultValue: null);
+        if (string.IsNullOrEmpty(json)) return null;
+        // 损坏的游客记录不能当作“没有游客”而覆盖它，交给登录页显示可重试异常。
+        MPLocalLoginProfile guest = JsonConvert.DeserializeObject<MPLocalLoginProfile>(json);
+        if (guest == null || string.IsNullOrEmpty(guest.unityProfile))
+            throw new InvalidOperationException("Saved guest profile is invalid.");
+        return guest;
     }
 
     public Task ClearActiveSessionAsync(bool keepRecoveryData, CancellationToken cancellationToken = default)

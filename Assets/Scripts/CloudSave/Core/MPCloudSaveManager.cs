@@ -69,6 +69,8 @@ public partial class MPCloudSaveManager
     /// MPUser 本地数据是否已经初始化完成。
     /// </summary>
     private bool m_isUserDataReady;
+    private bool m_accountSwitchInProgress;
+    public string RequiredPlayerIdForAccountSwitch { get; private set; }
 
     private MPCloudSaveManager()
     {
@@ -109,11 +111,67 @@ public partial class MPCloudSaveManager
     public string CurrentPlayerId => m_playerId;
 
     /// <summary>
+    /// 账号切换前保护旧存档，并等正在进行的云请求结束。持有期间禁止其它同步跨账号执行。
+    /// 启动时旧账号尚未恢复且有 dirty 存档时拒绝切换，不能用新账号覆盖旧的未同步内容。
+    /// </summary>
+    public async Task<IDisposable> BeginAccountSwitchAsync(CancellationToken cancellationToken = default, string reauthenticatePlayerId = null)
+    {
+        if (m_isUserDataReady && m_initialized && MPLoginManager.Instance.IsLoggedIn &&
+            m_playerId == MPLoginManager.Instance.PlayerId && !await FlushAsync(cancellationToken))
+            return null;
+
+        await m_syncLock.WaitAsync(cancellationToken);
+        bool leased = false;
+        try
+        {
+            if (m_assetComparisonPending) return null;
+            string requiredPlayerId = null;
+            string owner = m_metaRepository.LoadActivePlayerId();
+            if (!string.IsNullOrEmpty(owner))
+            {
+                MPCloudSaveLocalMeta meta = await m_metaRepository.LoadAsync(owner, cancellationToken);
+                if (m_assetComparisonNeedsResolution || meta.hasDirtyData || meta.hasUserSnapshotDirtyData || meta.hasCustomLevelDirtyData)
+                {
+                    if (owner != reauthenticatePlayerId) return null;
+                    // 可以重新授权原账号，但不能因此把别的账号数据覆盖到尚未同步的本地存档。
+                    requiredPlayerId = owner;
+                }
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            CancelDebouncedFlush();
+            m_accountSwitchInProgress = true;
+            RequiredPlayerIdForAccountSwitch = requiredPlayerId;
+            leased = true;
+            return new AccountSwitchGuard(this);
+        }
+        finally
+        {
+            if (!leased) m_syncLock.Release();
+        }
+    }
+
+    private sealed class AccountSwitchGuard : IDisposable
+    {
+        private MPCloudSaveManager m_owner;
+        public AccountSwitchGuard(MPCloudSaveManager owner) { m_owner = owner; }
+        public void Dispose()
+        {
+            if (m_owner == null) return;
+            m_owner.m_accountSwitchInProgress = false;
+            m_owner.RequiredPlayerIdForAccountSwitch = null;
+            if (m_owner.m_playerId != MPLoginManager.Instance.PlayerId) m_owner.m_initialized = false;
+            m_owner.m_syncLock.Release();
+            m_owner = null;
+        }
+    }
+
+    /// <summary>
     /// 登录且 MPUser 本地数据加载完成后调用。
     /// 会分别处理用户主快照和自定义关卡独立快照。
     /// </summary>
     public async Task<bool> InitializeAfterUserLoadedAsync(CancellationToken cancellationToken = default)
     {
+        if (m_accountSwitchInProgress) return false;
         m_isUserDataReady = true;
         EnsureLifecycleHook();
 
@@ -265,6 +323,7 @@ public partial class MPCloudSaveManager
     /// </summary>
     public async Task<bool> FlushAsync(CancellationToken cancellationToken = default)
     {
+        if (m_accountSwitchInProgress) return false;
         // 人工存档选择未完成时，生命周期/延迟上传不能绕过确认覆盖任意一侧。
         if (m_assetComparisonPending)
             return false;
@@ -284,6 +343,7 @@ public partial class MPCloudSaveManager
             cancellationToken.ThrowIfCancellationRequested();
             if (m_assetComparisonPending)
                 return false;
+            if (MPLoginManager.Instance.PlayerId != playerId) return false;
             m_playerId = playerId;
             if (m_meta == null || m_meta.playerId != playerId)
             {
@@ -364,7 +424,8 @@ public partial class MPCloudSaveManager
     {
         if (m_assetComparisonCancellation != null && m_assetComparisonPlayerId != session?.userId)
             m_assetComparisonCancellation.Cancel();
-        if (m_isUserDataReady)
+        // 登录选择流程还在保存账号元数据，页面会在整个流程完成后显式启动同步。
+        if (m_isUserDataReady && !MPLoginManager.Instance.IsLoginFlowRunning)
         {
             _ = InitializeAfterUserLoadedAsync();
         }
