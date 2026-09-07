@@ -92,17 +92,24 @@ public partial class MPHomeView
             m_customBlocks.Add(block);
         }
 
-        RefreshCustomGridFrameSprites(size);
+        RefreshCustomGridSprites(size);
     }
 
     /// <summary>
-    /// 对象池复用后 Item 顺序可能变化，因此尺寸切换完成后按当前可见顺序重新设置所有外框。
-    /// MPCustomBlock 内部会跳过相同 Sprite，只替换实际发生位置变化的外框。
+    /// 根据当前尺寸统一刷新外框及显示颜色的底图。
+    /// MPCustomBlock 内部会跳过相同 Sprite，避免对象池复用时反复赋值。
     /// </summary>
-    private void RefreshCustomGridFrameSprites(int size)
+    private void RefreshCustomGridSprites(int size)
     {
         if (m_customBlocks == null)
             return;
+
+        Sprite frameSprite = size == 10
+            ? m_customBlockFrameTenSprite
+            : m_customBlockFrameFiveSprite;
+        Sprite fillSprite = size == 10
+            ? m_customBlockFillTenSprite
+            : m_customBlockFillFiveSprite;
 
         for (int i = 0; i < m_customBlocks.Count; i++)
         {
@@ -110,30 +117,9 @@ public partial class MPHomeView
             if (block == null)
                 continue;
 
-            block.SetFrameSprite(GetCustomGridCornerSprite(i / size, i % size, size));
+            block.SetFrameSprite(frameSprite);
+            block.SetFillSprite(fillSprite);
         }
-    }
-
-    /// <summary>
-    /// 获取自定义网格四角外框，其余格子恢复预制体默认外框。
-    /// </summary>
-    private Sprite GetCustomGridCornerSprite(int row, int column, int size)
-    {
-        bool isTop = row == 0;
-        bool isBottom = row == size - 1;
-        bool isLeft = column == 0;
-        bool isRight = column == size - 1;
-
-        if (isTop && isLeft)
-            return m_customBlockLeftTopSprite;
-        if (isTop && isRight)
-            return m_customBlockRightTopSprite;
-        if (isBottom && isLeft)
-            return m_customBlockLeftDownSprite;
-        if (isBottom && isRight)
-            return m_customBlockRightDownSprite;
-
-        return null;
     }
 
     private void ClearCustomGrid()

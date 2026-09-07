@@ -128,10 +128,10 @@ public partial class MPHomeView
     private string m_customEditingLevelId;
     private Texture2D m_customSaveAnimationTexture;
     private Sprite m_customSaveAnimationSprite;
-    private Sprite m_customBlockLeftTopSprite;
-    private Sprite m_customBlockRightTopSprite;
-    private Sprite m_customBlockLeftDownSprite;
-    private Sprite m_customBlockRightDownSprite;
+    private Sprite m_customBlockFrameFiveSprite;
+    private Sprite m_customBlockFrameTenSprite;
+    private Sprite m_customBlockFillFiveSprite;
+    private Sprite m_customBlockFillTenSprite;
     private Color m_customCurrentColor = Color.white;
     private Vector2 m_customAnimationNodeStartPosition;
     private Vector3 m_customWarehouseStartScale = Vector3.one;
@@ -171,10 +171,11 @@ public partial class MPHomeView
             return;
         }
 
-        m_customBlockLeftTopSprite = LoadOptionalCustomBlockFrameSprite("game_block_lt");
-        m_customBlockRightTopSprite = LoadOptionalCustomBlockFrameSprite("game_block_rt");
-        m_customBlockLeftDownSprite = LoadOptionalCustomBlockFrameSprite("game_block_ld");
-        m_customBlockRightDownSprite = LoadOptionalCustomBlockFrameSprite("game_block_rd");
+        // 自定义编辑器只有 5×5 和 10×10，两套图片在页面初始化时各加载一次。
+        m_customBlockFrameFiveSprite = LoadOptionalCustomBlockSprite("game_block_5");
+        m_customBlockFrameTenSprite = LoadOptionalCustomBlockSprite("game_block_10");
+        m_customBlockFillFiveSprite = LoadOptionalCustomBlockSprite("game_block_fill_5");
+        m_customBlockFillTenSprite = LoadOptionalCustomBlockSprite("game_block_fill_10");
 
         m_customInitialized = true;
         m_customBlocks = new List<MPCustomBlock>();
@@ -234,19 +235,19 @@ public partial class MPHomeView
         m_customBlockPool = null;
         m_customBlocks = null;
         m_customBlockPrefab = null;
-        m_customBlockLeftTopSprite = null;
-        m_customBlockRightTopSprite = null;
-        m_customBlockLeftDownSprite = null;
-        m_customBlockRightDownSprite = null;
+        m_customBlockFrameFiveSprite = null;
+        m_customBlockFrameTenSprite = null;
+        m_customBlockFillFiveSprite = null;
+        m_customBlockFillTenSprite = null;
         m_customDragBlocks.Clear();
         m_customRayResults.Clear();
     }
 
-    private Sprite LoadOptionalCustomBlockFrameSprite(string location)
+    private Sprite LoadOptionalCustomBlockSprite(string location)
     {
         if (!YooAssets.CheckLocationValid(location))
         {
-            Debug.LogWarning($"自定义编辑器外框资源不存在或尚未加入 YooAsset 清单：{location}");
+            Debug.LogWarning($"自定义编辑器格子图片不存在或尚未加入 YooAsset 清单：{location}");
             return null;
         }
 

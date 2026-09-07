@@ -17,9 +17,18 @@ public class MPCustomBlock : MonoBehaviour
     private Image m_frame;
 
     /// <summary>
-    /// 预制体默认外框；对象池复用到普通位置时用于恢复。
+    /// 预制体默认外框；尺寸图片缺失时用于恢复。
     /// </summary>
     private Sprite m_defaultFrameSprite;
+
+    /// <summary>
+    /// 填充状态及其颜色层使用的图片。
+    /// </summary>
+    private Image m_fillImage;
+    private Image m_fillColorImage;
+    private Sprite m_defaultColorSprite;
+    private Sprite m_defaultFillSprite;
+    private Sprite m_defaultFillColorSprite;
 
     /// <summary>
     /// 用于填色的图片
@@ -54,11 +63,18 @@ public class MPCustomBlock : MonoBehaviour
         m_colorImg = transform.Find("Color").GetComponent<Image>();
         m_frame = transform.Find("Frame")?.GetComponent<Image>();
         m_defaultFrameSprite = m_frame == null ? null : m_frame.sprite;
-        m_fill = transform.Find("Fill").gameObject;
+        m_defaultColorSprite = m_colorImg == null ? null : m_colorImg.sprite;
+
+        Transform fill = transform.Find("Fill");
+        m_fill = fill == null ? null : fill.gameObject;
+        m_fillImage = fill == null ? null : fill.GetComponent<Image>();
+        m_fillColorImage = transform.Find("Fill/Color")?.GetComponent<Image>();
+        m_defaultFillSprite = m_fillImage == null ? null : m_fillImage.sprite;
+        m_defaultFillColorSprite = m_fillColorImage == null ? null : m_fillColorImage.sprite;
     }
 
     /// <summary>
-    /// 设置四角外框；传空时恢复预制体默认外框，兼容对象池位置变化。
+    /// 设置当前尺寸的统一外框；传空时恢复预制体默认图片。
     /// </summary>
     public void SetFrameSprite(Sprite sprite)
     {
@@ -70,6 +86,23 @@ public class MPCustomBlock : MonoBehaviour
             return;
 
         m_frame.sprite = targetSprite;
+    }
+
+    /// <summary>
+    /// Color、Fill、Fill/Color 使用同一张当前尺寸的填充图片。
+    /// 传空时分别恢复预制体中对应节点的默认图片。
+    /// </summary>
+    public void SetFillSprite(Sprite sprite)
+    {
+        SetImageSprite(m_colorImg, sprite != null ? sprite : m_defaultColorSprite);
+        SetImageSprite(m_fillImage, sprite != null ? sprite : m_defaultFillSprite);
+        SetImageSprite(m_fillColorImage, sprite != null ? sprite : m_defaultFillColorSprite);
+    }
+
+    private static void SetImageSprite(Image image, Sprite sprite)
+    {
+        if (image != null && image.sprite != sprite)
+            image.sprite = sprite;
     }
 
     public bool ColorIsSame(Color color)
