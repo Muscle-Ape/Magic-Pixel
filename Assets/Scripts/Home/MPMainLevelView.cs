@@ -2,7 +2,6 @@ using HQ.UIManager;
 using SuperScrollView;
 using DG.Tweening;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -33,26 +32,8 @@ public class MPMainLevelView : AWindow
     /// </summary>
     private static bool s_hasLocatedLatestLevelOnLaunch;
 
-    [TransformPath("View/Head/BackBtn")]
-    private Button m_backBtn;
-
-    [TransformPath("View/Head/SettingBtn")]
-    private Button m_settingBtn;
-
-    [TransformPath("View/Head/Coin/Count")]
-    private TMP_Text m_coinText;
-
-    [TransformPath("View/Head/Diamond/Count")]
-    private TMP_Text m_diamondText;
-
-    [TransformPath("View/Head/PlayerName")]
-    private TMP_Text m_playerNameText;
-
-    [TransformPath("View/Head/Level/Text")]
-    private TMP_Text m_playerLevelText;
-
-    [TransformPath("View/Head/Level/Mask/Fill")]
-    private Image m_playerLevelFill;
+    [TransformPath("View/Head")]
+    private MPHead m_head;
 
     /// <summary>
     /// 主关卡循环列表。
@@ -140,8 +121,7 @@ public class MPMainLevelView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
-        RegisterHeadButtons();
-        RefreshHead();
+        m_head.Init(OnBackClick, OnSettingClick, MPUserPop.Show);
 
         m_loopList.gameObject.SetActive(true);
         m_trackBtn.gameObject.SetActive(true);
@@ -973,61 +953,9 @@ public class MPMainLevelView : AWindow
 
     private void RefreshLevels()
     {
-        RefreshHead();
+        m_head?.Refresh();
         m_loopList.RefreshAllShownItem();
         RefreshLevelLine();
-    }
-
-    /// <summary>
-    /// 注册顶部栏按钮，重复打开页面时不会叠加监听。
-    /// </summary>
-    private void RegisterHeadButtons()
-    {
-        UnregisterHeadButtons();
-        if (m_backBtn != null)
-            m_backBtn.onClick.AddListener(OnBackClick);
-        if (m_settingBtn != null)
-            m_settingBtn.onClick.AddListener(OnSettingClick);
-    }
-
-    private void UnregisterHeadButtons()
-    {
-        if (m_backBtn != null)
-            m_backBtn.onClick.RemoveListener(OnBackClick);
-        if (m_settingBtn != null)
-            m_settingBtn.onClick.RemoveListener(OnSettingClick);
-    }
-
-    /// <summary>
-    /// 刷新玩家信息、主线进度和资源数量。
-    /// </summary>
-    private void RefreshHead()
-    {
-        if (m_coinText != null)
-            m_coinText.text = MPUser.instance.GetCoins().ToString();
-        if (m_diamondText != null)
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
-
-        if (m_playerNameText != null)
-        {
-            string playerName = MPLoginManager.Instance.PlayerName;
-            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
-                ? "Player"
-                : playerName;
-        }
-
-        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
-        int latestLevelIndex = levelCount > 0
-            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
-            : 0;
-        if (m_playerLevelText != null)
-            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
-        if (m_playerLevelFill != null)
-        {
-            m_playerLevelFill.fillAmount = levelCount <= 1
-                ? 0f
-                : latestLevelIndex / (float)(levelCount - 1);
-        }
     }
 
     private void OnBackClick()
@@ -1048,7 +976,7 @@ public class MPMainLevelView : AWindow
         ClearLevelLine();
         StopFlashEffects();
         m_cloudInitialized = false;
-        UnregisterHeadButtons();
+        m_head?.Release();
         m_trackBtn.onClick.RemoveListener(OnTrackButtonClick);
 
         if (m_loopList != null)

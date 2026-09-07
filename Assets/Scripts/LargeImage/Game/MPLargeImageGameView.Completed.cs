@@ -30,6 +30,9 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void UpdateData()
     {
+        if (m_hasCompleted || m_isRestoringProgress)
+            return;
+
         m_hasCompleted = true;
         RefreshNumberFrameMoveHints();
         ClearProgressCache();
@@ -37,6 +40,7 @@ public partial class MPLargeImageGameView
 
         // 1、记录当前已通关关卡
         MPUser.instance.LargeImageLevelPass(m_blockInfo.ID, m_lovesCount);
+        MPUser.instance.AddPlayerExperience(MPUser.LARGE_IMAGE_COMPLETION_EXPERIENCE);
         MPUser.instance.TryClaimLargeImageLevelCoinAward(m_blockInfo, out m_completedRewardReceipt);
 
         // 2、更新解锁到的关卡位置，解锁新关卡
@@ -173,15 +177,7 @@ public partial class MPLargeImageGameView
         SetNumberFrameInteractable(m_numberHorizontal, false);
         SetNumberFrameInteractable(m_numberVertical, false);
 
-        if (m_backBtn != null)
-        {
-            m_backBtn.interactable = false;
-        }
-
-        if (m_settingBtn != null)
-        {
-            m_settingBtn.interactable = false;
-        }
+        m_head?.SetInteractable(false);
 
         if (m_modeSwitchFrame != null)
         {

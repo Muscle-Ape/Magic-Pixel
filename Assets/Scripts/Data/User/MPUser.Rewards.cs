@@ -43,6 +43,8 @@ public sealed class MPRewardProgressSnapshot
     public int signInLegacyMappedDays;
     public List<string> unlockedPetIds = new List<string>();
     public List<string> notifiedPetIds = new List<string>();
+    // 仅保存主动领取成功的宠物；旧 unlockedPetIds 曾由条件提示自动写入，不能作为领取凭据。
+    public List<string> claimedPetIds = new List<string>();
 }
 
 public partial class MPUser
@@ -86,7 +88,9 @@ public partial class MPUser
         // 老云存档没有此字段，不可清掉此账号刚刚离线提交的幂等凭据。
         if (state == null) return;
         NormalizeRewardProgress(state);
-        ES3.Save(REWARD_PROGRESS_KEY_PREFIX + GetRewardProgressOwner(), JsonConvert.SerializeObject(state));
+        string owner = GetRewardProgressOwner();
+        ES3.Save(REWARD_PROGRESS_KEY_PREFIX + owner, JsonConvert.SerializeObject(state));
+        SetClaimedPetsInMemory(state, owner);
     }
 
     private static void NormalizeRewardProgress(MPRewardProgressSnapshot state)
@@ -94,6 +98,9 @@ public partial class MPUser
         state.transactionIds = state.transactionIds ?? new List<string>();
         state.unlockedPetIds = state.unlockedPetIds ?? new List<string>();
         state.notifiedPetIds = state.notifiedPetIds ?? new List<string>();
+        state.claimedPetIds = state.claimedPetIds ?? new List<string>();
+        var petIds = new HashSet<string>(StringComparer.Ordinal);
+        state.claimedPetIds.RemoveAll(id => string.IsNullOrWhiteSpace(id) || !petIds.Add(id));
         state.signInClaimedDays = Math.Max(0, state.signInClaimedDays);
         if (state.signInClaimedEntryIds == null)
         {

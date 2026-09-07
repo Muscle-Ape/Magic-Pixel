@@ -12491,7 +12491,7 @@ MonoBehaviour:
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 0
-  m_FillAmount: 0.576
+  m_FillAmount: 1
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
@@ -14940,6 +14940,7 @@ MonoBehaviour:
   m_playerName: {fileID: 2238956786993577939}
   m_avatar: {fileID: 7059004436129112129}
   m_level: {fileID: 7806966855297666207}
+  m_levelFill: {fileID: 1447954044450513189}
 --- !u!1 &9006184690453128152
 GameObject:
   m_ObjectHideFlags: 0

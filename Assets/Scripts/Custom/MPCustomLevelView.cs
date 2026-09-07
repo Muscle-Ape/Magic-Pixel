@@ -1,47 +1,37 @@
 ﻿using HQ.UIManager;
 using SuperScrollView;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 [Component("MPCustomLevelView")]
 public class MPCustomLevelView : AWindow
 {
+    private const string LEVEL_ITEM_PREFAB = "MPCustomLevelItem";
+    private const string SPACER_ITEM_PREFAB = "MPMainLevelSpacerItem";
+    private const float TOP_SPACE_HEIGHT = 590f;
+
     protected override bool ShouldAdaptToNotchScreen()
     {
         return false;
     }
 
-    /// <summary>
-    /// 返回按钮。
-    /// </summary>
-    [TransformPath("View/Head/BackBtn")]
-    private Button m_backBtn;
+    [TransformPath("View/Head")]
+    private MPHead m_head;
 
     /// <summary>
-    /// 设置按钮。
-    /// </summary>
-    [TransformPath("View/Head/SettingBtn")]
-    private Button m_settingBtn;
-
-    /// <summary>
-    /// 自定义关卡滚动列表。
+    /// 有关卡时显示的列表页面，包含标题和滚动列表。
     /// </summary>
     [TransformPath("View/Center/Levels")]
-    private LoopGridView m_loopGrid;
+    private RectTransform m_levelsRoot;
+
+    [TransformPath("View/Center/Levels/Levels")]
+    private LoopListView2 m_loopList;
 
     /// <summary>
     /// 空仓库提示节点。
     /// </summary>
     [TransformPath("View/Center/EmptyTip")]
     private RectTransform m_emptyTip;
-
-    /// <summary>
-    /// 空关卡 创建按钮
-    /// </summary>
-    [TransformPath("View/Center/EmptyTip/CreateBtn")]
-    private Button m_createBtn;
 
     /// <summary>
     /// 自定义关卡数据列表。
@@ -67,39 +57,10 @@ public class MPCustomLevelView : AWindow
     private System.Action<MPCustomLevelInfo> m_editAction;
 
     /// <summary>
-    /// 金币数量
-    /// </summary>
-    [TransformPath("View/Head/Coin/Count")]
-    private TMP_Text m_coinText;
-
-    /// <summary>
-    /// 钻石数量
-    /// </summary>
-    [TransformPath("View/Head/Diamond/Count")]
-    private TMP_Text m_diamondText;
-
-    /// <summary>
-    /// 玩家名称。
-    /// </summary>
-    [TransformPath("View/Head/PlayerName")]
-    private TMP_Text m_playerNameText;
-
-    /// <summary>
-    /// 当前最新解锁的主线关卡。
-    /// </summary>
-    [TransformPath("View/Head/Level/Text")]
-    private TMP_Text m_playerLevelText;
-
-    /// <summary>
-    /// 主线关卡解锁进度。
-    /// </summary>
-    [TransformPath("View/Head/Level/Mask/Fill")]
-    private Image m_playerLevelFill;
-
-    /// <summary>
     /// 首次 LoadUIMsgData 完成后才允许焦点回调刷新页面。
     /// </summary>
     private bool m_initialized;
+    private bool m_listInitialized;
 
     /// <summary>
     /// 加载自定义关卡列表页面数据。
@@ -110,11 +71,10 @@ public class MPCustomLevelView : AWindow
         m_editAction = data?.edit;
         m_levelInfos = MPUser.instance.GetCustomLevels();
         CaptureStatisticsSnapshot();
-        m_loopGrid.InitGridView(m_levelInfos.Count, GetCustomLevelByRowColumn);
         RefreshEmptyTip();
+        InitializeList();
 
-        RegisterButtons();
-        RefreshHead();
+        m_head.Init(OnBackClick, OnSettingClick, MPUserPop.Show);
         m_initialized = true;
 
         // 只更新持久化缓存，不通知当前页面；下一次打开页面时才展示新数据。
@@ -127,96 +87,87 @@ public class MPCustomLevelView : AWindow
         if (!focus || !m_initialized)
             return;
 
-        RefreshHead();
+        m_head?.Refresh();
     }
 
     /// <summary>
-    /// 刷新顶部栏玩家信息、主线进度和资源数量。
+    /// 使用预制体中的对象池和尺寸初始化列表，只创建可见项及缓冲项。
     /// </summary>
-    private void RefreshHead()
+    private void InitializeList()
     {
-        if (m_coinText != null)
-            m_coinText.text = MPUser.instance.GetCoins().ToString();
-        if (m_diamondText != null)
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
-
-        if (m_playerNameText != null)
-        {
-            string playerName = MPLoginManager.Instance.PlayerName;
-            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
-                ? "Player"
-                : playerName;
-        }
-
-        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
-        int latestLevelIndex = levelCount > 0
-            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
-            : 0;
-        if (m_playerLevelText != null)
-            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
-        if (m_playerLevelFill != null)
-        {
-            m_playerLevelFill.fillAmount = levelCount <= 1
-                ? 0f
-                : latestLevelIndex / (float)(levelCount - 1);
-        }
-    }
-
-    private void RegisterButtons()
-    {
-        UnregisterButtons();
-        RegisterButton(m_backBtn, OnBackClick);
-        RegisterButton(m_settingBtn, OnSettingClick);
-        RegisterButton(m_createBtn, OnBackClick);
-    }
-
-    private void UnregisterButtons()
-    {
-        UnregisterButton(m_backBtn, OnBackClick);
-        UnregisterButton(m_settingBtn, OnSettingClick);
-        UnregisterButton(m_createBtn, OnBackClick);
-    }
-
-    private static void RegisterButton(Button button, UnityEngine.Events.UnityAction callback)
-    {
-        if (button == null)
+        if (m_loopList == null)
             return;
 
-        button.onClick.RemoveListener(callback);
-        button.onClick.AddListener(callback);
+        int count = GetListItemCount();
+        if (m_listInitialized)
+        {
+            m_loopList.SetListItemCount(count, false);
+            m_loopList.RefreshAllShownItem();
+            return;
+        }
+
+        ItemPrefabConfData config = m_loopList.GetItemPrefabConfData(LEVEL_ITEM_PREFAB);
+        if (config?.mItemPrefab == null ||
+            m_loopList.GetItemPrefabConfData(SPACER_ITEM_PREFAB)?.mItemPrefab == null)
+        {
+            Debug.LogError("[MPCustomLevelView] Levels/Levels 缺少关卡或顶部空白占位 Item 的对象池配置。");
+            return;
+        }
+
+        float height = config.mItemPrefab.GetComponent<RectTransform>().rect.height;
+        float padding = config.mPadding;
+        LoopListViewInitParam initParam = LoopListViewInitParam.CopyDefaultInitParam();
+        initParam.mItemDefaultWithPaddingSize = height + padding;
+        m_loopList.InitListView(count, GetCustomLevelByIndex, initParam,
+            index => index == 0 ? (TOP_SPACE_HEIGHT, 0f) : (height, padding));
+        m_listInitialized = true;
     }
 
-    private static void UnregisterButton(Button button, UnityEngine.Events.UnityAction callback)
+    /// <summary>有关卡时额外添加一个顶部占位项，空仓库不生成占位。</summary>
+    private int GetListItemCount()
     {
-        if (button != null)
-            button.onClick.RemoveListener(callback);
+        int count = m_levelInfos?.Count ?? 0;
+        return count > 0 ? count + 1 : 0;
     }
 
     /// <summary>
     /// 根据索引获取自定义关卡列表项。
     /// </summary>
-    private LoopGridViewItem GetCustomLevelByRowColumn(LoopGridView view, int index, int row, int column)
+    private LoopListViewItem2 GetCustomLevelByIndex(LoopListView2 view, int index)
     {
-        if (index < 0 || index >= m_levelInfos.Count)
+        if (index < 0 || index >= GetListItemCount())
             return null;
 
-        LoopGridViewItem item = m_loopGrid.NewListViewItem("MPCustomLevelItem");
+        if (index == 0)
+        {
+            LoopListViewItem2 spacer = view.NewListViewItem(SPACER_ITEM_PREFAB);
+            if (spacer != null)
+                spacer.CachedRectTransform.SetSizeWithCurrentAnchors(
+                    RectTransform.Axis.Vertical, TOP_SPACE_HEIGHT);
+            return spacer;
+        }
+
+        // 列表第 0 项为空白，关卡数据索引从列表第 1 项开始。
+        int levelIndex = index - 1;
+        MPCustomLevelInfo levelInfo = m_levelInfos[levelIndex];
+        if (levelInfo == null || string.IsNullOrEmpty(levelInfo.ID))
+            return null;
+
+        LoopListViewItem2 item = view.NewListViewItem(LEVEL_ITEM_PREFAB);
+        if (item == null)
+            return null;
+
         MPCustomLevelItem level = item.GetComponent<MPCustomLevelItem>();
         if (level == null)
         {
             level = item.gameObject.AddComponent<MPCustomLevelItem>();
         }
 
-        if (!item.IsInitHandlerCalled)
-        {
-            item.IsInitHandlerCalled = true;
-            System.Action<MPCustomLevelInfo> edit = m_editAction == null
-                ? null
-                : OnEditLevel;
-            level.Initialize(RefreshLevels, edit);
-        }
+        // 初始化为幂等操作；复用时更新回调，不重复注册按钮事件。
+        System.Action<MPCustomLevelInfo> edit = m_editAction == null ? null : OnEditLevel;
+        level.Initialize(RefreshLevels, edit);
+        item.IsInitHandlerCalled = true;
 
-        MPCustomLevelInfo levelInfo = m_levelInfos[index];
         int cachedLikeCount = m_likeCountSnapshot.TryGetValue(
             levelInfo.ID,
             out int snapshotLikeCount)
@@ -227,7 +178,7 @@ public class MPCustomLevelView : AWindow
             out int snapshotPlayCount)
             ? snapshotPlayCount
             : 0;
-        level.Refresh(levelInfo, index, cachedLikeCount, cachedPlayCount);
+        level.Refresh(levelInfo, levelIndex, cachedLikeCount, cachedPlayCount);
         return item;
     }
 
@@ -259,10 +210,12 @@ public class MPCustomLevelView : AWindow
     /// </summary>
     private void RefreshLevels()
     {
+        if (!m_initialized || IsDestoried)
+            return;
+
         m_levelInfos = MPUser.instance.GetCustomLevels();
-        m_loopGrid.SetListItemCount(m_levelInfos.Count);
-        m_loopGrid.RefreshAllShownItem();
         RefreshEmptyTip();
+        InitializeList();
     }
 
     /// <summary>
@@ -282,10 +235,11 @@ public class MPCustomLevelView : AWindow
     /// </summary>
     private void RefreshEmptyTip()
     {
+        bool hasLevels = m_levelInfos != null && m_levelInfos.Count > 0;
+        if (m_levelsRoot != null)
+            m_levelsRoot.gameObject.SetActive(hasLevels);
         if (m_emptyTip != null)
-        {
-            m_emptyTip.gameObject.SetActive(m_levelInfos == null || m_levelInfos.Count == 0);
-        }
+            m_emptyTip.gameObject.SetActive(!hasLevels);
     }
 
     /// <summary>
@@ -308,8 +262,11 @@ public class MPCustomLevelView : AWindow
     {
         MPNoNetworkPop.DismissLevelEntry(this);
         m_initialized = false;
-        UnregisterButtons();
+        m_head?.Release();
+        if (m_listInitialized && m_loopList != null)
+            m_loopList.SetListItemCount(0);
         m_editAction = null;
+        m_levelInfos = null;
         m_likeCountSnapshot.Clear();
         m_playCountSnapshot.Clear();
         base.OnRelease();

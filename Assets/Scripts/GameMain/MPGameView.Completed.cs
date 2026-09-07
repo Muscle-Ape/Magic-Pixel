@@ -30,6 +30,9 @@ public partial class MPGameView
     /// </summary>
     private void UpdateData()
     {
+        if (m_hasCompleted || m_isRestoringProgress)
+            return;
+
         m_hasCompleted = true;
         ClearProgressCache();
         RefreshPropButtons();
@@ -43,6 +46,7 @@ public partial class MPGameView
 
         // 1、记录当前已通关关卡。宝箱奖励返回主关卡页面后由用户主动领取。
         MPUser.instance.MainLevelPass(m_blockInfo.ID, m_lovesCount);
+        MPUser.instance.AddPlayerExperience(MPUser.MAIN_LEVEL_COMPLETION_EXPERIENCE);
 
         // 2、更新解锁到的关卡位置，解锁新关卡
         if (m_index == MPUser.instance.GetMainLevlPassIndex())

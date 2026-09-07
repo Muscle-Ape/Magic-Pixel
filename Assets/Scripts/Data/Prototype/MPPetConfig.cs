@@ -35,7 +35,7 @@ public class MPPetConfig
     private int skillUseCount;
 
     /// <summary>
-    /// 解锁规则，格式示例：default、mainlevel 25。
+    /// 获取方式与领取条件，default 表示初始可用；其他条件（如 mainlevel 25）达成后不自动拥有。
     /// </summary>
     [JsonProperty]
     private string unlock;
@@ -61,6 +61,7 @@ public class MPPetConfig
         : Option == MPPetSkillOption.Hint ? "Helps you complete an unfinished block."
         : Option == MPPetSkillOption.RecoverLife ? "Restores a lost life during a puzzle."
         : "A new companion for your puzzles.";
+    /// <summary>默认宠物初始可用，无需领取；保留 free、unlocked 作为原配置的等价写法。</summary>
     public bool DefaultUnlocked => string.Equals(Unlock.Trim(), "default", StringComparison.OrdinalIgnoreCase)
         || string.Equals(Unlock.Trim(), "free", StringComparison.OrdinalIgnoreCase)
         || string.Equals(Unlock.Trim(), "unlocked", StringComparison.OrdinalIgnoreCase);
@@ -75,7 +76,7 @@ public class MPPetConfig
             if (TryGetUnlockRequirement(out string type, out int value)
                 && string.Equals(type, "mainlevel", StringComparison.OrdinalIgnoreCase))
             {
-                return $"Complete Main Level {value} to unlock";
+                return $"Complete Main Level {value}, then claim the pet reward";
             }
 
             return DefaultUnlocked ? "Unlocked" : "Locked";

@@ -17,7 +17,7 @@
     "optionText": "Complete up to two unfinished blocks per level",
     "skillUseCount": 2,
     "unlock": "mainlevel 5",
-    "unlockText": "Complete Main Level 5 to unlock"
+    "unlockText": "Complete Main Level 5, then claim the pet reward"
   },
   {
     "id": "pet_dog_tidy_white",
@@ -27,7 +27,7 @@
     "optionText": "Recover one life per level",
     "skillUseCount": 1,
     "unlock": "mainlevel 10",
-    "unlockText": "Complete Main Level 10 to unlock"
+    "unlockText": "Complete Main Level 10, then claim the pet reward"
   },
   {
     "id": "pet_dog_tidy_brown",
@@ -37,7 +37,7 @@
     "optionText": "Complete up to three unfinished blocks per level",
     "skillUseCount": 3,
     "unlock": "mainlevel 15",
-    "unlockText": "Complete Main Level 15 to unlock"
+    "unlockText": "Complete Main Level 15, then claim the pet reward"
   },
   {
     "id": "pet_rabbit",
@@ -47,6 +47,6 @@
     "optionText": "Recover up to two lives per level",
     "skillUseCount": 2,
     "unlock": "mainlevel 25",
-    "unlockText": "Complete Main Level 25 to unlock"
+    "unlockText": "Complete Main Level 25, then claim the pet reward"
   }
 ]

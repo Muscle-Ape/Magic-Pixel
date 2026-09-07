@@ -55,7 +55,7 @@ public class MPUserPop : AWindow
     {
         m_nameInput.characterLimit = MPPlayerProfileService.MAX_NAME_LENGTH;
         m_nameInput.text = MPLoginManager.Instance.PlayerName;
-        m_level.text = "LEVEL " + Mathf.Max(1, MPUser.instance.GetMainLevlPassIndex() + 1);
+        m_level.text = "LEVEL " + MPUser.instance.GetPlayerLevel();
         m_status.text = string.Empty;
         SelectAvatar(MPUser.instance.GetProfileAvatarId());
     }

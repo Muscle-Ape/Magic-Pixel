@@ -1,23 +1,26 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
-/// 宠物选择与解锁数据。宠物解锁状态直接由静态配置和主线进度计算，
-/// 本地及云端只需要保存当前选中的宠物 ID。
+/// 宠物选择与领取数据。默认宠物初始可用，其他宠物只有主动领取成功后才允许选择和使用技能。
 /// </summary>
 public partial class MPUser
 {
     private string m_key_selected_pet_id = "key_selected_pet_id";
     private string m_selected_pet_id;
+    private HashSet<string> m_claimedPetIds;
+    private string m_claimedPetOwner;
 
     private void InitPets()
     {
         m_selected_pet_id = ES3.Load<string>(m_key_selected_pet_id, defaultValue: null);
+        SetClaimedPetsInMemory(CreateRewardProgressSnapshot(), GetRewardProgressOwner());
         SyncPetSelection(MPDataManager.Instance.m_petsModel?.petConfigs);
     }
 
     /// <summary>
-    /// 根据配置与当前解锁进度校验选中项。
+    /// 只在默认宠物和已经领取的宠物中校验选中项；不会按主线进度自动解锁其他宠物。
     /// </summary>
     public void SyncPetSelection(List<MPPetConfig> configs)
     {
@@ -25,11 +28,12 @@ public partial class MPUser
             return;
 
         MPPetConfig selected = FindPetConfig(configs, m_selected_pet_id);
-        if (selected != null && PetUnlockConditionIsMet(selected))
+        EnsureClaimedPetsLoaded();
+        if (selected != null && (selected.DefaultUnlocked || m_claimedPetIds.Contains(selected.ID)))
             return;
 
         MPPetConfig firstUnlocked = configs.Find(
-            config => config != null && PetUnlockConditionIsMet(config));
+            config => config != null && (config.DefaultUnlocked || m_claimedPetIds.Contains(config.ID)));
         string fallbackId = firstUnlocked?.ID;
         if (m_selected_pet_id == fallbackId)
             return;
@@ -43,9 +47,16 @@ public partial class MPUser
         MPPetConfig config = FindPetConfig(
             MPDataManager.Instance.m_petsModel?.petConfigs,
             id);
-        return PetUnlockConditionIsMet(config);
+        if (config == null)
+            return false;
+        if (config.DefaultUnlocked)
+            return true;
+
+        EnsureClaimedPetsLoaded();
+        return m_claimedPetIds.Contains(config.ID);
     }
 
+    /// <summary>只判断是否具备领取资格，不能用于判断已拥有、自动选中或开放技能。</summary>
     public bool PetUnlockConditionIsMet(MPPetConfig config)
     {
         if (config == null)
@@ -70,6 +81,53 @@ public partial class MPUser
         }
     }
 
+    /// <summary>
+    /// 由奖励领取入口确认后调用。只保存一次，同一宠物重复确认不会重复发放。
+    /// 打开主页、点击锁定宠物或打开/取消领取弹窗均不调用此方法。
+    /// </summary>
+    public bool TryClaimPet(string petId)
+    {
+        MPPetConfig config = FindPetConfig(MPDataManager.Instance.m_petsModel?.petConfigs, petId);
+        if (config == null)
+            return false;
+        // 默认宠物本来就可用，不需要写入领取记录。
+        if (config.DefaultUnlocked)
+            return true;
+
+        try
+        {
+            MPRewardProgressSnapshot progress = CreateRewardProgressSnapshot();
+            if (progress.claimedPetIds.Contains(config.ID))
+                return true;
+            if (!PetUnlockConditionIsMet(config))
+                return false;
+
+            progress.claimedPetIds.Add(config.ID);
+            // 先保存再更新内存，写盘失败不会导致 UI 提前解锁；沿用账号隔离的奖励存档与云同步。
+            ApplyRewardProgressSnapshot(progress);
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Pets);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPUser] 宠物领取未成功：{exception.Message}");
+            return false;
+        }
+    }
+
+    private void EnsureClaimedPetsLoaded()
+    {
+        string owner = GetRewardProgressOwner();
+        if (m_claimedPetIds == null || m_claimedPetOwner != owner)
+            SetClaimedPetsInMemory(CreateRewardProgressSnapshot(), owner);
+    }
+
+    private void SetClaimedPetsInMemory(MPRewardProgressSnapshot progress, string owner)
+    {
+        m_claimedPetIds = new HashSet<string>(progress?.claimedPetIds ?? new List<string>(), StringComparer.Ordinal);
+        m_claimedPetOwner = owner;
+    }
+
     public string GetSelectedPetId()
     {
         return m_selected_pet_id;
@@ -80,7 +138,7 @@ public partial class MPUser
         MPPetConfig config = FindPetConfig(
             MPDataManager.Instance.m_petsModel?.petConfigs,
             m_selected_pet_id);
-        return PetUnlockConditionIsMet(config) ? config : null;
+        return config != null && PetIsUnlock(config.ID) ? config : null;
     }
 
     public void SetSelectedPet(string id)

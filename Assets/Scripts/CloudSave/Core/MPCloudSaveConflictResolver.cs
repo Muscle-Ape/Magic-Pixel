@@ -29,6 +29,11 @@ public class MPCloudSaveConflictResolver
         bool localIsNewer = local.updatedAtUtcTicks >= cloud.updatedAtUtcTicks;
         MPUserCloudSnapshot result = localIsNewer ? local : cloud;
 
+        // 经验是累计进度，冲突时保留较高值；不能把同一批已同步经验再次相加。
+        result.totalExperience = local.totalExperience.HasValue || cloud.totalExperience.HasValue
+            ? Math.Max(0, Math.Max(local.totalExperience ?? 0, cloud.totalExperience ?? 0))
+            : (int?)null;
+
         result.assets = localIsNewer ? SafeAssets(local.assets) : SafeAssets(cloud.assets);
         result.settings = localIsNewer ? SafeSettings(local.settings) : SafeSettings(cloud.settings);
         result.mainLevel = MergeMainLevel(local.mainLevel, cloud.mainLevel);
@@ -48,6 +53,7 @@ public class MPCloudSaveConflictResolver
         {
             transactionIds = UnionList(local.transactionIds, cloud.transactionIds),
             unlockedPetIds = UnionList(local.unlockedPetIds, cloud.unlockedPetIds),
+            claimedPetIds = UnionList(local.claimedPetIds, cloud.claimedPetIds),
             notifiedPetIds = UnionList(local.notifiedPetIds, cloud.notifiedPetIds),
             signInLastClaimDay = Math.Max(local.signInLastClaimDay, cloud.signInLastClaimDay),
             signInClaimedDays = Math.Max(local.signInClaimedDays, cloud.signInClaimedDays),

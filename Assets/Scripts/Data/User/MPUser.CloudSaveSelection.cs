@@ -26,6 +26,7 @@ public partial class MPUser
         MPUserMainLevelSnapshot main = candidate.mainLevel ?? new MPUserMainLevelSnapshot();
         MPUserLargeImageLevelSnapshot large = candidate.largeImageLevel ?? new MPUserLargeImageLevelSnapshot();
         MPUserCustomLevelSnapshot levels = customCandidate.customLevel ?? new MPUserCustomLevelSnapshot();
+        int experience = Math.Max(0, candidate.totalExperience ?? ReadPlayerExperience(owner));
 
         assets.coins = Mathf.Max(0, assets.coins);
         assets.diamond = Mathf.Max(0, assets.diamond);
@@ -58,7 +59,6 @@ public partial class MPUser
         if (largeConfigs != null && largeConfigs.Count > 0 && largeConfigs[0] != null && !large.unlockList.Contains(largeConfigs[0].ID))
             large.unlockList.Add(largeConfigs[0].ID);
 
-        string selectedPetId = NormalizeChosenPet(candidate.pets?.selectedPetId, main);
         MPRewardProgressSnapshot rewards = candidate.rewardProgress;
         if (rewards == null)
         {
@@ -69,6 +69,7 @@ public partial class MPUser
             if (rewards == null) throw new InvalidOperationException("Reward progress could not be read.");
         }
         NormalizeRewardProgress(rewards);
+        string selectedPetId = NormalizeChosenPet(candidate.pets?.selectedPetId, rewards);
         string customJson = JsonConvert.SerializeObject(levels.levels);
         string rewardJson = JsonConvert.SerializeObject(rewards);
 
@@ -97,9 +98,10 @@ public partial class MPUser
         file.Save(m_key_selected_pet_id, selectedPetId ?? string.Empty);
         file.Save(REWARD_PROGRESS_OWNER_KEY, owner);
         file.Save(REWARD_PROGRESS_KEY_PREFIX + owner, rewardJson);
+        file.Save(PLAYER_EXPERIENCE_KEY_PREFIX + owner, experience);
         file.Sync();
 
-        // 此后仅做引用/值赋值，不再序列化、执行回调或写盘。
+        // 先完成全部引用/值赋值，再统一通知 UI；期间不再序列化或写盘。
         m_coins = assets.coins;
         m_diamond = assets.diamond;
         m_hintProps = assets.hintProps;
@@ -122,24 +124,21 @@ public partial class MPUser
         m_customlevel_list = levels.levels;
         m_customlevel_passlist = levels.passList;
         m_selected_pet_id = selectedPetId;
+        SetClaimedPetsInMemory(rewards, owner);
+        SetPlayerExperienceInMemory(experience, owner);
+
+        // 整份存档已提交并替换内存后再通知 UI，回调异常由通知方法隔离。
+        NotifyExperienceChanged();
     }
 
-    private static string NormalizeChosenPet(string selectedPetId, MPUserMainLevelSnapshot main)
+    private static string NormalizeChosenPet(string selectedPetId, MPRewardProgressSnapshot rewards)
     {
         List<MPPetConfig> configs = MPDataManager.Instance.m_petsModel?.petConfigs;
         if (configs == null) return selectedPetId;
-        MPPetConfig selected = configs.Find(config => config != null && config.ID == selectedPetId && ChosenPetIsUnlocked(config, main));
-        return selected != null ? selected.ID : configs.Find(config => config != null && ChosenPetIsUnlocked(config, main))?.ID;
-    }
-
-    private static bool ChosenPetIsUnlocked(MPPetConfig config, MPUserMainLevelSnapshot main)
-    {
-        if (config.DefaultUnlocked) return true;
-        if (!config.TryGetUnlockRequirement(out string type, out int value)) return false;
-        if (type == "free" || type == "default" || type == "unlocked") return true;
-        if (type != "mainlevel") return false;
-        if (value <= 0 || main.passIndex >= value) return true;
-        var configs = MPDataManager.Instance.m_mainLevelModel?.blockInfos;
-        return configs != null && value <= configs.Count && configs[value - 1] != null && main.passList.Contains(configs[value - 1].ID);
+        List<string> claimed = rewards?.claimedPetIds ?? new List<string>();
+        MPPetConfig selected = configs.Find(config => config != null && config.ID == selectedPetId
+            && (config.DefaultUnlocked || claimed.Contains(config.ID)));
+        return selected != null ? selected.ID : configs.Find(config => config != null
+            && (config.DefaultUnlocked || claimed.Contains(config.ID)))?.ID;
     }
 }

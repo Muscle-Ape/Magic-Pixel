@@ -100,7 +100,7 @@ public class MPPetItem : MonoBehaviour
 
     /// <summary>
     /// Shadow 是固定背景，选中切换同步移动 Frame 和 Icon。
-    /// 取消选择时保留 Frame 到下落动画结束，避免直接隐藏看不到回落过程。
+    /// 取消选择时立即隐藏 Shadow/Frame，Icon 仍播放下落动画；Shadow 背景不移动。
     /// </summary>
     private void SetFrameSelectedState(bool selected, bool animated)
     {
@@ -121,7 +121,7 @@ public class MPPetItem : MonoBehaviour
             return;
         }
 
-        SetActive(m_frame, true);
+        SetActive(m_frame, selected);
         if (selected)
             m_frame.localScale = Vector3.one * 0.82f;
 
@@ -148,8 +148,6 @@ public class MPPetItem : MonoBehaviour
                 return;
 
             m_frameTween = null;
-            if (!selected)
-                SetActive(m_frame, false);
         });
         sequence.OnKill(() =>
         {

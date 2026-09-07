@@ -22,5 +22,8 @@ public enum MPCloudSaveDirtyReason
     CustomLevel = 5,
 
     /// <summary>宠物数据变化。</summary>
-    Pets = 6
+    Pets = 6,
+
+    /// <summary>用户通关经验和等级变化。</summary>
+    PlayerExperience = 7
 }

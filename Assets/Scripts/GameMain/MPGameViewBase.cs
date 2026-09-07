@@ -62,11 +62,8 @@ public abstract class MPGameViewBase : AWindow
     [TransformPath("View/Btns/ModeSwitch/Btn/Blank")]
     protected Image m_modeSwitchBlank;
 
-    [TransformPath("View/Head/BackBtn")]
-    protected Button m_backBtn;
-
-    [TransformPath("View/Head/SettingBtn")]
-    protected Button m_settingBtn;
+    [TransformPath("View/Head")]
+    protected MPHead m_head;
 
     /// <summary>模式切换、道具与宠物技能共用的按钮容器。</summary>
     [TransformPath("View/Btns")]
@@ -98,21 +95,6 @@ public abstract class MPGameViewBase : AWindow
 
     [TransformPath("View/Title")]
     protected TMP_Text m_titleText;
-
-    [TransformPath("View/Head/Coin/Count")]
-    protected TMP_Text m_coinText;
-
-    [TransformPath("View/Head/Diamond/Count")]
-    protected TMP_Text m_diamondText;
-
-    [TransformPath("View/Head/PlayerName")]
-    protected TMP_Text m_playerNameText;
-
-    [TransformPath("View/Head/Level/Text")]
-    protected TMP_Text m_playerLevelText;
-
-    [TransformPath("View/Head/Level/Mask/Fill")]
-    protected Image m_playerLevelFill;
 
     [TransformPath("View/Loves")]
     protected RectTransform m_lovesNode;
@@ -395,15 +377,13 @@ public abstract class MPGameViewBase : AWindow
             m_modeSwitchFrame.onClick.AddListener(OnModeSwitchClick);
         }
 
-        RegisterButton(m_backBtn, OnBackClick);
-        RegisterButton(m_settingBtn, OnSettingClick);
+        m_head.Init(OnBackClick, OnSettingClick, MPUserPop.Show);
         RegisterButton(m_hintPropBtn, OnHintPropClick);
         RegisterButton(m_loveRecoverPropBtn, OnLoveRecoverPropClick);
         RegisterButton(m_petSkillBtn, OnPetSkillClick);
 
         RefreshModeSpecificLayout();
         RegisterModeSpecificUI();
-        RefreshHead();
         RefreshPropButtons();
 
         if (m_titleText != null)
@@ -421,49 +401,11 @@ public abstract class MPGameViewBase : AWindow
         button.onClick.AddListener(callback);
     }
 
-    /// <summary>刷新顶部玩家信息、主线进度和资源数量。</summary>
-    protected void RefreshHead()
-    {
-        if (m_coinText != null)
-        {
-            m_coinText.text = MPUser.instance.GetCoins().ToString();
-        }
-
-        if (m_diamondText != null)
-        {
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
-        }
-
-        if (m_playerNameText != null)
-        {
-            string playerName = MPLoginManager.Instance.PlayerName;
-            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
-                ? "Player"
-                : playerName;
-        }
-
-        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
-        int latestLevelIndex = levelCount > 0
-            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
-            : 0;
-        if (m_playerLevelText != null)
-        {
-            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
-        }
-
-        if (m_playerLevelFill != null)
-        {
-            m_playerLevelFill.fillAmount = levelCount <= 1
-                ? 0f
-                : latestLevelIndex / (float)(levelCount - 1);
-        }
-    }
-
     public override void OnFocus(bool focus)
     {
         if (focus)
         {
-            RefreshHead();
+            m_head?.Refresh();
         }
     }
 
@@ -896,8 +838,7 @@ public abstract class MPGameViewBase : AWindow
             m_modeSwitchFrame.onClick.RemoveListener(OnModeSwitchClick);
         }
 
-        UnregisterButton(m_backBtn, OnBackClick);
-        UnregisterButton(m_settingBtn, OnSettingClick);
+        m_head?.Release();
         UnregisterButton(m_hintPropBtn, OnHintPropClick);
         UnregisterButton(m_loveRecoverPropBtn, OnLoveRecoverPropClick);
         UnregisterButton(m_petSkillBtn, OnPetSkillClick);

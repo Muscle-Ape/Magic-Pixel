@@ -28,6 +28,7 @@ public partial class MPUser
             updatedAtUtcTicks = DateTime.UtcNow.Ticks,
             clientVersion = Application.version,
             deviceModel = SystemInfo.deviceModel,
+            totalExperience = GetPlayerExperience(),
             rewardProgress = CreateRewardProgressSnapshot(),
             assets = new MPUserAssetsSnapshot
             {
@@ -102,8 +103,9 @@ public partial class MPUser
             ApplySettingsSnapshot(snapshot.settings);
             ApplyMainLevelSnapshot(snapshot.mainLevel);
             ApplyLargeImageLevelSnapshot(snapshot.largeImageLevel);
-            ApplyPetsSnapshot(snapshot.pets);
             ApplyRewardProgressSnapshot(snapshot.rewardProgress);
+            ApplyPetsSnapshot(snapshot.pets);
+            ApplyPlayerExperienceSnapshot(snapshot.totalExperience);
         }
         finally
         {

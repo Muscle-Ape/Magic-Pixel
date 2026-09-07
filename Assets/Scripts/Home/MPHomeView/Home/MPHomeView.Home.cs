@@ -215,7 +215,7 @@ public partial class MPHomeView
     }
 
     /// <summary>
-    /// 刷新解锁状态、选中态和主页宠物详情。
+    /// 主页只展示可用状态、选中态和宠物详情，不承担宠物领取入口。
     /// </summary>
     private void RefreshHomePets()
     {
@@ -245,6 +245,7 @@ public partial class MPHomeView
         MPPetItem item = FindHomePetItem(config.ID);
         if (!MPUser.instance.PetIsUnlock(config.ID))
         {
+            // 条件提示不等于领取；即使已经达标，主页点击仍只显示获取方式。
             ShowPetUnlockTip(item, config);
             return;
         }
@@ -273,6 +274,8 @@ public partial class MPHomeView
     {
         MPPetConfig selectedConfig = m_petConfigs.Find(
             config => config != null && config.ID == selectedPetId);
+        if (m_mainPetImage != null)
+            m_mainPetImage.gameObject.SetActive(selectedConfig != null);
         if (selectedConfig != null)
         {
             if (m_petNameText != null)
@@ -280,6 +283,16 @@ public partial class MPHomeView
             if (m_petOptionText != null)
                 m_petOptionText.text = selectedConfig.OptionText;
             SetMainPetSprite(selectedConfig);
+        }
+        else
+        {
+            // 尚未领取任何宠物时清理旧详情，不展示旧账号或原先自动解锁的宠物。
+            if (m_petNameText != null)
+                m_petNameText.text = string.Empty;
+            if (m_petOptionText != null)
+                m_petOptionText.text = string.Empty;
+            if (m_mainPetImage != null)
+                m_mainPetImage.sprite = null;
         }
 
         int unlockedCount = 0;

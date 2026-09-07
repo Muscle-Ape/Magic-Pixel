@@ -29,6 +29,7 @@ public class MPCommunityView : AWindow
     private const float TAB_TEXT_FADE_DURATION = 0.12f;
     private const float ALL_LEVELS_ANGLE = -5f;
     private const float LIKED_ANGLE = 5f;
+    private const float LOADING_DOT_INTERVAL = 0.35f;
 
     private enum CommunityTab
     {
@@ -36,26 +37,8 @@ public class MPCommunityView : AWindow
         Liked,
     }
 
-    [TransformPath("View/Head/BackBtn")]
-    private Button m_backBtn;
-
-    [TransformPath("View/Head/SettingBtn")]
-    private Button m_settingBtn;
-
-    [TransformPath("View/Head/Coin/Count")]
-    private TMP_Text m_coinText;
-
-    [TransformPath("View/Head/Diamond/Count")]
-    private TMP_Text m_diamondText;
-
-    [TransformPath("View/Head/PlayerName")]
-    private TMP_Text m_playerNameText;
-
-    [TransformPath("View/Head/Level/Text")]
-    private TMP_Text m_playerLevelText;
-
-    [TransformPath("View/Head/Level/Mask/Fill")]
-    private Image m_playerLevelFill;
+    [TransformPath("View/Head")]
+    private MPHead m_head;
 
     [TransformPath("View/Tab/AllLevels")]
     private Image m_allLevelsTabImage;
@@ -78,13 +61,19 @@ public class MPCommunityView : AWindow
     [TransformPath("View/Levels")]
     private LoopGridView m_levelGrid;
 
-    [TransformPath("View/Loading")]
-    private RectTransform m_loading;
+    [TransformPath("View/LoadingTip")]
+    private RectTransform m_loadingTip;
+
+    [TransformPath("View/LoadingTip/Text")]
+    private TMP_Text m_loadingTipText;
 
     [TransformPath("View/EmptyTip")]
     private RectTransform m_emptyTip;
 
-    [TransformPath("View/RetryBtn")]
+    [TransformPath("View/RetryTip")]
+    private RectTransform m_retryTip;
+
+    [TransformPath("View/RetryTip/RetryBtn")]
     private Button m_retryBtn;
 
     private readonly List<MPCustomLevelPublicRecord> m_levelRecords =
@@ -95,6 +84,9 @@ public class MPCommunityView : AWindow
     private Button m_allLevelsTabBtn;
     private Button m_likedTabBtn;
     private Sequence m_tabSequence;
+    private Sequence m_loadingTextSequence;
+    private string m_loadingTextOriginal;
+    private string m_loadingTextBase;
     private CancellationTokenSource m_listCancellation;
     private CommunityTab m_selectedTab = CommunityTab.AllLevels;
     private string m_nextCursor = string.Empty;
@@ -109,6 +101,7 @@ public class MPCommunityView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        InitializeLoadingText();
         InitializeTabButtons();
         RegisterButtons();
         RegisterCommunityEvents();
@@ -121,7 +114,6 @@ public class MPCommunityView : AWindow
         m_selectedTab = CommunityTab.AllLevels;
         m_selectVerticalOffset = GetTabSelectVerticalOffset();
         ApplyTabState(false);
-        RefreshHead();
         m_initialized = true;
         ResetAndLoadFirstPage();
     }
@@ -131,7 +123,7 @@ public class MPCommunityView : AWindow
         if (!focus || !m_initialized)
             return;
 
-        RefreshHead();
+        m_head?.Refresh();
         if (m_listInitialized)
         {
             m_levelGrid.RefreshAllShownItem();
@@ -143,11 +135,13 @@ public class MPCommunityView : AWindow
     {
         MPNoNetworkPop.DismissLevelEntry(this);
         m_initialized = false;
+        m_head?.Release();
         UnregisterButtons();
         UnregisterCommunityEvents();
         UnregisterLevelScrollFade();
         CancelScheduledLevelItemAlphaRefresh();
         KillTabSequence();
+        StopLoadingTextAnimation();
         CancelListRequest();
         base.OnRelease();
     }
@@ -175,8 +169,7 @@ public class MPCommunityView : AWindow
     private void RegisterButtons()
     {
         UnregisterButtons();
-        RegisterButton(m_backBtn, OnBackClick);
-        RegisterButton(m_settingBtn, OnSettingClick);
+        m_head.Init(OnBackClick, OnSettingClick, MPUserPop.Show);
         RegisterButton(m_retryBtn, OnRetryClick);
         RegisterButton(m_allLevelsTabBtn, OnAllLevelsClick);
         RegisterButton(m_likedTabBtn, OnLikedClick);
@@ -184,8 +177,6 @@ public class MPCommunityView : AWindow
 
     private void UnregisterButtons()
     {
-        UnregisterButton(m_backBtn, OnBackClick);
-        UnregisterButton(m_settingBtn, OnSettingClick);
         UnregisterButton(m_retryBtn, OnRetryClick);
         UnregisterButton(m_allLevelsTabBtn, OnAllLevelsClick);
         UnregisterButton(m_likedTabBtn, OnLikedClick);
@@ -204,31 +195,6 @@ public class MPCommunityView : AWindow
     {
         if (button != null)
             button.onClick.RemoveListener(callback);
-    }
-
-    private void RefreshHead()
-    {
-        if (m_coinText != null)
-            m_coinText.text = MPUser.instance.GetCoins().ToString();
-        if (m_diamondText != null)
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
-        if (m_playerNameText != null)
-        {
-            string playerName = MPLoginManager.Instance.PlayerName;
-            m_playerNameText.text = string.IsNullOrEmpty(playerName) ? "Player" : playerName;
-        }
-
-        int latestLevelIndex = Mathf.Max(0, MPUser.instance.GetMainLevlPassIndex());
-        if (m_playerLevelText != null)
-            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
-
-        if (m_playerLevelFill != null)
-        {
-            int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
-            m_playerLevelFill.fillAmount = levelCount <= 1
-                ? 0f
-                : Mathf.Clamp01(latestLevelIndex / (float)(levelCount - 1));
-        }
     }
 
     private void OnAllLevelsClick()
@@ -524,7 +490,8 @@ public class MPCommunityView : AWindow
         levelItem.ApplyLayout(index);
         // LoopGridView 会在本回调返回后才设置复用 Item 的最终位置，不能在这里读取坐标。
         ScheduleLevelItemAlphaRefresh();
-        if (m_hasMore && index >= m_levelRecords.Count - PREFETCH_REMAINING_COUNT)
+        // 请求失败后等待用户点击 Retry，避免列表复用刷新立即覆盖重试提示。
+        if (m_hasMore && !m_lastLoadFailed && index >= m_levelRecords.Count - PREFETCH_REMAINING_COUNT)
             RequestNextPage();
 
         return item;
@@ -604,28 +571,77 @@ public class MPCommunityView : AWindow
         }
     }
 
+    /// <summary>统一控制三个页面提示，互斥显示；已有内容时后台分页不显示全屏 LoadingTip。</summary>
     private void RefreshLoadState()
     {
         int levelCount = m_levelRecords.Count;
-        if (m_loading != null)
-            m_loading.gameObject.SetActive(m_isLoading && levelCount == 0);
+        bool showLoading = m_isLoading && levelCount == 0;
+        bool showRetry = m_lastLoadFailed && !m_isLoading;
+        bool showEmpty = m_initialRequestCompleted && !m_isLoading && !m_lastLoadFailed && levelCount == 0;
+
+        if (m_loadingTip != null)
+            m_loadingTip.gameObject.SetActive(showLoading);
         if (m_emptyTip != null)
-        {
-            bool showEmpty = m_initialRequestCompleted &&
-                             !m_lastLoadFailed &&
-                             !m_isLoading &&
-                             levelCount == 0;
             m_emptyTip.gameObject.SetActive(showEmpty);
-        }
+        if (m_retryTip != null)
+            m_retryTip.gameObject.SetActive(showRetry);
         if (m_retryBtn != null)
-        {
-            m_retryBtn.gameObject.SetActive(m_lastLoadFailed);
-            m_retryBtn.interactable = m_lastLoadFailed && !m_isLoading;
-        }
+            m_retryBtn.interactable = showRetry;
+
+        if (showLoading)
+            StartLoadingTextAnimation();
+        else
+            StopLoadingTextAnimation();
     }
 
+    private void InitializeLoadingText()
+    {
+        StopLoadingTextAnimation();
+        m_loadingTextOriginal = m_loadingTipText == null ? string.Empty : m_loadingTipText.text;
+        // 保留预制体文案，只取掉末尾已有的省略号，防止变成六个点。
+        m_loadingTextBase = (m_loadingTextOriginal ?? string.Empty).TrimEnd('.', '…');
+    }
+
+    private void StartLoadingTextAnimation()
+    {
+        if (m_loadingTipText == null || (m_loadingTextSequence != null && m_loadingTextSequence.IsActive()))
+            return;
+
+        SetLoadingDotCount(1);
+        m_loadingTextSequence = DOTween.Sequence()
+            .SetUpdate(true)
+            .SetLink(gameObject, LinkBehaviour.PauseOnDisablePlayOnEnable)
+            .AppendInterval(LOADING_DOT_INTERVAL)
+            .AppendCallback(() => SetLoadingDotCount(2))
+            .AppendInterval(LOADING_DOT_INTERVAL)
+            .AppendCallback(() => SetLoadingDotCount(3))
+            .AppendInterval(LOADING_DOT_INTERVAL)
+            .AppendCallback(() => SetLoadingDotCount(1))
+            .SetLoops(-1, LoopType.Restart);
+    }
+
+    private void SetLoadingDotCount(int count)
+    {
+        if (m_loadingTipText != null)
+            m_loadingTipText.text = m_loadingTextBase + new string('.', count);
+    }
+
+    private void StopLoadingTextAnimation()
+    {
+        Sequence sequence = m_loadingTextSequence;
+        m_loadingTextSequence = null;
+        if (sequence != null && sequence.IsActive())
+            sequence.Kill();
+        if (m_loadingTipText != null && m_loadingTextOriginal != null)
+            m_loadingTipText.text = m_loadingTextOriginal;
+    }
+
+    /// <summary>重试失败的当前页，保留已有列表与游标；开始请求时立即禁用重试按钮。</summary>
     private void OnRetryClick()
     {
+        if (!m_initialized || !m_lastLoadFailed || m_isLoading)
+            return;
+
         RequestNextPage();
     }
 

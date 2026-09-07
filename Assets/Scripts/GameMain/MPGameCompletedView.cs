@@ -25,51 +25,19 @@ public class MPGameCompletedView : AWindow
     private const float LARGE_IMAGE_ZOOM_BACK_DURATION = 0.5f;
 
     /// <summary>
-    /// 底部按钮、标题和星星缩放显示的动画时长。
+    /// 底部按钮、标题和 Stars 容器缩放显示的动画时长。
     /// </summary>
     private const float ELEMENT_SHOW_DURATION = 0.28f;
 
-    /// <summary>
-    /// 金币数量文本。
-    /// </summary>
-    [TransformPath("View/Head/Coin/Count")]
-    private TMP_Text m_coinText;
+    private const float LIGHT_FADE_DURATION = 0.35f;
+    private const float LIGHT_ROTATION_DURATION = 18f;
+    private const float STAR_DROP_START_SCALE = 3f;
+    private const float STAR_DROP_DURATION = 0.14f;
+    private const float STAR_SETTLE_DURATION = 0.08f;
+    private const float STAR_DROP_INTERVAL = 0.03f;
 
-    /// <summary>
-    /// 钻石数量文本。
-    /// </summary>
-    [TransformPath("View/Head/Diamond/Count")]
-    private TMP_Text m_diamondText;
-
-    /// <summary>
-    /// 返回主页按钮。
-    /// </summary>
-    [TransformPath("View/Head/HomeBtn")]
-    private Button m_homeBtn;
-
-    /// <summary>
-    /// 设置按钮。
-    /// </summary>
-    [TransformPath("View/Head/SettingBtn")]
-    private Button m_settingBtn;
-
-    /// <summary>
-    /// 玩家名称。
-    /// </summary>
-    [TransformPath("View/Head/PlayerName")]
-    private TMP_Text m_playerNameText;
-
-    /// <summary>
-    /// 当前最新解锁的主线关卡。
-    /// </summary>
-    [TransformPath("View/Head/Level/Text")]
-    private TMP_Text m_playerLevelText;
-
-    /// <summary>
-    /// 主线关卡解锁进度。
-    /// </summary>
-    [TransformPath("View/Head/Level/Mask/Fill")]
-    private Image m_playerLevelFill;
+    [TransformPath("View/Head")]
+    private MPHead m_head;
 
     /// <summary>
     /// 重玩当前关卡按钮。
@@ -88,6 +56,10 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     [TransformPath("View/PictureNode")]
     private RectTransform m_pictureNode;
+
+    /// <summary>图片归位后，光芒同时开始淡入和循环旋转。</summary>
+    [TransformPath("View/Light")]
+    private Image m_light;
 
     /// <summary>
     /// 通关完成图片。
@@ -223,12 +195,16 @@ public class MPGameCompletedView : AWindow
     /// <summary>
     /// 每颗星星点亮状态的Open节点。
     /// </summary>
-    private readonly List<GameObject> m_starOpenNodes = new List<GameObject>();
+    private readonly List<RectTransform> m_starOpenNodes = new List<RectTransform>();
 
     /// <summary>
-    /// 每颗星星在预制体中的原始缩放。
+    /// 每颗点亮星星在预制体中的原始缩放，默认为 1。
     /// </summary>
-    private readonly List<Vector3> m_starOriginalScales = new List<Vector3>();
+    private readonly List<Vector3> m_starOpenOriginalScales = new List<Vector3>();
+
+    private Vector3 m_starsOriginalScale;
+    private float m_lightTargetAlpha;
+    private Quaternion m_lightOriginalRotation;
 
     /// <summary>
     /// 重玩按钮在预制体中的原始缩放。
@@ -250,6 +226,10 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private Sequence m_enterSequence;
 
+    // 无限旋转单独持有，不放入入场 Sequence，避免阻塞后续星星动画。
+    private Tween m_lightFadeTween;
+    private Tween m_lightRotationTween;
+
     /// <summary>
     /// 当前完成页动态创建的像素格，页面刷新或销毁时统一清理。
     /// </summary>
@@ -257,6 +237,7 @@ public class MPGameCompletedView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        KillAnimations();
         MPLoad.ReleaseAll(this);
         MPGameCompletedViewUIMsgData data = uiMsg as MPGameCompletedViewUIMsgData;
         if (data == null)
@@ -281,7 +262,6 @@ public class MPGameCompletedView : AWindow
         RefreshCustomModeLayout();
         CacheOriginalState();
         RegisterUI();
-        RefreshUI();
         RefreshStars();
         RefreshPicture();
         PrepareAnimationState();
@@ -313,10 +293,17 @@ public class MPGameCompletedView : AWindow
         m_replayOriginalScale = m_replayBtn == null ? Vector3.one : m_replayBtn.transform.localScale;
         m_nextOriginalScale = m_nextBtn == null ? Vector3.one : m_nextBtn.transform.localScale;
         m_titleOriginalScale = m_title == null ? Vector3.one : m_title.localScale;
+        m_starsOriginalScale = m_stars == null ? Vector3.one : m_stars.localScale;
+
+        if (m_light != null)
+        {
+            m_lightTargetAlpha = m_light.color.a;
+            m_lightOriginalRotation = m_light.rectTransform.localRotation;
+        }
 
         m_starNodes.Clear();
         m_starOpenNodes.Clear();
-        m_starOriginalScales.Clear();
+        m_starOpenOriginalScales.Clear();
 
         if (m_stars == null)
             return;
@@ -328,10 +315,15 @@ public class MPGameCompletedView : AWindow
                 continue;
 
             m_starNodes.Add(star);
-            m_starOriginalScales.Add(star.localScale);
+        }
 
-            Transform open = star.Find("Open");
-            m_starOpenNodes.Add(open == null ? null : open.gameObject);
+        // 不依赖 Hierarchy 中的排列顺序，始终从左向右逐颗落下。
+        m_starNodes.Sort((left, right) => left.anchoredPosition.x.CompareTo(right.anchoredPosition.x));
+        foreach (RectTransform star in m_starNodes)
+        {
+            RectTransform open = star.Find("Open") as RectTransform;
+            m_starOpenNodes.Add(open);
+            m_starOpenOriginalScales.Add(open == null ? Vector3.one : open.localScale);
         }
     }
 
@@ -479,17 +471,7 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void RegisterUI()
     {
-        if (m_homeBtn != null)
-        {
-            m_homeBtn.onClick.RemoveListener(ReturnHome);
-            m_homeBtn.onClick.AddListener(ReturnHome);
-        }
-
-        if (m_settingBtn != null)
-        {
-            m_settingBtn.onClick.RemoveListener(OnSettingClick);
-            m_settingBtn.onClick.AddListener(OnSettingClick);
-        }
+        m_head.Init(ReturnHome, OnSettingClick, MPUserPop.Show);
 
         if (m_replayBtn != null)
         {
@@ -504,65 +486,25 @@ public class MPGameCompletedView : AWindow
         }
     }
 
-    /// <summary>
-    /// 刷新顶部玩家信息、主线进度和资源数量。
-    /// </summary>
-    private void RefreshUI()
-    {
-        if (m_coinText != null)
-        {
-            m_coinText.text = MPUser.instance.GetCoins().ToString();
-        }
-
-        if (m_diamondText != null)
-        {
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
-        }
-
-        if (m_playerNameText != null)
-        {
-            string playerName = MPLoginManager.Instance.PlayerName;
-            m_playerNameText.text = string.IsNullOrWhiteSpace(playerName)
-                ? "Player"
-                : playerName;
-        }
-
-        int levelCount = MPDataManager.Instance.m_mainLevelModel?.blockInfos?.Count ?? 0;
-        int latestLevelIndex = levelCount > 0
-            ? Mathf.Clamp(MPUser.instance.GetMainLevlPassIndex(), 0, levelCount - 1)
-            : 0;
-        if (m_playerLevelText != null)
-        {
-            m_playerLevelText.text = $"LEVEL {latestLevelIndex + 1}";
-        }
-
-        if (m_playerLevelFill != null)
-        {
-            m_playerLevelFill.fillAmount = levelCount <= 1
-                ? 0f
-                : latestLevelIndex / (float)(levelCount - 1);
-        }
-    }
-
     public override void OnFocus(bool focus)
     {
         if (focus)
         {
-            RefreshUI();
+            m_head?.Refresh();
         }
     }
 
     /// <summary>
-    /// 根据通关时剩余生命值显示对应数量的星星。
+    /// 点亮星星先全部隐藏，获得的星星由掉落序列逐颗打开，避免提前闪现。
     /// </summary>
     private void RefreshStars()
     {
-        int stars = Mathf.Clamp(m_lovesCount, 0, m_starOpenNodes.Count);
         for (int i = 0; i < m_starOpenNodes.Count; i++)
         {
             if (m_starOpenNodes[i] != null)
             {
-                m_starOpenNodes[i].SetActive(i < stars);
+                m_starOpenNodes[i].gameObject.SetActive(false);
+                m_starOpenNodes[i].localScale = m_starOpenOriginalScales[i] * STAR_DROP_START_SCALE;
             }
         }
     }
@@ -831,24 +773,32 @@ public class MPGameCompletedView : AWindow
             m_titleText.color = color;
         }
 
-        for (int i = 0; i < m_starNodes.Count; i++)
+        if (m_stars != null)
         {
-            if (m_starNodes[i] != null)
-            {
-                m_starNodes[i].localScale = Vector3.zero;
-            }
+            m_stars.localScale = Vector3.zero;
+        }
+
+        if (m_light != null)
+        {
+            m_light.raycastTarget = false;
+            m_light.rectTransform.localRotation = m_lightOriginalRotation;
+            Color color = m_light.color;
+            color.a = 0f;
+            m_light.color = color;
         }
     }
 
     /// <summary>
     /// 播放结算页入场动画。
     /// 主关卡直接移动完成图；大图模式会先移动放大的局部图，再缩回完整图片，
-    /// 最后统一显示标题、星星和底部按钮。
+    /// 图片归位即淡入光芒；大图缩回完整图片后显示标题、Stars 和底部按钮，
+    /// 等 Stars 缩放完毕，再逐颗播放点亮星星的掉落动画。
     /// </summary>
     private void PlayEnterAnimation()
     {
-        m_enterSequence?.Kill();
-        m_enterSequence = DOTween.Sequence().SetLink(gameObject);
+        KillAnimations();
+        m_enterSequence = DOTween.Sequence()
+            .SetLink(gameObject, LinkBehaviour.PauseOnDisablePlayOnEnable);
         bool hasPictureMoveAnimation = false;
 
         if (m_pictureNode != null)
@@ -857,6 +807,9 @@ public class MPGameCompletedView : AWindow
             m_enterSequence.Append(m_pictureNode.DOAnchorPos(m_pictureTargetPosition, PICTURE_MOVE_DURATION).SetEase(Ease.Linear));
             hasPictureMoveAnimation = true;
         }
+
+        // Light 的出现只等待 PictureNode 归位，不额外等待大图的缩回动画。
+        m_enterSequence.AppendCallback(PlayLightReveal);
 
         if (m_isLargeImageLevel)
         {
@@ -875,8 +828,54 @@ public class MPGameCompletedView : AWindow
         }
 
         m_enterSequence.Append(CreateElementShowTween());
+        Tween starDropTween = CreateStarDropTween();
+        if (starDropTween != null)
+            m_enterSequence.Append(starDropTween);
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
+    }
+
+    private void PlayLightReveal()
+    {
+        KillLightTweens();
+        if (this == null || IsDestoried || m_light == null)
+            return;
+
+        m_light.gameObject.SetActive(true);
+        m_lightFadeTween = m_light.DOFade(m_lightTargetAlpha, LIGHT_FADE_DURATION)
+            .SetEase(Ease.Linear)
+            .SetLink(gameObject, LinkBehaviour.PauseOnDisablePlayOnEnable)
+            .OnComplete(() => m_lightFadeTween = null);
+        StartLightRotation();
+    }
+
+    private void StartLightRotation()
+    {
+        if (this == null || IsDestoried || m_light == null)
+            return;
+
+        m_lightRotationTween?.Kill();
+        m_lightRotationTween = m_light.rectTransform
+            .DOLocalRotate(new Vector3(0f, 0f, -360f), LIGHT_ROTATION_DURATION, RotateMode.LocalAxisAdd)
+            .SetEase(Ease.Linear)
+            .SetLoops(-1, LoopType.Restart)
+            .SetLink(gameObject, LinkBehaviour.PauseOnDisablePlayOnEnable);
+    }
+
+    private void KillLightTweens()
+    {
+        m_lightFadeTween?.Kill();
+        m_lightFadeTween = null;
+        m_lightRotationTween?.Kill();
+        m_lightRotationTween = null;
+    }
+
+    /// <summary>统一停止入场、光芒淡入和循环旋转，不执行完成回调。</summary>
+    private void KillAnimations()
+    {
+        m_enterSequence?.Kill();
+        m_enterSequence = null;
+        KillLightTweens();
     }
 
     /// <summary>创建大图从放大局部区域缩回原始大小和中心位置的动画。</summary>
@@ -899,7 +898,7 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 创建标题、星星和底部按钮同时缩放显示的动画。
+    /// 创建标题、Stars 容器和底部按钮同时缩放显示的动画，此时 Open 仍保持隐藏。
     /// </summary>
     private Tween CreateElementShowTween()
     {
@@ -929,13 +928,43 @@ public class MPGameCompletedView : AWindow
             sequence.Join(m_titleText.DOFade(1f, ELEMENT_SHOW_DURATION).SetEase(Ease.Linear));
         }
 
-        for (int i = 0; i < m_starNodes.Count; i++)
+        if (m_stars != null)
         {
-            if (m_starNodes[i] == null)
+            m_stars.DOKill();
+            sequence.Join(m_stars.DOScale(m_starsOriginalScale, ELEMENT_SHOW_DURATION).SetEase(Ease.OutBack));
+        }
+
+        return sequence;
+    }
+
+    /// <summary>按获得的星数串行播放：3 倍加速砸落、轻微压缩回弹，再开始下一颗。</summary>
+    private Tween CreateStarDropTween()
+    {
+        int stars = Mathf.Clamp(m_lovesCount, 0, m_starOpenNodes.Count);
+        Sequence sequence = null;
+        for (int i = 0; i < stars; i++)
+        {
+            RectTransform open = m_starOpenNodes[i];
+            if (open == null)
                 continue;
 
-            m_starNodes[i].DOKill();
-            sequence.Join(m_starNodes[i].DOScale(m_starOriginalScales[i], ELEMENT_SHOW_DURATION).SetEase(Ease.OutBack));
+            if (sequence == null)
+                sequence = DOTween.Sequence();
+            else
+                sequence.AppendInterval(STAR_DROP_INTERVAL);
+
+            Vector3 targetScale = m_starOpenOriginalScales[i];
+            open.DOKill();
+            sequence.AppendCallback(() =>
+            {
+                if (open == null || this == null || IsDestoried)
+                    return;
+
+                open.localScale = targetScale * STAR_DROP_START_SCALE;
+                open.gameObject.SetActive(true);
+            });
+            sequence.Append(open.DOScale(targetScale * 0.9f, STAR_DROP_DURATION).SetEase(Ease.InQuad));
+            sequence.Append(open.DOScale(targetScale, STAR_SETTLE_DURATION).SetEase(Ease.OutBack));
         }
 
         return sequence;
@@ -1031,15 +1060,7 @@ public class MPGameCompletedView : AWindow
 
     private void UnregisterUI()
     {
-        if (m_homeBtn != null)
-        {
-            m_homeBtn.onClick.RemoveListener(ReturnHome);
-        }
-
-        if (m_settingBtn != null)
-        {
-            m_settingBtn.onClick.RemoveListener(OnSettingClick);
-        }
+        m_head?.Release();
 
         if (m_replayBtn != null)
         {
@@ -1134,7 +1155,7 @@ public class MPGameCompletedView : AWindow
     {
         MPNoNetworkPop.DismissLevelEntry(this);
         UnregisterUI();
-        m_enterSequence?.Kill();
+        KillAnimations();
         ClearPixelGrid();
         MPLoad.ReleaseAll(this);
         base.OnRelease();
@@ -1142,7 +1163,7 @@ public class MPGameCompletedView : AWindow
 
     private void OnDestroy()
     {
-        m_enterSequence?.Kill();
+        KillAnimations();
         ClearPixelGrid();
         MPLoad.ReleaseAll(this);
     }

@@ -20,6 +20,16 @@ public sealed class MPPetClaimPop : AWindow
 
     protected override bool ShouldAdaptToNotchScreen() => false;
 
+    /// <summary>标准宠物奖励领取入口。只在点击 Collect 确认时提交领取记录。</summary>
+    public static MPPetClaimPop Show(MPPetConfig pet, Action onClaimed = null,
+        string sourceName = null, AWindow sourceWindow = null)
+    {
+        if (pet == null) throw new ArgumentNullException(nameof(pet));
+        string owner = MPUser.instance.GetRewardProgressOwner();
+        return Show(pet, () => owner == MPUser.instance.GetRewardProgressOwner()
+            && MPUser.instance.TryClaimPet(pet.ID), onClaimed, sourceName, sourceWindow);
+    }
+
     /// <summary>
     /// 由实际宠物奖励的领取入口主动调用，不用于主线条件达成后的自动解锁通知。
     /// tryClaim 由奖励来源校验资格并幂等提交存档，成功后返回 true；弹窗不擅自切换宠物。

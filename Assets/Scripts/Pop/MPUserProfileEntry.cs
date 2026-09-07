@@ -10,6 +10,7 @@ public sealed class MPUserProfileEntry : MonoBehaviour
     [SerializeField] private TMP_Text m_playerName;
     [SerializeField] private Image m_avatar;
     [SerializeField] private TMP_Text m_level;
+    [SerializeField] private Image m_levelFill;
     private int m_loadedAvatarId = -1;
     private Sprite m_loadedAvatar;
 
@@ -25,12 +26,14 @@ public sealed class MPUserProfileEntry : MonoBehaviour
     private void OnEnable()
     {
         MPUser.ProfileChanged += Refresh;
+        MPUser.ExperienceChanged += RefreshLevel;
         Refresh();
     }
 
     private void OnDisable()
     {
         MPUser.ProfileChanged -= Refresh;
+        MPUser.ExperienceChanged -= RefreshLevel;
     }
 
     private void Refresh()
@@ -53,8 +56,14 @@ public sealed class MPUserProfileEntry : MonoBehaviour
             }
             MPRewardPopupIcons.Apply(m_avatar, m_loadedAvatar);
         }
+        RefreshLevel();
+    }
+
+    private void RefreshLevel()
+    {
         if (m_level != null)
-            m_level.text = "LEVEL " + Mathf.Max(1, MPUser.instance.GetMainLevlPassIndex() + 1);
+            m_level.text = "LEVEL " + MPUser.instance.GetPlayerLevel();
+        MPHead.RefreshLevelProgress(m_levelFill);
     }
 
     private void Open()
@@ -65,6 +74,7 @@ public sealed class MPUserProfileEntry : MonoBehaviour
     private void OnDestroy()
     {
         MPUser.ProfileChanged -= Refresh;
+        MPUser.ExperienceChanged -= RefreshLevel;
         m_loadedAvatar = null;
         MPLoad.ReleaseAll(this);
         if (m_openButtons == null)

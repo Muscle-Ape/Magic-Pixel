@@ -118,6 +118,7 @@ public class MPCustomLevelItem : MonoBehaviour
     /// 当前是否正在执行上传或撤销操作，避免玩家连续点击触发重复请求。
     /// </summary>
     private bool m_isPublishActionRunning;
+    private bool m_initialized;
 
     /// <summary>
     /// 初始化自定义关卡列表项。
@@ -126,6 +127,8 @@ public class MPCustomLevelItem : MonoBehaviour
     {
         m_refresh = refresh;
         m_edit = edit;
+        if (m_initialized)
+            return;
 
         m_pixel = transform.Find("Completed/Pixel").GetComponent<Image>();
         m_playBtn = transform.Find("PlayBtn").GetComponent<Button>();
@@ -135,9 +138,9 @@ public class MPCustomLevelItem : MonoBehaviour
         m_uploadText = transform.Find("UploadBtn/Text")?.GetComponent<TMP_Text>();
         m_nameText = transform.Find("Name").GetComponent<TMP_Text>();
         m_sizeText = transform.Find("Size").GetComponent<TMP_Text>();
-        m_updateTimeText = transform.Find("UpdateTime")?.GetComponent<TMP_Text>();
-        m_likedCountText = transform.Find("LikedCount")?.GetComponent<TMP_Text>();
-        m_lookCountText = transform.Find("LookCount")?.GetComponent<TMP_Text>();
+        m_updateTimeText = transform.Find("Update/UpdateTime")?.GetComponent<TMP_Text>();
+        m_likedCountText = transform.Find("Liked/LikedCount")?.GetComponent<TMP_Text>();
+        m_lookCountText = transform.Find("Look/LookCount")?.GetComponent<TMP_Text>();
 
         if (m_editorBtn != null)
         {
@@ -152,10 +155,9 @@ public class MPCustomLevelItem : MonoBehaviour
         if (m_editorBtn != null)
             m_editorBtn.onClick.AddListener(OnEditorClick);
 
-        MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
-        MPCustomLevelPublishManager.Instance.PublishStateChanged += OnPublishStateChanged;
-        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
-        MPCustomLevelPublishManager.Instance.PublishOperationChanged += OnPublishOperationChanged;
+        m_initialized = true;
+        if (isActiveAndEnabled)
+            RegisterPublishEvents();
     }
 
 
@@ -164,11 +166,15 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     public void Refresh(MPCustomLevelInfo data, int index, int cachedLikeCount, int cachedPlayCount)
     {
+        // 对象池可能不经过禁用就复用给另一关卡，旧动画和异步结果不能影响新数据。
+        if (m_data?.ID != data?.ID)
+            ResetTransientState();
+
         m_data = data;
         m_index = index;
 
-        m_nameText.text = string.IsNullOrEmpty(m_data.Title) ? MPUser.instance.GetDefaultCustomLevelTitle() : m_data.Title;
-        m_sizeText.text = $"{m_data.Size}x{m_data.Size}";
+        m_nameText.text = string.IsNullOrEmpty(m_data?.Title) ? MPUser.instance.GetDefaultCustomLevelTitle() : m_data.Title;
+        m_sizeText.text = m_data == null ? string.Empty : $"{m_data.Size}x{m_data.Size}";
         RefreshUpdateTime();
         RefreshStatistics(cachedLikeCount, cachedPlayCount);
         RefreshCustomLevelPixel();
@@ -262,6 +268,9 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     private void ClearCustomLevelPixelAsset()
     {
+        if (m_pixel != null && m_pixel.sprite == m_pixelSprite)
+            m_pixel.sprite = null;
+
         if (m_pixelSprite != null)
         {
             Destroy(m_pixelSprite);
@@ -276,9 +285,46 @@ public class MPCustomLevelItem : MonoBehaviour
     }
 
 
-    /// <summary>
-    /// 销毁列表项时移除按钮事件并释放运行时图标资源。
-    /// </summary>
+    private void OnEnable()
+    {
+        if (!m_initialized)
+            return;
+
+        RegisterPublishEvents();
+        RefreshUploadButtonState();
+    }
+
+    private void OnDisable()
+    {
+        if (m_initialized)
+            UnregisterPublishEvents();
+        ResetTransientState();
+    }
+
+    private void RegisterPublishEvents()
+    {
+        UnregisterPublishEvents();
+        MPCustomLevelPublishManager.Instance.PublishStateChanged += OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged += OnPublishOperationChanged;
+    }
+
+    private void UnregisterPublishEvents()
+    {
+        MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
+        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
+    }
+
+    /// <summary>关闭页面或复用列表项时清理 UI 状态，不取消单例中已提交的上传。</summary>
+    private void ResetTransientState()
+    {
+        m_editorButtonTween?.Kill();
+        m_editorButtonTween = null;
+        m_editorStateInitialized = false;
+        CancelPublishOperation();
+        m_isPublishActionRunning = false;
+    }
+
+    /// <summary>销毁列表项时移除按钮事件并释放运行时图标资源。</summary>
     private void OnDestroy()
     {
         if (m_playBtn != null)
@@ -301,11 +347,9 @@ public class MPCustomLevelItem : MonoBehaviour
             m_editorBtn.onClick.RemoveListener(OnEditorClick);
         }
 
-        MPCustomLevelPublishManager.Instance.PublishStateChanged -= OnPublishStateChanged;
-        MPCustomLevelPublishManager.Instance.PublishOperationChanged -= OnPublishOperationChanged;
-        m_editorButtonTween?.Kill();
-        m_editorButtonTween = null;
-        CancelPublishOperation();
+        if (m_initialized)
+            UnregisterPublishEvents();
+        ResetTransientState();
         ClearCustomLevelPixelAsset();
     }
 
@@ -314,23 +358,27 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     private async void OnUploadClick()
     {
-        if (m_data == null || m_isPublishActionRunning)
+        if (m_data == null || m_isPublishActionRunning ||
+            MPCustomLevelPublishManager.Instance.IsPublishPending(m_data.ID))
         {
             return;
         }
 
+        MPCustomLevelInfo levelInfo = m_data;
         m_isPublishActionRunning = true;
         RefreshUploadButtonState();
         CancelPublishOperation();
         m_publishCancellation = new CancellationTokenSource();
         CancellationTokenSource cancellation = m_publishCancellation;
+        CancellationToken token = cancellation.Token;
 
         try
         {
-            MPCustomLevelPublishLocalState state = MPCustomLevelPublishManager.Instance.GetLocalState(m_data.ID);
+            MPCustomLevelPublishLocalState state = MPCustomLevelPublishManager.Instance.GetLocalState(levelInfo.ID);
             if (state != null && state.IsPublished && !string.IsNullOrEmpty(state.publicLevelId))
             {
-                MPCustomLevelRevokeResult revokeResult = await MPCustomLevelPublishManager.Instance.RevokeLocalLevelAsync(m_data, cancellation.Token);
+                MPCustomLevelRevokeResult revokeResult = await MPCustomLevelPublishManager.Instance.RevokeLocalLevelAsync(levelInfo, token);
+                token.ThrowIfCancellationRequested();
                 if (revokeResult == null || !revokeResult.success)
                 {
                     Debug.LogWarning($"[MPCustomLevelItem] 撤销公开关卡失败：{revokeResult?.message}");
@@ -342,7 +390,8 @@ public class MPCustomLevelItem : MonoBehaviour
             }
             else
             {
-                MPCustomLevelPublishResult publishResult = await MPCustomLevelPublishManager.Instance.PublishAsync(m_data, cancellation.Token);
+                MPCustomLevelPublishResult publishResult = await MPCustomLevelPublishManager.Instance.PublishAsync(levelInfo, token);
+                token.ThrowIfCancellationRequested();
                 if (publishResult == null || !publishResult.success)
                 {
                     Debug.LogWarning($"[MPCustomLevelItem] 上传公开关卡失败：{publishResult?.message}");
@@ -363,17 +412,7 @@ public class MPCustomLevelItem : MonoBehaviour
         }
         finally
         {
-            if (m_publishCancellation == cancellation)
-            {
-                m_publishCancellation = null;
-                cancellation.Dispose();
-            }
-
-            if (this != null)
-            {
-                m_isPublishActionRunning = false;
-                RefreshUploadButtonState();
-            }
+            CompletePublishOperation(cancellation);
         }
     }
 
@@ -382,7 +421,8 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     private async void OnDeleteClick()
     {
-        if (m_data == null || m_isPublishActionRunning)
+        if (m_data == null || m_isPublishActionRunning ||
+            MPCustomLevelPublishManager.Instance.IsPublishPending(m_data.ID))
         {
             return;
         }
@@ -393,6 +433,7 @@ public class MPCustomLevelItem : MonoBehaviour
         CancelPublishOperation();
         m_publishCancellation = new CancellationTokenSource();
         CancellationTokenSource cancellation = m_publishCancellation;
+        CancellationToken token = cancellation.Token;
         bool canDeleteLocalLevel = false;
 
         try
@@ -402,7 +443,8 @@ public class MPCustomLevelItem : MonoBehaviour
             {
                 MPCustomLevelRevokeResult revokeResult = await MPCustomLevelPublishManager.Instance.RevokeLocalLevelAsync(
                     levelInfo,
-                    cancellation.Token);
+                    token);
+                token.ThrowIfCancellationRequested();
                 if (revokeResult == null || !revokeResult.success)
                 {
                     Debug.LogWarning($"[MPCustomLevelItem] 删除前撤销公开关卡失败，已保留本地关卡：{revokeResult?.message}");
@@ -410,7 +452,8 @@ public class MPCustomLevelItem : MonoBehaviour
                 }
             }
 
-            canDeleteLocalLevel = true;
+            token.ThrowIfCancellationRequested();
+            canDeleteLocalLevel = this != null && m_publishCancellation == cancellation;
         }
         catch (OperationCanceledException)
         {
@@ -422,20 +465,10 @@ public class MPCustomLevelItem : MonoBehaviour
         }
         finally
         {
-            if (m_publishCancellation == cancellation)
-            {
-                m_publishCancellation = null;
-                cancellation.Dispose();
-            }
-
-            if (this != null)
-            {
-                m_isPublishActionRunning = false;
-                RefreshUploadButtonState();
-            }
+            CompletePublishOperation(cancellation);
         }
 
-        if (!canDeleteLocalLevel || this == null)
+        if (!canDeleteLocalLevel || this == null || token.IsCancellationRequested || m_data?.ID != levelInfo.ID)
         {
             return;
         }
@@ -449,6 +482,9 @@ public class MPCustomLevelItem : MonoBehaviour
     /// </summary>
     private void OnLevelClick()
     {
+        if (m_data == null)
+            return;
+
         MPGameViewUIMsgData data = new MPGameViewUIMsgData()
         {
             customLevelInfo = m_data,
@@ -518,12 +554,12 @@ public class MPCustomLevelItem : MonoBehaviour
 
         if (m_uploadBtn != null)
         {
-            m_uploadBtn.interactable = !isBusy && canUseCloudPublish;
+            m_uploadBtn.interactable = m_data != null && !isBusy && canUseCloudPublish;
         }
 
         if (m_deleteBtn != null)
         {
-            m_deleteBtn.interactable = !isBusy;
+            m_deleteBtn.interactable = m_data != null && !isBusy;
         }
 
         RefreshEditorButtonState(m_data != null && m_edit != null && !isBusy && !isPublished);
@@ -604,7 +640,21 @@ public class MPCustomLevelItem : MonoBehaviour
     }
 
     /// <summary>
-    /// 取消当前列表项正在等待的上传或撤销操作。
+    /// 结束本次 UI 等待。复用后迟到的旧操作不能清除新操作的忙碌状态。
+    /// </summary>
+    private void CompletePublishOperation(CancellationTokenSource cancellation)
+    {
+        if (this == null || m_publishCancellation != cancellation)
+            return;
+
+        m_publishCancellation = null;
+        cancellation.Dispose();
+        m_isPublishActionRunning = false;
+        RefreshUploadButtonState();
+    }
+
+    /// <summary>
+    /// 取消当前列表项的异步 UI 回写；单例中的业务任务仍可完成并保存状态。
     /// </summary>
     private void CancelPublishOperation()
     {
@@ -613,9 +663,10 @@ public class MPCustomLevelItem : MonoBehaviour
             return;
         }
 
-        m_publishCancellation.Cancel();
-        m_publishCancellation.Dispose();
+        CancellationTokenSource cancellation = m_publishCancellation;
         m_publishCancellation = null;
+        cancellation.Cancel();
+        cancellation.Dispose();
     }
 
 }

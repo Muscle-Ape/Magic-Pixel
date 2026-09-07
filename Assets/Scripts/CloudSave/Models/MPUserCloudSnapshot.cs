@@ -50,6 +50,10 @@ public class MPUserCloudSnapshot
 
     public MPRewardProgressSnapshot rewardProgress;
 
+    /// <summary>累计用户经验；null 表示旧快照尚未包含等级模块，0 表示明确的初始经验。</summary>
+    [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+    public int? totalExperience;
+
     /// <summary>
     /// 金币、钻石、道具等资产数据。
     /// </summary>
@@ -97,6 +101,7 @@ public class MPUserCloudSnapshot
             updatedAtUtcTicks = DateTime.UtcNow.Ticks,
             clientVersion = Application.version,
             deviceModel = SystemInfo.deviceModel,
+            totalExperience = 0,
             assets = new MPUserAssetsSnapshot
             {
                 coins = 200,

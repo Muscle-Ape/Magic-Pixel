@@ -24,6 +24,7 @@ public partial class MPUser
         {
             InitSetting();
             InitAssets();
+            InitPlayerExperience();
             InitMainLevel();
             InitLargeImageLevel();
             InitCustomLevel();

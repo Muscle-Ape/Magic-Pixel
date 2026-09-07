@@ -93,8 +93,8 @@ public class MPAssetComparisonPop : AWindow
         List<MPPetConfig> pets = MPDataManager.Instance.m_petsModel?.petConfigs;
         if (pets != null)
             foreach (MPPetConfig pet in pets)
-                if (pet != null && (pet.DefaultUnlocked || pet.TryGetUnlockRequirement(out string type, out int value) &&
-                    ((type == "mainlevel" && (user.mainLevel?.passIndex ?? 0) >= value) || type == "free" || type == "default" || type == "unlocked")))
+                if (pet != null && (pet.DefaultUnlocked
+                    || (user.rewardProgress?.claimedPetIds?.Contains(pet.ID) ?? false)))
                     petCount++;
         return new List<string>
         {
