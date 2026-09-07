@@ -48,6 +48,8 @@ public partial class MPGameView
                 index++;
             }
         }
+
+        InitializeLineCompleteAnimationPool(m_blockFillSprite);
     }
 
     /// <summary>
@@ -243,7 +245,9 @@ public partial class MPGameView
         // 设置大小和颜色
         Vector2 size = isHorizontal ? new Vector2(4, GRID_SIZE) : new Vector2(GRID_SIZE, 4);
         rectTransform.sizeDelta = size;
-        ColorUtility.TryParseHtmlString("#B38337", out Color color);
+        // ColorUtility.TryParseHtmlString("#B38337", out Color color);
+        ColorUtility.TryParseHtmlString("#000000", out Color color);
+        color.a = 0.5f;
         img.color = color;
 
         return rectTransform;

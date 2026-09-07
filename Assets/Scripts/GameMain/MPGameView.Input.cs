@@ -137,22 +137,27 @@ public partial class MPGameView
     }
 
 
-    private void Check(MPGameBlock block)
+    private void Check(MPGameBlock block, bool allowLineCompleteAnimation = true)
     {
+        if (block == null || m_blockGrid2Array == null)
+            return;
+
         // 1、转成V2
         Vector2Int pos = new Vector2Int(block.index / m_size, block.index % m_size);
 
-        // 2、得到对应的行列Number
+        // 2、当本次操作所在的行或列已经填完全部目标色块时，自动补齐剩余叉号。
+        // 恢复缓存时直接显示最终状态，避免重新进入关卡时重复播放叉号动画。
+        AutoCompleteBlankBlocks();
+
+        // 3、得到对应的行列Number
         MPGameNumberFrameBase nh = m_numberHorizontalList[pos.y];
         MPGameNumberFrameBase nv = m_numberVerticalList[pos.x];
 
-        // 3、计算对应行列的填充情况
+        // 4、计算对应行列的填充情况
         List<int> horNum = new List<int>();
         List<int> verNum = new List<int>();
         int horCount = 0;
         int verCount = 0;
-        bool horFinish = !nh.completed;
-        bool verFinish = !nv.completed;
 
         for (int i = 0; i < m_size; i++)
         {
@@ -182,15 +187,6 @@ public partial class MPGameView
                 }
             }
 
-            if (horFinish && !m_blockGrid2Array[i][pos.y].completed)
-            {
-                horFinish = false;
-            }
-
-            if (verFinish && !m_blockGrid2Array[pos.x][i].completed)
-            {
-                verFinish = false;
-            }
         }
 
         if (horCount != 0)
@@ -211,27 +207,149 @@ public partial class MPGameView
             nv.CheckNumber(verNum);
         }
 
-        // 5、判断行列是否完成，进行标记
-        if (horFinish && !nh.completed)
-        {
-            nh.Completed();
-            m_hvCompleted++;
-        }
-        if (verFinish && !nv.completed)
-        {
-            nv.Completed();
-            m_hvCompleted++;
-        }
+        // 5、自动补叉可能同时完成其他交叉行列，需要统一收敛数字栏状态。
+        CompleteFinishedNumberFrames(pos, out bool completedColumn, out bool completedRow);
 
         // 6、判断是否全部完成
-        if (m_hvCompleted == m_size * 2)
+        bool allCompleted = m_hvCompleted >= m_size * 2;
+        if (allCompleted)
         {
+            StopLineCompleteAnimations();
             if (!m_isRestoringProgress && !m_hasCompleted)
             {
                 UpdateData();
                 StartCoroutine(PlayCompletedAnimation());
             }
         }
+        else if (allowLineCompleteAnimation && !m_isRestoringProgress &&
+            (completedColumn || completedRow))
+        {
+            PlayLineCompleteAnimation(
+                block.transform as RectTransform,
+                pos.x,
+                pos.y,
+                completedColumn,
+                completedRow);
+        }
+    }
+
+    /// <summary>
+    /// 检查所有行列；目标色块全部完成后，为剩余空白格自动补叉。
+    /// 单次操作只进行固定次数的网格扫描，不依赖 Update，也不会产生集合分配。
+    /// </summary>
+    private void AutoCompleteBlankBlocks()
+    {
+        for (int line = 0; line < m_size; line++)
+        {
+            if (AreAllColumnFillBlocksCompleted(line))
+            {
+                for (int row = 0; row < m_size; row++)
+                {
+                    CompleteBlankBlock(m_blockGrid2Array[row][line]);
+                }
+            }
+
+            if (AreAllRowFillBlocksCompleted(line))
+            {
+                for (int column = 0; column < m_size; column++)
+                {
+                    CompleteBlankBlock(m_blockGrid2Array[line][column]);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 标记所有格子均已完成的数字栏，同时覆盖自动补叉带来的交叉行列完成。
+    /// </summary>
+    private void CompleteFinishedNumberFrames(
+        Vector2Int origin,
+        out bool completedColumn,
+        out bool completedRow)
+    {
+        completedColumn = false;
+        completedRow = false;
+
+        for (int line = 0; line < m_size; line++)
+        {
+            MPGameNumberFrameBase horizontal = m_numberHorizontalList[line];
+            if (!horizontal.completed && AreAllColumnBlocksCompleted(line))
+            {
+                horizontal.Completed();
+                m_hvCompleted++;
+                if (line == origin.y)
+                    completedColumn = true;
+            }
+
+            MPGameNumberFrameBase vertical = m_numberVerticalList[line];
+            if (!vertical.completed && AreAllRowBlocksCompleted(line))
+            {
+                vertical.Completed();
+                m_hvCompleted++;
+                if (line == origin.x)
+                    completedRow = true;
+            }
+        }
+    }
+
+    /// <summary>判断顶部数字提示对应列中的所有目标色块是否均已完成。</summary>
+    private bool AreAllColumnFillBlocksCompleted(int column)
+    {
+        for (int row = 0; row < m_size; row++)
+        {
+            MPGameBlock lineBlock = m_blockGrid2Array[row][column];
+            if (lineBlock == null || (lineBlock.isFill && !lineBlock.completed))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>判断左侧数字提示对应行中的所有目标色块是否均已完成。</summary>
+    private bool AreAllRowFillBlocksCompleted(int row)
+    {
+        for (int column = 0; column < m_size; column++)
+        {
+            MPGameBlock lineBlock = m_blockGrid2Array[row][column];
+            if (lineBlock == null || (lineBlock.isFill && !lineBlock.completed))
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool AreAllColumnBlocksCompleted(int column)
+    {
+        for (int row = 0; row < m_size; row++)
+        {
+            if (m_blockGrid2Array[row][column] == null ||
+                !m_blockGrid2Array[row][column].completed)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool AreAllRowBlocksCompleted(int row)
+    {
+        for (int column = 0; column < m_size; column++)
+        {
+            if (m_blockGrid2Array[row][column] == null ||
+                !m_blockGrid2Array[row][column].completed)
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>自动补齐一个尚未操作的空白格，不播放音效、震动或错误反馈。</summary>
+    private void CompleteBlankBlock(MPGameBlock block)
+    {
+        if (block == null || block.completed || block.isFill)
+            return;
+
+        block.Blank(!m_isRestoringProgress);
+        block.Disable();
     }
 
     #region EventSystem
@@ -249,7 +367,7 @@ public partial class MPGameView
 
             if (!beforeCompleted)
             {
-                Check(block);
+                Check(block, correct);
 
                 // 音效
                 MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
@@ -316,7 +434,7 @@ public partial class MPGameView
 
                 if (!beforeCompleted)
                 {
-                    Check(block);
+                    Check(block, correct);
 
                     // 音效
                     MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
@@ -364,7 +482,7 @@ public partial class MPGameView
 
             if (!beforeCompleted)
             {
-                Check(block);
+                Check(block, correct);
 
                 // 音效
                 MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);

@@ -41,6 +41,7 @@ public class MPGameBlock : MonoBehaviour
     /// 错误提示
     /// </summary>
     private GameObject m_wrong;
+    private Image m_wrongImage;
 
     /// <summary>
     /// 提示道具闪烁动画。
@@ -107,6 +108,7 @@ public class MPGameBlock : MonoBehaviour
         m_blank = transform.Find("Blank").gameObject;
 
         m_wrong = transform.Find("Wrong").gameObject;
+        m_wrongImage = m_wrong.GetComponent<Image>();
 
         m_blankHit = transform.Find("BlankHit").gameObject;
 
@@ -126,15 +128,19 @@ public class MPGameBlock : MonoBehaviour
     }
 
     /// <summary>
-    /// 替换 Fill/Color 的白色底图，保留 Init 或设置弹窗已应用的 Image.color。
-    /// 未传入图片时保留预制体默认填充图片。
+    /// Fill/Color 和 Wrong 共用当前尺寸的底图，并分别保留自身的 Image.color。
+    /// 未传入图片时保留预制体中的默认图片。
     /// </summary>
     public void SetFillSprite(Sprite sprite)
     {
-        if (m_fillColorImage == null || sprite == null || m_fillColorImage.sprite == sprite)
+        if (sprite == null)
             return;
 
-        m_fillColorImage.sprite = sprite;
+        if (m_fillColorImage != null && m_fillColorImage.sprite != sprite)
+            m_fillColorImage.sprite = sprite;
+
+        if (m_wrongImage != null && m_wrongImage.sprite != sprite)
+            m_wrongImage.sprite = sprite;
     }
 
     /// <summary>对白色填充底图着色；初始化读取存档设置，局内设置回调也通过此方法即时刷新。</summary>

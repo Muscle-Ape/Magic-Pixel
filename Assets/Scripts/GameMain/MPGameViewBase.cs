@@ -13,7 +13,7 @@ using UnityEngine.UI;
 /// 负责共享 Prefab 节点、页面生命周期、基础按钮、生命值、道具和失败流程；
 /// 主线与大图模式分别实现网格、输入、提示目标、进度缓存和重开逻辑。
 /// </summary>
-public abstract class MPGameViewBase : AWindow
+public abstract partial class MPGameViewBase : AWindow
 {
     protected override bool ShouldAdaptToNotchScreen()
     {
@@ -180,6 +180,9 @@ public abstract class MPGameViewBase : AWindow
     /// </summary>
     protected virtual bool UsesProps => UsesLives;
 
+    /// <summary>当前模式实际展示的网格边长；大图模式固定展示 10×10。</summary>
+    protected virtual int VisibleGridSize => m_size;
+
     /// <summary>退出提示必须与模式实际的缓存能力一致。</summary>
     protected virtual string ExitProgressNotice =>
         "Your puzzle progress, remaining lives and pet skill usage will be saved. You can continue this level later.";
@@ -299,6 +302,7 @@ public abstract class MPGameViewBase : AWindow
         RegisterCommonUI();
         RegisterInput();
         RestoreProgressCache();
+        PrepareGameEnterAnimation();
 
         MPAudioManager.Instance.StopBGM(MPMusic.MPBGMMain);
         if (UsesLives && m_lovesCount <= 0)
@@ -815,6 +819,7 @@ public abstract class MPGameViewBase : AWindow
     public override void OnRelease()
     {
         MPNoNetworkPop.DismissLevelEntry(this);
+        StopGameEnterAnimation();
         m_isReturningToLevelList = true;
         if (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried)
             m_exitConfirmation.DestroyWindow();
@@ -827,6 +832,7 @@ public abstract class MPGameViewBase : AWindow
         ResetCompletedFrame();
         UnregisterCommonUI();
         ReleaseModeSpecificResources();
+        ReleaseLineCompleteAnimationPool();
         MPLoad.ReleaseAll(this);
     }
 

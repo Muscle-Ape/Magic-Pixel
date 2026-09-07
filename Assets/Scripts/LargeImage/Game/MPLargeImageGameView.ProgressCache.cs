@@ -23,6 +23,7 @@ public partial class MPLargeImageGameView
             RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
             RestoreBlockStatues(cacheInfo.CompletedBlocks);
             RestoreViewPosition(cacheInfo.ViewX, cacheInfo.ViewY);
+            AutoCompleteLargeImageBlankBlocks(playVisibleAnimation: false, updateVisibleBlocks: false);
             RefreshContent();
             RecalculateCompletedCount();
         }

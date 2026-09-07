@@ -139,18 +139,27 @@ public sealed class MPNewGamePop : AWindow
         // 选择继续/重开时可能已经断网，必须在清理缓存、关闭原页面之前再次检查。
         if (!MPNoNetworkPop.CheckLevelEntry(source, () => Enter<T>(data, source, closeSource, beforeEnter)))
             return;
-        MPTransitionView.Play(() =>
-        {
-            if (!ReferenceEquals(source, null) && (source == null || source.IsDestoried))
-                return;
 
-            beforeEnter?.Invoke();
-            if (closeSource && source != null)
-                source.DestroyWindow();
-            UIManager.Inst.ShowWindow<T>(data, true);
-            if (!closeSource && source != null && !source.IsDestoried)
-                source.LostFocus(false);
-        });
+        T targetWindow = null;
+        MPTransitionView.Play(
+            () =>
+            {
+                if (!ReferenceEquals(source, null) && (source == null || source.IsDestoried))
+                    return;
+
+                beforeEnter?.Invoke();
+                if (closeSource && source != null)
+                    source.DestroyWindow();
+                targetWindow = UIManager.Inst.ShowWindow<T>(data, true);
+                if (!closeSource && source != null && !source.IsDestoried)
+                    source.LostFocus(false);
+            },
+            () =>
+            {
+                // 完全移除过渡页后再通知主游戏开始入场动画，不依赖固定等待时间。
+                if (targetWindow is MPGameViewBase gameView && !gameView.IsDestoried)
+                    gameView.PlayEnterAnimationAfterTransition();
+            });
     }
 
     private static string BuildDetails(MPNewGamePopUIMsgData data)

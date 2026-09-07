@@ -46,6 +46,8 @@ public partial class MPLargeImageGameView
                 index++;
             }
         }
+
+        InitializeLineCompleteAnimationPool(m_blockFillSprite);
     }
 
     /// <summary>

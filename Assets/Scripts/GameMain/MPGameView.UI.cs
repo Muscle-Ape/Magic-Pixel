@@ -135,13 +135,20 @@ public partial class MPGameView
             refresh = m_refreshAction,
         };
 
-        MPTransitionView.Play(() =>
-        {
-            if (this == null || IsDestoried)
-                return;
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPGameView>(data, true);
-        });
+        MPGameView targetWindow = null;
+        MPTransitionView.Play(
+            () =>
+            {
+                if (this == null || IsDestoried)
+                    return;
+                DestroyWindow();
+                targetWindow = UIManager.Inst.ShowWindow<MPGameView>(data, true);
+            },
+            () =>
+            {
+                if (targetWindow != null && !targetWindow.IsDestoried)
+                    targetWindow.PlayEnterAnimationAfterTransition();
+            });
     }
 
     /// <summary>失败退出后刷新主游戏关卡列表。</summary>

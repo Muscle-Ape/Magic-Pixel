@@ -138,16 +138,29 @@ public partial class MPLargeImageGameView
     }
 
 
-    private void Check(MPLargeImageGameBlock block)
+    private void Check(MPLargeImageGameBlock block, bool allowLineCompleteAnimation = true)
     {
-        // 1、转成V2
-        Vector2Int pos = new Vector2Int(block.index / FIXED_SIZE, block.index % FIXED_SIZE);
+        if (block == null || m_blockGrid2Array == null || m_blockStatues == null)
+            return;
 
-        // 2、得到对应的行列Number
+        Vector2Int pos = new Vector2Int(block.index / FIXED_SIZE, block.index % FIXED_SIZE);
+        Vector2Int statuePos = m_blockStatueHead + pos;
+        if (statuePos.x < 0 || statuePos.y < 0 || statuePos.x >= m_size || statuePos.y >= m_size)
+            return;
+
+        // 先将本次操作写入完整大图状态，再根据所有目标色块的完成情况自动补叉。
+        if (m_blockStatues[statuePos.x][statuePos.y] == BlockStatue.Empty)
+        {
+            m_blockStatues[statuePos.x][statuePos.y] = block.isFill
+                ? BlockStatue.Fill
+                : BlockStatue.Blank;
+        }
+        AutoCompleteLargeImageBlankBlocks(
+            playVisibleAnimation: !m_isRestoringProgress,
+            updateVisibleBlocks: true);
+
         MPGameNumberFrameBase nh = m_numberHorizontalList[pos.y];
         MPGameNumberFrameBase nv = m_numberVerticalList[pos.x];
-
-        // 3、计算对应行列的填充情况
         List<int> horNum = new List<int>();
         List<int> verNum = new List<int>();
         int horCount = 0;
@@ -191,69 +204,179 @@ public partial class MPLargeImageGameView
             verNum.Add(verCount);
         }
 
-        // 4、对方块状态进行填充
-        int statueIndex = (pos.x + m_blockStatueHead.x) * m_size + pos.y + m_blockStatueHead.y;
-        Vector2Int statuePos = new Vector2Int(statueIndex / m_size, statueIndex % m_size);
-        if (m_blockStatues[statuePos.x][statuePos.y] == BlockStatue.Empty)
-        {
-            if (block.isFill)
-            {
-                m_blockStatues[statuePos.x][statuePos.y] = BlockStatue.Fill;
-            }
-            else
-            {
-                m_blockStatues[statuePos.x][statuePos.y] = BlockStatue.Blank;
-            }
-        }
-
-        // 5、检查当前面板中数字完成情况
         if (!nh.completed)
-        {
             nh.CheckNumber(horNum);
-        }
         if (!nv.completed)
-        {
             nv.CheckNumber(verNum);
-        }
 
-        // 6、检查所有填充情况
-        bool horFinish = !nh.completed;
-        bool verFinish = !nv.completed;
-        for (int i = 0; i < m_size; i++)
-        {
-            if (horFinish && m_blockStatues[i][statuePos.y] == BlockStatue.Empty)
-            {
-                horFinish = false;
-            }
+        CompleteVisibleLargeImageNumberFrames(
+            pos,
+            out bool completedColumn,
+            out bool completedRow);
+        RecalculateCompletedCount();
 
-            if (verFinish && m_blockStatues[statuePos.x][i] == BlockStatue.Empty)
-            {
-                verFinish = false;
-            }
-        }
-
-        // 7、判断行列是否完成，进行标记
-        if (horFinish && !nh.completed)
+        if (m_hvCompleted >= m_size * 2)
         {
-            nh.Completed();
-            m_hvCompleted++;
-        }
-        if (verFinish && !nv.completed)
-        {
-            nv.Completed();
-            m_hvCompleted++;
-        }
-
-        // 8、判断是否全部完成
-        if (m_hvCompleted == m_size * 2)
-        {
+            StopLineCompleteAnimations();
             if (!m_isRestoringProgress && !m_hasCompleted)
             {
                 UpdateData();
                 StartCoroutine(PlayCompletedAnimation());
             }
         }
-        // StartCoroutine(PlayCompletedAnimation());
+        else if (allowLineCompleteAnimation && !m_isRestoringProgress &&
+            (completedColumn || completedRow))
+        {
+            PlayLineCompleteAnimation(
+                block.transform as RectTransform,
+                pos.x,
+                pos.y,
+                completedColumn,
+                completedRow);
+        }
+    }
+
+    /// <summary>
+    /// 扫描完整大图；某行或列的目标色块全部完成后，将其余未操作格写为叉号。
+    /// </summary>
+    private void AutoCompleteLargeImageBlankBlocks(bool playVisibleAnimation, bool updateVisibleBlocks)
+    {
+        for (int line = 0; line < m_size; line++)
+        {
+            if (AreAllLargeImageColumnFillBlocksCompleted(line))
+            {
+                for (int row = 0; row < m_size; row++)
+                    CompleteLargeImageBlankBlock(row, line, playVisibleAnimation, updateVisibleBlocks);
+            }
+
+            if (AreAllLargeImageRowFillBlocksCompleted(line))
+            {
+                for (int column = 0; column < m_size; column++)
+                    CompleteLargeImageBlankBlock(line, column, playVisibleAnimation, updateVisibleBlocks);
+            }
+        }
+    }
+
+    private bool AreAllLargeImageColumnFillBlocksCompleted(int column)
+    {
+        for (int row = 0; row < m_size; row++)
+        {
+            if (IsLargeImageFillBlock(row, column) &&
+                m_blockStatues[row][column] != BlockStatue.Fill)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool AreAllLargeImageRowFillBlocksCompleted(int row)
+    {
+        for (int column = 0; column < m_size; column++)
+        {
+            if (IsLargeImageFillBlock(row, column) &&
+                m_blockStatues[row][column] != BlockStatue.Fill)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsLargeImageFillBlock(int row, int column)
+    {
+        int index = row * m_size + column;
+        return m_fillBlockIndices != null
+            ? m_fillBlockIndices.Contains(index)
+            : m_blockInfo.Block.Contains(index);
+    }
+
+    private void CompleteLargeImageBlankBlock(
+        int row,
+        int column,
+        bool playVisibleAnimation,
+        bool updateVisibleBlock)
+    {
+        if (m_blockStatues[row][column] != BlockStatue.Empty ||
+            IsLargeImageFillBlock(row, column))
+            return;
+
+        m_blockStatues[row][column] = BlockStatue.Blank;
+        if (!updateVisibleBlock || !TryGetVisibleLargeImageBlock(row, column, out MPLargeImageGameBlock block))
+            return;
+
+        block.Refresh(false, false, m_isFill);
+        block.Blank(!playVisibleAnimation);
+        block.Disable();
+    }
+
+    private bool TryGetVisibleLargeImageBlock(
+        int row,
+        int column,
+        out MPLargeImageGameBlock block)
+    {
+        int visibleRow = row - m_blockStatueHead.x;
+        int visibleColumn = column - m_blockStatueHead.y;
+        if (visibleRow < 0 || visibleRow >= FIXED_SIZE ||
+            visibleColumn < 0 || visibleColumn >= FIXED_SIZE)
+        {
+            block = null;
+            return false;
+        }
+
+        block = m_blockGrid2Array[visibleRow][visibleColumn];
+        return block != null;
+    }
+
+    /// <summary>刷新当前视口中所有已完成行列，并返回本次操作对应的动画方向。</summary>
+    private void CompleteVisibleLargeImageNumberFrames(
+        Vector2Int origin,
+        out bool completedColumn,
+        out bool completedRow)
+    {
+        completedColumn = false;
+        completedRow = false;
+
+        for (int line = 0; line < FIXED_SIZE; line++)
+        {
+            MPGameNumberFrameBase horizontal = m_numberHorizontalList[line];
+            int globalColumn = m_blockStatueHead.y + line;
+            if (!horizontal.completed && IsLargeImageColumnCompleted(globalColumn))
+            {
+                horizontal.Completed();
+                if (line == origin.y)
+                    completedColumn = true;
+            }
+
+            MPGameNumberFrameBase vertical = m_numberVerticalList[line];
+            int globalRow = m_blockStatueHead.x + line;
+            if (!vertical.completed && IsLargeImageRowCompleted(globalRow))
+            {
+                vertical.Completed();
+                if (line == origin.x)
+                    completedRow = true;
+            }
+        }
+    }
+
+    private bool IsLargeImageColumnCompleted(int column)
+    {
+        for (int row = 0; row < m_size; row++)
+        {
+            if (m_blockStatues[row][column] == BlockStatue.Empty)
+                return false;
+        }
+
+        return true;
+    }
+
+    private bool IsLargeImageRowCompleted(int row)
+    {
+        for (int column = 0; column < m_size; column++)
+        {
+            if (m_blockStatues[row][column] == BlockStatue.Empty)
+                return false;
+        }
+
+        return true;
     }
 
     #region EventSystem
@@ -271,7 +394,7 @@ public partial class MPLargeImageGameView
 
             if (!beforeCompleted)
             {
-                Check(block);
+                Check(block, correct);
 
                 // 音效
                 MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
@@ -338,7 +461,7 @@ public partial class MPLargeImageGameView
 
                 if (!beforeCompleted)
                 {
-                    Check(block);
+                    Check(block, correct);
 
                     // 音效
                     MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);
@@ -386,7 +509,7 @@ public partial class MPLargeImageGameView
 
             if (!beforeCompleted)
             {
-                Check(block);
+                Check(block, correct);
 
                 // 音效
                 MPAudioManager.Instance.PlaySound(MPSound.MPSoundFill, replay: true);

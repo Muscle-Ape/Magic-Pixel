@@ -246,6 +246,9 @@ public partial class MPLargeImageGameView
             return false;
         }
 
+        // 可视窗口发生变化时，立即收敛仍在旧格子位置上的动画。
+        StopGameEnterAnimation();
+        StopLineCompleteAnimations();
         m_blockStatueHead += dir;
         RefreshContent();
         MPVibrationManager.Instance.PlaySelection();
@@ -447,13 +450,20 @@ public partial class MPLargeImageGameView
             refresh = m_refreshAction,
         };
 
-        MPTransitionView.Play(() =>
-        {
-            if (this == null || IsDestoried)
-                return;
-            DestroyWindow();
-            UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
-        });
+        MPLargeImageGameView targetWindow = null;
+        MPTransitionView.Play(
+            () =>
+            {
+                if (this == null || IsDestoried)
+                    return;
+                DestroyWindow();
+                targetWindow = UIManager.Inst.ShowWindow<MPLargeImageGameView>(data, true);
+            },
+            () =>
+            {
+                if (targetWindow != null && !targetWindow.IsDestoried)
+                    targetWindow.PlayEnterAnimationAfterTransition();
+            });
     }
 
     /// <summary>返回后刷新大图关卡列表。</summary>

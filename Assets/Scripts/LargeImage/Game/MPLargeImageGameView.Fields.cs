@@ -82,6 +82,9 @@ public partial class MPLargeImageGameView : MPGameViewBase
     /// <summary>完整大图所有格子的状态数组，不随可视窗口移动而丢失。</summary>
     private BlockStatue[][] m_blockStatues;
 
+    /// <summary>完整大图需要填色的格子下标，用于行列自动补叉时快速查询。</summary>
+    private HashSet<int> m_fillBlockIndices;
+
     /// <summary>当前 10×10 可视窗口在完整大图中的左上角坐标。</summary>
     private Vector2Int m_blockStatueHead;
 
@@ -93,6 +96,9 @@ public partial class MPLargeImageGameView : MPGameViewBase
 
     /// <summary>大图模式当前是否为填充模式。</summary>
     protected override bool IsFillMode => m_isFill;
+
+    /// <summary>大图模式只对当前显示的 10×10 网格播放开场动画。</summary>
+    protected override int VisibleGridSize => FIXED_SIZE;
 
     /// <summary>大图模式页面标题。</summary>
     protected override string LevelTitle => $"Big Level {m_index + 1}";
@@ -135,6 +141,9 @@ public partial class MPLargeImageGameView : MPGameViewBase
         }
 
         m_blockStatues = Enumerable.Range(0, m_size).Select(_ => new BlockStatue[m_size]).ToArray();
+        m_fillBlockIndices = m_blockInfo.Block == null
+            ? new HashSet<int>()
+            : new HashSet<int>(m_blockInfo.Block);
         m_blockStatueHead = Vector2Int.zero;
     }
 
@@ -150,6 +159,13 @@ public partial class MPLargeImageGameView : MPGameViewBase
         }
 
         return MPLoad.Load<Sprite>(location, this);
+    }
+
+    /// <summary>页面释放时清理大图模式持有的入场与行列特效。</summary>
+    protected override void ReleaseModeSpecificResources()
+    {
+        m_fillBlockIndices?.Clear();
+        m_fillBlockIndices = null;
     }
 }
 
