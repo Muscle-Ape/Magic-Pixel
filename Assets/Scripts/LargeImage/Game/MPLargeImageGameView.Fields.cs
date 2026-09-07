@@ -25,6 +25,21 @@ public partial class MPLargeImageGameView : MPGameViewBase
     /// </summary>
     private const int FIXED_SIZE = 10;
 
+    [TransformPath("View/Content/Shadow")]
+    private RectTransform m_numberFrameMoveShadow;
+
+    [TransformPath("View/Content/Shadow/Left")]
+    private RectTransform m_numberFrameMoveLeft;
+
+    [TransformPath("View/Content/Shadow/Right")]
+    private RectTransform m_numberFrameMoveRight;
+
+    [TransformPath("View/Content/Shadow/Up")]
+    private RectTransform m_numberFrameMoveUp;
+
+    [TransformPath("View/Content/Shadow/Down")]
+    private RectTransform m_numberFrameMoveDown;
+
     /// <summary>当前大图关卡配置。</summary>
     private MPLargeImageBlockInfo m_blockInfo;
 

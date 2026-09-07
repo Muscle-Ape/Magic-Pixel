@@ -27,6 +27,24 @@ public partial class MPLargeImageGameView
     {
         RegisterNumberFrameMove(m_numberVertical, true);
         RegisterNumberFrameMove(m_numberHorizontal, false);
+        RefreshNumberFrameMoveHints();
+    }
+
+    /// <summary>提示对应大图仍可继续查看的方向，与数字栏移动共用边界判断，不逐帧轮询。</summary>
+    private void RefreshNumberFrameMoveHints()
+    {
+        // Head.x 为向下递增的行、Head.y 为向右递增的列；提示内容方向，而非手指拖动方向。
+        SetNumberFrameMoveHint(m_numberFrameMoveLeft, CanMoveContent(new Vector2Int(0, -1)));
+        SetNumberFrameMoveHint(m_numberFrameMoveRight, CanMoveContent(new Vector2Int(0, 1)));
+        SetNumberFrameMoveHint(m_numberFrameMoveUp, CanMoveContent(new Vector2Int(-1, 0)));
+        SetNumberFrameMoveHint(m_numberFrameMoveDown, CanMoveContent(new Vector2Int(1, 0)));
+        SetNumberFrameMoveHint(m_numberFrameMoveShadow, !m_hasCompleted && !IsDestoried && m_size > FIXED_SIZE);
+    }
+
+    private static void SetNumberFrameMoveHint(RectTransform hint, bool visible)
+    {
+        if (hint != null && hint.gameObject.activeSelf != visible)
+            hint.gameObject.SetActive(visible);
     }
 
     /// <summary>
@@ -204,15 +222,26 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
+    /// 判断移动后的整个 10×10 可视窗口是否仍在大图范围内。
+    /// </summary>
+    private bool CanMoveContent(Vector2Int dir)
+    {
+        if (m_hasCompleted || IsDestoried || m_size < FIXED_SIZE)
+            return false;
+
+        Vector2Int nextHead = m_blockStatueHead + dir;
+        int maxHead = m_size - FIXED_SIZE;
+        return nextHead.x >= 0 && nextHead.y >= 0 && nextHead.x <= maxHead && nextHead.y <= maxHead;
+    }
+
+    /// <summary>
     /// 尝试按指定方向移动中心区域展示范围。
     /// </summary>
     /// <param name="dir">移动方向。</param>
     /// <returns>成功移动返回true，已经到达边界返回false。</returns>
     private bool TryMoveContent(Vector2Int dir)
     {
-        Vector2Int startPos = m_blockStatueHead + dir;
-        Vector2Int endPos = m_blockStatueHead + dir * FIXED_SIZE;
-        if (startPos.x < 0 || startPos.y < 0 || endPos.x >= m_size || endPos.y >= m_size)
+        if (!CanMoveContent(dir))
         {
             return false;
         }
@@ -228,6 +257,7 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void RefreshContent()
     {
+        RefreshNumberFrameMoveHints();
         // 更新中心区域
         for (int i = 0; i < FIXED_SIZE; i++)
         {

@@ -261,6 +261,7 @@ public partial class MPHomeView
 
     private void OnLargerTabClick()
     {
+        RefreshLargerPage();
         SwitchTab(LARGER_TAB_INDEX);
     }
 

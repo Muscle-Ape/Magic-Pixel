@@ -4,387 +4,296 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>大图关卡列表卡片；由循环列表复用，按存档刷新锁定、可游玩和完成状态。</summary>
 public class MPLargeImageLevelItem : MonoBehaviour
 {
-    /// <summary>
-    /// 未解锁状态底图节点。
-    /// </summary>
-    private GameObject m_statusLock;
+    private static readonly Color s_lockedTextColor = new Color32(0x3D, 0x59, 0x72, 0xFF);
 
-    /// <summary>
-    /// 已解锁未完成状态底图节点。
-    /// </summary>
-    private GameObject m_statusUnlock;
-
-    /// <summary>
-    /// 已完成状态底图节点。
-    /// </summary>
-    private GameObject m_statusCompleted;
-
-    /// <summary>
-    /// 完成状态中展示像素图的图片。
-    /// </summary>
-    private Image m_completedPixel;
-
-    /// <summary>
-    /// 未解锁状态的锁图标节点。
-    /// </summary>
-    private GameObject m_lockIcon;
-
-    /// <summary>
-    /// 未解锁状态的锁定按钮样式节点。
-    /// </summary>
-    private GameObject m_lock;
-
-    /// <summary>
-    /// 已解锁状态的进度条节点。
-    /// </summary>
-    private GameObject m_progress;
-
-    /// <summary>
-    /// 已解锁状态的进度条填充图片。
-    /// </summary>
-    private Image m_progressFill;
-
-    /// <summary>
-    /// 已解锁状态的开始按钮样式节点。
-    /// </summary>
-    private GameObject m_start;
-
-    /// <summary>
-    /// 已完成状态的星星父节点。
-    /// </summary>
-    private GameObject m_stars;
-
-    /// <summary>
-    /// 已完成状态的星星高亮节点数组。
-    /// </summary>
-    private GameObject[] m_starObj;
-
-    /// <summary>
-    /// 已完成状态的完成图标节点。
-    /// </summary>
-    private GameObject m_completedIcon;
-
-    /// <summary>
-    /// 关卡点击按钮。
-    /// </summary>
+    private Image m_frame;
     private Button m_levelBtn;
-
-    /// <summary>
-    /// 关卡名称文本。
-    /// </summary>
+    private Image m_buttonImage;
+    private TMP_Text m_buttonText;
+    private GameObject m_statusLock;
+    private GameObject m_statusUnlock;
+    private GameObject m_statusCompleted;
+    private Image m_completedPixel;
     private TMP_Text m_nameText;
-
-    /// <summary>
-    /// 关卡尺寸文本。
-    /// </summary>
     private TMP_Text m_sizeText;
-
-    /// <summary>
-    /// 金币奖励节点。
-    /// </summary>
-    private GameObject m_coinAward;
-
-    /// <summary>
-    /// 金币奖励数量文本。
-    /// </summary>
-    private TMP_Text m_coinAwardText;
-
-    /// <summary>
-    /// 大图关卡数据。
-    /// </summary>
+    private GameObject m_award;
+    private TMP_Text m_awardCount;
+    private GameObject m_stars;
+    private GameObject[] m_starObj;
     private MPLargeImageBlockInfo m_data;
-
-    /// <summary>
-    /// 大图关卡数据模型。
-    /// </summary>
-
-    /// <summary>
-    /// 当前关卡下标。
-    /// </summary>
     private int m_index;
-
-    /// <summary>
-    /// 当前关卡是否已经解锁。
-    /// </summary>
-    private bool m_isUnlock;
-
-    /// <summary>
-    /// 刷新关卡列表的回调。
-    /// </summary>
     private Action m_refresh;
+    private bool m_initialized;
+    private string m_previewLevelId;
 
-    /// <summary>
-    /// 初始化并缓存 prefab 中已经配置好的 UI 节点。
-    /// </summary>
+    /// <summary>节点只查找一次；重复绑定时只更新回调，不重复注册按钮事件。</summary>
     public void Initialize(Action refresh)
     {
         m_refresh = refresh;
+        if (m_initialized)
+            return;
 
+        m_frame = FindComponent<Image>("Frame");
+        m_levelBtn = FindComponent<Button>("Btn");
+        m_buttonImage = FindComponent<Image>("Btn");
+        m_buttonText = FindComponent<TMP_Text>("Btn/Text");
         m_statusLock = FindGameObject("Status/Lock");
         m_statusUnlock = FindGameObject("Status/Unlock");
         m_statusCompleted = FindGameObject("Status/Completed");
-        m_completedPixel = FindComponent<Image>("Status/Completed/Pixel");
-        m_lockIcon = FindGameObject("LockIcon");
-        m_lock = FindGameObject("Lock");
-        m_progress = FindGameObject("Progress");
-        m_progressFill = FindComponent<Image>("Progress/Fill");
-        m_start = FindGameObject("Start");
-        m_stars = FindGameObject("Stars");
-        m_completedIcon = FindGameObject("CompletedIcon");
-        m_levelBtn = FindComponent<Button>("Btn");
+        m_completedPixel = FindComponent<Image>("Status/Completed/Mask/Pixel");
         m_nameText = FindComponent<TMP_Text>("Name");
         m_sizeText = FindComponent<TMP_Text>("Size");
-        m_coinAward = FindGameObject("CoinAward");
-        m_coinAwardText = FindComponent<TMP_Text>("CoinAward/Count");
-
+        m_award = FindGameObject("Award");
+        m_awardCount = FindComponent<TMP_Text>("Award/Count");
+        m_stars = FindGameObject("Stars");
         CacheStarNodes();
 
         if (m_levelBtn != null)
-        {
             m_levelBtn.onClick.AddListener(OnLevelClick);
-        }
+        m_initialized = true;
     }
 
-    /// <summary>
-    /// 根据关卡数据刷新当前 Item 的显示。
-    /// </summary>
+    /// <summary>更新同一关卡时保留已加载图片；绑定其他关卡时先释放旧预览，避免回收后串图。</summary>
     public void Refresh(MPLargeImageBlockInfo data, int index)
     {
-        MPLoad.ReleaseAll(this);
+        if (!m_initialized)
+            Initialize(m_refresh);
+
+        bool dataChanged = !ReferenceEquals(m_data, data);
+        if (dataChanged)
+            ClearCompletedPixel();
         m_data = data;
         m_index = index;
+        bool valid = data != null && !string.IsNullOrWhiteSpace(data.ID);
+        if (m_levelBtn != null)
+            m_levelBtn.interactable = valid;
+        if (!valid)
+        {
+            SetStatusImage(null);
+            SetActive(m_award, false);
+            ApplySprite(m_frame, null);
+            ApplySprite(m_buttonImage, null);
+            RefreshStars(false, 0);
+            ClearCompletedPixel();
+            if (m_nameText != null) m_nameText.text = string.Empty;
+            if (m_sizeText != null) m_sizeText.text = string.Empty;
+            if (m_awardCount != null) m_awardCount.text = string.Empty;
+            if (m_buttonText != null) m_buttonText.text = string.Empty;
+            return;
+        }
 
-        RefreshAlwaysShowInfo();
-        RefreshStateInfo();
-    }
-
-    /// <summary>
-    /// 刷新所有状态下都需要显示的基础信息。
-    /// </summary>
-    private void RefreshAlwaysShowInfo()
-    {
         if (m_nameText != null)
+            m_nameText.text = string.IsNullOrWhiteSpace(data.Name) ? data.ID : data.Name;
+        if (dataChanged && m_sizeText != null)
         {
-            m_nameText.text = m_data.Name;
+            try
+            {
+                Vector2Int size = MPLargeImageLevelModel.GetLevelSize(data);
+                m_sizeText.text = $"{size.x}×{size.y}";
+            }
+            catch (Exception exception)
+            {
+                m_sizeText.text = string.Empty;
+                Debug.LogWarning($"[MPLargeImageLevelItem] 读取关卡尺寸失败：{data.ID}，{exception.Message}");
+            }
         }
 
+        // 保留 AwardText 的预制体文案，仅更新金币数量。
+        if (m_awardCount != null)
+            m_awardCount.text = $"<b>{Mathf.Max(0, data.AwardCoin)}</b> coins";
+
+        MPLargeImageLevelState state = MPLargeImageLevelModel.GetLevelState(data);
+        // 每次状态刷新都同步文字颜色，避免解锁或列表复用后残留旧颜色。
+        Color textColor = state == MPLargeImageLevelState.Locked ? s_lockedTextColor : Color.white;
+        if (m_nameText != null)
+            m_nameText.color = textColor;
         if (m_sizeText != null)
-        {
-            Vector2Int size = MPLargeImageLevelModel.GetLevelSize(m_data);
-            m_sizeText.text = $"{size.x}x{size.y}";
-        }
-
-        SetActive(m_coinAward, true);
-        if (m_coinAwardText != null)
-        {
-            m_coinAwardText.text = m_data.AwardCoin.ToString();
-        }
-    }
-
-    /// <summary>
-    /// 根据模型返回的关卡状态刷新对应 UI。
-    /// </summary>
-    private void RefreshStateInfo()
-    {
-        MPLargeImageLevelState state = MPLargeImageLevelModel.GetLevelState(m_data);
-        m_isUnlock = state != MPLargeImageLevelState.Locked;
-
+            m_sizeText.color = textColor;
+        SetActive(m_award, state == MPLargeImageLevelState.Locked);
         switch (state)
         {
             case MPLargeImageLevelState.Locked:
-                RefreshLockState();
-                break;
-            case MPLargeImageLevelState.Unlocked:
-                RefreshUnlockState();
+                SetStatusImage(m_statusLock);
+                RefreshStyle("large_frame_lock", "large_btn_frame_unlock", "Unlock");
                 break;
             case MPLargeImageLevelState.Completed:
-                RefreshCompletedState();
+                SetStatusImage(m_statusCompleted);
+                RefreshStyle("large_frame_completed", "large_btn_frame_replay", "Replay");
+                break;
+            default:
+                SetStatusImage(m_statusUnlock);
+                RefreshStyle("large_frame_unlock", "large_btn_frame_play", "Play");
                 break;
         }
+
+        bool completed = state == MPLargeImageLevelState.Completed;
+        RefreshStars(completed, completed ? MPLargeImageLevelModel.GetLevelStars(data) : 0);
+        if (completed)
+            RefreshCompletedPixel();
+        else
+            ClearCompletedPixel();
     }
 
-    /// <summary>
-    /// 刷新未解锁状态显示。
-    /// </summary>
-    private void RefreshLockState()
+    /// <summary>样式资源由 Item 持有，同一地址通过 MPLoad 缓存复用，关闭页面时统一释放。</summary>
+    private void RefreshStyle(string frameLocation, string buttonLocation, string text)
     {
-        SetStatusImage(m_statusLock);
-        SetActive(m_lockIcon, true);
-        SetActive(m_lock, true);
-        SetActive(m_progress, false);
-        SetActive(m_start, false);
-        RefreshStars(false, 0);
-        SetActive(m_completedIcon, false);
+        ApplySprite(m_frame, LoadSprite(frameLocation, this));
+        ApplySprite(m_buttonImage, LoadSprite(buttonLocation, this));
+        if (m_buttonText != null)
+            m_buttonText.text = text;
     }
 
-    /// <summary>
-    /// 刷新已解锁但未完成状态显示。
-    /// </summary>
-    private void RefreshUnlockState()
+    private static Sprite LoadSprite(string location, UnityEngine.Object owner)
     {
-        SetStatusImage(m_statusUnlock);
-        SetActive(m_lockIcon, false);
-        SetActive(m_lock, false);
-        SetActive(m_progress, true);
-        SetActive(m_start, true);
-        RefreshProgress();
-        RefreshStars(false, 0);
-        SetActive(m_completedIcon, false);
+        if (owner == null)
+            return null;
+        try
+        {
+            return MPLoad.Load<Sprite>(location, owner);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPLargeImageLevelItem] 图片加载失败：{location}，{exception.Message}");
+            return null;
+        }
     }
 
-    /// <summary>
-    /// 刷新已完成状态显示。
-    /// </summary>
-    private void RefreshCompletedState()
+    private static void ApplySprite(Image target, Sprite sprite)
     {
-        SetStatusImage(m_statusCompleted);
-        SetActive(m_lockIcon, false);
-        SetActive(m_lock, false);
-        SetActive(m_progress, false);
-        SetActive(m_start, false);
-        RefreshStars(true, MPLargeImageLevelModel.GetLevelStars(m_data));
-        SetActive(m_completedIcon, true);
+        if (target == null)
+            return;
+        target.sprite = sprite;
+        // 资源缺失时不显示白块，也不沿用循环列表上一关的图片。
+        target.enabled = sprite != null;
+    }
 
+    /// <summary>完成预览单独使用 Pixel 作为资源持有者，以便换关时只释放预览、不重复加载卡片样式。</summary>
+    private void RefreshCompletedPixel()
+    {
+        if (m_completedPixel == null || (m_previewLevelId == m_data.ID && m_completedPixel.sprite != null))
+            return;
+        ClearCompletedPixel();
+        Sprite sprite = LoadSprite("icon_" + m_data.ID, m_completedPixel);
+        ApplySprite(m_completedPixel, sprite);
+        m_completedPixel.color = Color.white;
+        m_completedPixel.preserveAspect = true;
+        if (sprite != null)
+            m_previewLevelId = m_data.ID;
+    }
+
+    private void ClearCompletedPixel()
+    {
         if (m_completedPixel != null)
         {
-            m_completedPixel.sprite = MPLoad.Load<Sprite>("icon_" + m_data.ID, this);
+            m_completedPixel.sprite = null;
+            m_completedPixel.enabled = false;
+            MPLoad.ReleaseAll(m_completedPixel);
         }
+        m_previewLevelId = null;
     }
 
-    /// <summary>
-    /// 只显示当前状态对应的 Status 底图节点。
-    /// </summary>
-    /// <param name="target">当前状态需要显示的底图节点。</param>
     private void SetStatusImage(GameObject target)
     {
-        SetActive(m_statusLock, m_statusLock == target);
-        SetActive(m_statusUnlock, m_statusUnlock == target);
-        SetActive(m_statusCompleted, m_statusCompleted == target);
+        SetActive(m_statusLock, target != null && m_statusLock == target);
+        SetActive(m_statusUnlock, target != null && m_statusUnlock == target);
+        SetActive(m_statusCompleted, target != null && m_statusCompleted == target);
     }
 
-    /// <summary>
-    /// 刷新进度条显示。
-    /// </summary>
-    private void RefreshProgress()
+    private void RefreshStars(bool completed, int stars)
     {
-        if (m_progressFill != null)
-        {
-            m_progressFill.fillAmount = MPLargeImageLevelModel.GetLevelProgress(m_data);
-        }
-    }
-
-    /// <summary>
-    /// 刷新通关星星显示。
-    /// </summary>
-    /// <param name="isPass">当前关卡是否已经完成。</param>
-    /// <param name="stars">需要点亮的星星数量。</param>
-    private void RefreshStars(bool isPass, int stars)
-    {
-        if (m_stars == null || m_starObj == null)
-        {
+        SetActive(m_stars, completed);
+        if (m_starObj == null)
             return;
-        }
-
-        m_stars.SetActive(isPass);
         stars = Mathf.Clamp(stars, 0, m_starObj.Length);
         for (int i = 0; i < m_starObj.Length; i++)
-        {
-            SetActive(m_starObj[i], i < stars);
-        }
+            SetActive(m_starObj[i], completed && i < stars);
     }
 
-    /// <summary>
-    /// 缓存星星高亮节点。
-    /// </summary>
     private void CacheStarNodes()
     {
-        Transform starsTransform = transform.Find("Stars");
-        if (starsTransform == null)
-        {
+        if (m_stars == null)
             return;
-        }
-
-        m_starObj = new GameObject[starsTransform.childCount];
-        for (int i = 0; i < starsTransform.childCount; i++)
+        Transform root = m_stars.transform;
+        m_starObj = new GameObject[root.childCount];
+        for (int i = 0; i < root.childCount; i++)
         {
-            Transform starTransform = starsTransform.GetChild(i);
-            m_starObj[i] = starTransform.childCount > 0 ? starTransform.GetChild(0).gameObject : starTransform.gameObject;
+            Transform light = root.GetChild(i).Find("Light");
+            m_starObj[i] = light == null ? null : light.gameObject;
         }
     }
 
-    /// <summary>
-    /// 查找指定路径的 GameObject。
-    /// </summary>
-    /// <param name="path">相对当前 Item 的节点路径。</param>
-    /// <returns>找到的 GameObject，未找到时返回 null。</returns>
     private GameObject FindGameObject(string path)
     {
-        Transform target = transform.Find(path);
-        return target == null ? null : target.gameObject;
+        Transform node = transform.Find(path);
+        return node == null ? null : node.gameObject;
     }
 
-    /// <summary>
-    /// 查找指定路径上的组件。
-    /// </summary>
-    /// <param name="path">相对当前 Item 的节点路径。</param>
-    /// <typeparam name="T">需要获取的组件类型。</typeparam>
-    /// <returns>找到的组件，未找到时返回 null。</returns>
     private T FindComponent<T>(string path) where T : Component
     {
-        Transform target = transform.Find(path);
-        return target == null ? null : target.GetComponent<T>();
+        Transform node = transform.Find(path);
+        return node == null ? null : node.GetComponent<T>();
     }
 
-    /// <summary>
-    /// 安全设置节点显隐。
-    /// </summary>
-    /// <param name="target">需要设置的节点。</param>
-    /// <param name="active">是否显示。</param>
-    private void SetActive(GameObject target, bool active)
+    private static void SetActive(GameObject target, bool active)
     {
-        if (target != null)
-        {
+        if (target != null && target.activeSelf != active)
             target.SetActive(active);
-        }
     }
 
-    /// <summary>
-    /// 点击已解锁关卡时进入大图游戏界面。
-    /// </summary>
     private void OnLevelClick()
     {
+        if (m_data == null || string.IsNullOrWhiteSpace(m_data.ID))
+            return;
+        AWindow owner = GetComponentInParent<AWindow>();
+        if (owner != null && owner.IsDestoried)
+            return;
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
 
-        if (!m_isUnlock)
+        // 点击时重新读取状态，不能使用列表刷新前缓存的解锁结果。
+        if (MPLargeImageLevelModel.GetLevelState(m_data) == MPLargeImageLevelState.Locked)
         {
-            MPLargeImageLevelUnlockPopUIMsgData unlockData = new MPLargeImageLevelUnlockPopUIMsgData()
+            UIManager.Inst.ShowWindow<MPLargeImageLevelUnlockPop>(new MPLargeImageLevelUnlockPopUIMsgData
             {
                 levelInfo = m_data,
                 index = m_index,
                 refresh = m_refresh,
-            };
-            UIManager.Inst.ShowWindow<MPLargeImageLevelUnlockPop>(unlockData, true, UILayer.Top);
+            }, true, UILayer.Top);
             return;
         }
 
-        MPLargeImageGameViewUIMsgData data = new MPLargeImageGameViewUIMsgData()
+        MPNewGamePop.EnterLargeImageLevel(new MPLargeImageGameViewUIMsgData
         {
             blockInfo = m_data,
             index = m_index,
             refresh = m_refresh,
-        };
-        MPNewGamePop.EnterLargeImageLevel(data, GetComponentInParent<AWindow>());
+        }, owner);
+    }
+
+    private void OnDisable()
+    {
+        ClearCompletedPixel();
+    }
+
+    /// <summary>主页释放时可提前调用；随后 OnDestroy 再次调用也安全。</summary>
+    public void ReleaseResources()
+    {
+        ClearCompletedPixel();
+        ApplySprite(m_frame, null);
+        ApplySprite(m_buttonImage, null);
+        MPLoad.ReleaseAll(this);
+        m_refresh = null;
+        m_data = null;
+        if (m_levelBtn != null)
+            m_levelBtn.interactable = false;
     }
 
     private void OnDestroy()
     {
         if (m_levelBtn != null)
-        {
             m_levelBtn.onClick.RemoveListener(OnLevelClick);
-        }
-
-        MPLoad.ReleaseAll(this);
+        ReleaseResources();
     }
 }

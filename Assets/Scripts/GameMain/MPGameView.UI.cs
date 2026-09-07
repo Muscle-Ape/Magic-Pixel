@@ -21,6 +21,9 @@ public partial class MPGameView
     /// </summary>
     protected override void RefreshModeSpecificLayout()
     {
+        if (m_numberFrameMoveShadow != null)
+            m_numberFrameMoveShadow.gameObject.SetActive(false);
+
         if (!m_isCustomLevel || m_modeSwitchFrame == null)
             return;
 

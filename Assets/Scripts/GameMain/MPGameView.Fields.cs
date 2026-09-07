@@ -11,6 +11,10 @@ using YooAsset;
 [Component("MPGameView")]
 public partial class MPGameView : MPGameViewBase
 {
+    /// <summary>数字栏拖拽提示仅供大图模式使用，主线、自定义及社区关卡关闭。</summary>
+    [TransformPath("View/Content/Shadow")]
+    private RectTransform m_numberFrameMoveShadow;
+
     /// <summary>
     /// 方块信息
     /// </summary>

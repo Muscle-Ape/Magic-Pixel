@@ -9,15 +9,15 @@ using UnityEngine.UI;
 /// 使用预制体 View/Grid 下的方块随机错峰缩放，在完全遮住页面后执行切页。
 /// </summary>
 [Component("MPTransitionView")]
-public class MPTransitionView : AWindow
+public partial class MPTransitionView : AWindow
 {
-    private const float OPEN_SCALE_DURATION = 0.28f;
-    private const float CLOSE_SCALE_DURATION = 0.24f;
+    private const float OPEN_SCALE_DURATION = 0.18f;
+    private const float CLOSE_SCALE_DURATION = 0.16f;
 
     // 第一块到最后一块开始动画的时间差，不随方块数量增加而延长过渡。
-    private const float OPEN_STAGGER_DURATION = 0.4f;
-    private const float CLOSE_STAGGER_DURATION = 0.36f;
-    private const float DEFAULT_STAY_DURATION = 0.45f;
+    private const float OPEN_STAGGER_DURATION = 0.22f;
+    private const float CLOSE_STAGGER_DURATION = 0.2f;
+    private const float DEFAULT_STAY_DURATION = 0.9f;
 
     [TransformPath("View/Grid")]
     private RectTransform m_grid;
@@ -82,6 +82,8 @@ public class MPTransitionView : AWindow
     public override void OnCreate()
     {
         CacheItems();
+        CacheMotionPose();
+        ResetMotionPresentation();
         SetItemsScale(Vector3.zero);
     }
 
@@ -100,8 +102,9 @@ public class MPTransitionView : AWindow
         m_stage = TransitionStage.Opening;
 
         CacheItems();
+        ResetMotionPresentation();
         SetItemsScale(Vector3.zero);
-        FitGridToScreen();
+        RebuildGridLayout();
         if (m_items.Count == 0)
         {
             Debug.LogWarning("[MPTransitionView] View/Grid 下没有可用的方块，将跳过方块动画。");
@@ -142,31 +145,13 @@ public class MPTransitionView : AWindow
         }
     }
 
-    private void FitGridToScreen()
+    private void RebuildGridLayout()
     {
-        if (m_grid == null || m_items.Count == 0)
+        if (m_grid == null)
             return;
 
-        GridLayoutGroup layout = m_grid.GetComponent<GridLayoutGroup>();
-        if (layout == null || !layout.enabled)
-            return;
-
+        // 布局由预制体上的 MPTransitionGridLayout 统一负责；这里只保证首帧动画前完成排布。
         m_grid.ForceUpdateRectTransforms();
-        int columns = Mathf.Clamp(layout.constraintCount, 1, m_items.Count);
-        // 仅用完整行计算覆盖面积，末尾不足一行的方块排在屏幕下方，避免留下缺口。
-        int rows = Mathf.Max(1, m_items.Count / columns);
-        float cellSize = Mathf.Ceil(Mathf.Max(m_grid.rect.width / columns, m_grid.rect.height / rows));
-        if (cellSize <= 0f)
-            return;
-
-        layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        layout.constraintCount = columns;
-        layout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-        layout.startAxis = GridLayoutGroup.Axis.Horizontal;
-        layout.childAlignment = TextAnchor.UpperLeft;
-        layout.padding = new RectOffset();
-        layout.spacing = Vector2.zero;
-        layout.cellSize = new Vector2(cellSize, cellSize);
         LayoutRebuilder.ForceRebuildLayoutImmediate(m_grid);
     }
 
@@ -253,13 +238,9 @@ public class MPTransitionView : AWindow
         {
             PlayCloseAnimation();
         }
-        else if (m_autoClose)
+        else
         {
-            m_delayTween = DOVirtual.DelayedCall(m_stayDuration, () =>
-            {
-                m_delayTween = null;
-                PlayCloseAnimation();
-            }).SetUpdate(true).SetLink(gameObject);
+            PlayCoveredMotion();
         }
     }
 
@@ -268,6 +249,13 @@ public class MPTransitionView : AWindow
         if (this == null || IsDestoried || m_stage != TransitionStage.Covered)
             return;
 
+        // 完成单向移动后直接接到终点拼图，不让云倒退或跳回起始位置。
+        if (m_motionTween != null)
+        {
+            m_closeRequested = true;
+            return;
+        }
+
         // 手动退场时目标页也可能已发生变化，缩小方块前再检查一次。
         PrepareTargetWindowForReveal();
         if (this == null || IsDestoried || m_stage != TransitionStage.Covered)
@@ -275,6 +263,7 @@ public class MPTransitionView : AWindow
 
         m_stage = TransitionStage.Closing;
         KillAllTweens();
+        PrepareMotionForExit();
         PlayScaleAnimation(false, FinishTransition);
     }
 
@@ -340,6 +329,8 @@ public class MPTransitionView : AWindow
         m_stageSequence = null;
         m_delayTween?.Kill();
         m_delayTween = null;
+        m_motionTween?.Kill();
+        m_motionTween = null;
 
         for (int i = 0; i < m_items.Count; i++)
         {
@@ -373,6 +364,6 @@ public class MPTransitionViewUIMsgData : UIMsgData
 {
     public Action transitionAction;
     public Action completedAction;
-    public float stayDuration = 0.45f;
+    public float stayDuration = 0.9f;
     public bool autoClose = true;
 }

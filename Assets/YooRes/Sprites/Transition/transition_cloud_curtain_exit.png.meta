@@ -1,0 +1,1027 @@
+fileFormatVersion: 2
+guid: 5ab07a03d4844328b2c2d89ab99ebaa4
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 21300000
+    second: transition_cloud_exit_tile_r01_c01
+  - first:
+      213: 21300002
+    second: transition_cloud_exit_tile_r01_c02
+  - first:
+      213: 21300004
+    second: transition_cloud_exit_tile_r01_c03
+  - first:
+      213: 21300006
+    second: transition_cloud_exit_tile_r01_c04
+  - first:
+      213: 21300008
+    second: transition_cloud_exit_tile_r02_c01
+  - first:
+      213: 21300010
+    second: transition_cloud_exit_tile_r02_c02
+  - first:
+      213: 21300012
+    second: transition_cloud_exit_tile_r02_c03
+  - first:
+      213: 21300014
+    second: transition_cloud_exit_tile_r02_c04
+  - first:
+      213: 21300016
+    second: transition_cloud_exit_tile_r03_c01
+  - first:
+      213: 21300018
+    second: transition_cloud_exit_tile_r03_c02
+  - first:
+      213: 21300020
+    second: transition_cloud_exit_tile_r03_c03
+  - first:
+      213: 21300022
+    second: transition_cloud_exit_tile_r03_c04
+  - first:
+      213: 21300024
+    second: transition_cloud_exit_tile_r04_c01
+  - first:
+      213: 21300026
+    second: transition_cloud_exit_tile_r04_c02
+  - first:
+      213: 21300028
+    second: transition_cloud_exit_tile_r04_c03
+  - first:
+      213: 21300030
+    second: transition_cloud_exit_tile_r04_c04
+  - first:
+      213: 21300032
+    second: transition_cloud_exit_tile_r05_c01
+  - first:
+      213: 21300034
+    second: transition_cloud_exit_tile_r05_c02
+  - first:
+      213: 21300036
+    second: transition_cloud_exit_tile_r05_c03
+  - first:
+      213: 21300038
+    second: transition_cloud_exit_tile_r05_c04
+  - first:
+      213: 21300040
+    second: transition_cloud_exit_tile_r06_c01
+  - first:
+      213: 21300042
+    second: transition_cloud_exit_tile_r06_c02
+  - first:
+      213: 21300044
+    second: transition_cloud_exit_tile_r06_c03
+  - first:
+      213: 21300046
+    second: transition_cloud_exit_tile_r06_c04
+  - first:
+      213: 21300048
+    second: transition_cloud_exit_tile_r07_c01
+  - first:
+      213: 21300050
+    second: transition_cloud_exit_tile_r07_c02
+  - first:
+      213: 21300052
+    second: transition_cloud_exit_tile_r07_c03
+  - first:
+      213: 21300054
+    second: transition_cloud_exit_tile_r07_c04
+  - first:
+      213: 21300056
+    second: transition_cloud_exit_tile_r08_c01
+  - first:
+      213: 21300058
+    second: transition_cloud_exit_tile_r08_c02
+  - first:
+      213: 21300060
+    second: transition_cloud_exit_tile_r08_c03
+  - first:
+      213: 21300062
+    second: transition_cloud_exit_tile_r08_c04
+  - first:
+      213: 21300064
+    second: transition_cloud_exit_tile_r09_c01
+  - first:
+      213: 21300066
+    second: transition_cloud_exit_tile_r09_c02
+  - first:
+      213: 21300068
+    second: transition_cloud_exit_tile_r09_c03
+  - first:
+      213: 21300070
+    second: transition_cloud_exit_tile_r09_c04
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 0
+  alphaUsage: 1
+  alphaIsTransparency: 0
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: iPhone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r01_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1672
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 181844e194d35992b78619c91d9e06d1
+      internalID: 21300000
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r01_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 1672
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1efbdfcff2ab5693a346103f64895c95
+      internalID: 21300002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r01_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 1672
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e9ffa87080158a7a3c0ad09a47016da
+      internalID: 21300004
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r01_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 1672
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 046720e6a30a50ca967a0103b0814866
+      internalID: 21300006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r02_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1463
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97d5952ce943582882d55246139e6269
+      internalID: 21300008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r02_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 1463
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba6fc3f9dc3d5a8bb556d8ebcfe31b3d
+      internalID: 21300010
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r02_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 1463
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d1cc922c216d51d68959babccb4dff2e
+      internalID: 21300012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r02_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 1463
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5148d2c36d555ac4ad24b44ad937bb00
+      internalID: 21300014
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r03_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1254
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 890b04b45e4a565dabea84c1bf1fadec
+      internalID: 21300016
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r03_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 1254
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9024ca32070c5ffeaf345c982a14a4f4
+      internalID: 21300018
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r03_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 1254
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc5aae7aaf385c7da74d3933809c069e
+      internalID: 21300020
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r03_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 1254
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10a51ab6589852a29ad2c52639d0f2d6
+      internalID: 21300022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r04_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1045
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dddaaab7994852779b6725df69da0f65
+      internalID: 21300024
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r04_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 1045
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2287e12169465c739fc3eff52dfe80eb
+      internalID: 21300026
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r04_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 1045
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc53dc91fcef59f5a34febc1b5fb6476
+      internalID: 21300028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r04_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 1045
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a892ac971b7652de82a192e72a6052d8
+      internalID: 21300030
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r05_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 836
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5465dc0ef6765616a0d9cfbe62c14bfb
+      internalID: 21300032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r05_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 836
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 232e92e225d05ab590d5a390f20b45c9
+      internalID: 21300034
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r05_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 836
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4423b473f47655e1b94004a55fc3fe91
+      internalID: 21300036
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r05_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 836
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d99cc0aae3cc51d0874a7702ebce80a9
+      internalID: 21300038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r06_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 627
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30e5cd0e27965d54b4df98bb7b6667cf
+      internalID: 21300040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r06_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 627
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc6edaf0e92c592da8291b61e8980396
+      internalID: 21300042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r06_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 627
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f450d756c325000a3b897297f5b2a39
+      internalID: 21300044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r06_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 627
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 625bfba92592536a9fdcf2d56f0decb6
+      internalID: 21300046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r07_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 418
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f836bb66d5a54e1b1e84694eb175328
+      internalID: 21300048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r07_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 418
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c34004e145105552a3ae96c9b8132065
+      internalID: 21300050
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r07_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 418
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43ef668020c652a4a0e13b2708c014c7
+      internalID: 21300052
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r07_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 418
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f5f22ac30ee5f7eafd70314adc35f8b
+      internalID: 21300054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r08_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 209
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d6cc5477b215945944a7e4b7cd36ecb
+      internalID: 21300056
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r08_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 209
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f4bdddf58545745b3f24d76965e2cef
+      internalID: 21300058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r08_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 209
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10a50a9bb5f45641b6b08885362cadb5
+      internalID: 21300060
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r08_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 209
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af497f41d3c5589a9dcde8e32b09a6d5
+      internalID: 21300062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r09_c01
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d53b7a59d1e5752b60a9afddfb04d1a
+      internalID: 21300064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r09_c02
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 0
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c39f0f324bd35e439099b97deac74799
+      internalID: 21300066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r09_c03
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 0
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: afb4f86227bc580d99b014c8e55eaa6b
+      internalID: 21300068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: transition_cloud_exit_tile_r09_c04
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 0
+        width: 209
+        height: 209
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8719887d67f55ba58d9c7e0d54a7c03f
+      internalID: 21300070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: ae53a1a9fe625f998cc64591e92530d3
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable:
+      transition_cloud_exit_tile_r01_c01: 21300000
+      transition_cloud_exit_tile_r01_c02: 21300002
+      transition_cloud_exit_tile_r01_c03: 21300004
+      transition_cloud_exit_tile_r01_c04: 21300006
+      transition_cloud_exit_tile_r02_c01: 21300008
+      transition_cloud_exit_tile_r02_c02: 21300010
+      transition_cloud_exit_tile_r02_c03: 21300012
+      transition_cloud_exit_tile_r02_c04: 21300014
+      transition_cloud_exit_tile_r03_c01: 21300016
+      transition_cloud_exit_tile_r03_c02: 21300018
+      transition_cloud_exit_tile_r03_c03: 21300020
+      transition_cloud_exit_tile_r03_c04: 21300022
+      transition_cloud_exit_tile_r04_c01: 21300024
+      transition_cloud_exit_tile_r04_c02: 21300026
+      transition_cloud_exit_tile_r04_c03: 21300028
+      transition_cloud_exit_tile_r04_c04: 21300030
+      transition_cloud_exit_tile_r05_c01: 21300032
+      transition_cloud_exit_tile_r05_c02: 21300034
+      transition_cloud_exit_tile_r05_c03: 21300036
+      transition_cloud_exit_tile_r05_c04: 21300038
+      transition_cloud_exit_tile_r06_c01: 21300040
+      transition_cloud_exit_tile_r06_c02: 21300042
+      transition_cloud_exit_tile_r06_c03: 21300044
+      transition_cloud_exit_tile_r06_c04: 21300046
+      transition_cloud_exit_tile_r07_c01: 21300048
+      transition_cloud_exit_tile_r07_c02: 21300050
+      transition_cloud_exit_tile_r07_c03: 21300052
+      transition_cloud_exit_tile_r07_c04: 21300054
+      transition_cloud_exit_tile_r08_c01: 21300056
+      transition_cloud_exit_tile_r08_c02: 21300058
+      transition_cloud_exit_tile_r08_c03: 21300060
+      transition_cloud_exit_tile_r08_c04: 21300062
+      transition_cloud_exit_tile_r09_c01: 21300064
+      transition_cloud_exit_tile_r09_c02: 21300066
+      transition_cloud_exit_tile_r09_c03: 21300068
+      transition_cloud_exit_tile_r09_c04: 21300070
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant:

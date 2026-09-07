@@ -31,6 +31,7 @@ public partial class MPLargeImageGameView
     private void UpdateData()
     {
         m_hasCompleted = true;
+        RefreshNumberFrameMoveHints();
         ClearProgressCache();
         RefreshPropButtons();
 

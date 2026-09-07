@@ -21,6 +21,7 @@ public partial class MPHomeView : AWindow
         RefreshCurrency();
         InitializeHomePage();
         InitializeCustomEditor();
+        InitializeLargerPage();
 
         MPAudioManager.Instance.PlayBGM(MPMusic.MPBGMMain);
     }
@@ -39,6 +40,7 @@ public partial class MPHomeView : AWindow
         RefreshCurrency();
         RefreshHomePage();
         RefreshCustomEditorFocus();
+        RefreshLargerPage();
         RefreshResponsiveLayout();
         ApplyTabState(false);
     }
@@ -57,6 +59,7 @@ public partial class MPHomeView : AWindow
         m_initialized = false;
         ReleaseHomePage();
         ReleaseCustomEditor();
+        ReleaseLargerPage();
         UnregisterListeners();
         KillSwitchSequence();
         m_center.DOKill();
