@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -127,6 +128,7 @@ public partial class MPHomeView
         if (m_customBlocks == null || m_customBlockPool == null)
             return;
 
+        StopCustomGridWave();
         for (int i = 0; i < m_customBlocks.Count; i++)
         {
             if (m_customBlocks[i] != null)
@@ -134,6 +136,76 @@ public partial class MPHomeView
         }
 
         m_customBlocks.Clear();
+    }
+
+    /// <summary>
+    /// 尺寸切换后播放格子缩放波浪。5×5 从左上到右下，10×10 从右上到左下。
+    /// 最后一个对角线动画结束时，整段时长固定为 0.7 秒。
+    /// </summary>
+    private void PlayCustomGridWave(bool fromRightTop)
+    {
+        StopCustomGridWave();
+        if (m_customBlocks == null || m_customBlocks.Count == 0)
+            return;
+
+        int size = Mathf.Max(1, m_customCurrentSize);
+        int diagonalCount = size * 2 - 1;
+        Sequence sequence = DOTween.Sequence();
+        sequence.AppendInterval(CUSTOM_GRID_WAVE_TOTAL_DURATION);
+
+        for (int i = 0; i < m_customBlocks.Count; i++)
+        {
+            MPCustomBlock block = m_customBlocks[i];
+            if (block == null)
+                continue;
+
+            Transform blockTransform = block.transform;
+            blockTransform.DOKill();
+            blockTransform.localScale = Vector3.zero;
+
+            int row = i / size;
+            int column = i % size;
+            int diagonal = fromRightTop
+                ? row + size - 1 - column
+                : row + column;
+            float delay = diagonalCount <= 1
+                ? 0f
+                : CUSTOM_GRID_WAVE_DELAY_SPAN * diagonal / (diagonalCount - 1f);
+
+            sequence.Insert(
+                delay,
+                blockTransform
+                    .DOScale(Vector3.one, CUSTOM_GRID_WAVE_ITEM_DURATION)
+                    .SetEase(Ease.OutBack));
+        }
+
+        m_customGridWaveSequence = sequence;
+        sequence.SetUpdate(true);
+        sequence.SetLink(gameObject);
+        sequence.OnComplete(() =>
+        {
+            if (m_customGridWaveSequence == sequence)
+                m_customGridWaveSequence = null;
+        });
+    }
+
+    /// <summary>停止尺寸切换动画，并确保对象池中的方块恢复最终缩放。</summary>
+    private void StopCustomGridWave()
+    {
+        m_customGridWaveSequence?.Kill();
+        m_customGridWaveSequence = null;
+        if (m_customBlocks == null)
+            return;
+
+        for (int i = 0; i < m_customBlocks.Count; i++)
+        {
+            MPCustomBlock block = m_customBlocks[i];
+            if (block == null)
+                continue;
+
+            block.transform.DOKill();
+            block.transform.localScale = Vector3.one;
+        }
     }
 
     private MPCustomBlock CreateCustomBlock()

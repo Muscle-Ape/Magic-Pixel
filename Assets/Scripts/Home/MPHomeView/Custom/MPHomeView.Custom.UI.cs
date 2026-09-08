@@ -370,6 +370,7 @@ public partial class MPHomeView
         BeginNewCustomPublishDraft();
         m_customIsTenSize = isTenSize;
         CreateCustomGrid(isTenSize ? 10 : 5);
+        PlayCustomGridWave(isTenSize);
         RefreshCustomSizeState();
         RefreshCustomModeState();
     }

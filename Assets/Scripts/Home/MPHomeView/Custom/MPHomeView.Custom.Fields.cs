@@ -15,6 +15,10 @@ public partial class MPHomeView
     private const int CUSTOM_GRID_SIZE = 800;
     private const string DEFAULT_CUSTOM_COLOR = "#FF8E64";
     private const float CUSTOM_PALETTE_ANIMATION_DURATION = 0.22f;
+    private const float CUSTOM_GRID_WAVE_TOTAL_DURATION = 0.7f;
+    private const float CUSTOM_GRID_WAVE_ITEM_DURATION = 0.3f;
+    private const float CUSTOM_GRID_WAVE_DELAY_SPAN =
+        CUSTOM_GRID_WAVE_TOTAL_DURATION - CUSTOM_GRID_WAVE_ITEM_DURATION;
 
     // 用户提供的第四个颜色少一位，这里按相邻配色补全为 #76B443。
     private static readonly string[] CUSTOM_QUICK_COLOR_HEXES =
@@ -123,6 +127,7 @@ public partial class MPHomeView
     private Button m_customPalettePointerBtn;
     private Sequence m_customPaletteSequence;
     private Sequence m_customSaveAnimationSequence;
+    private Sequence m_customGridWaveSequence;
     private CancellationTokenSource m_customPublishCancellation;
     private MPCustomLevelInfo m_customPendingPublishLevelInfo;
     private string m_customEditingLevelId;

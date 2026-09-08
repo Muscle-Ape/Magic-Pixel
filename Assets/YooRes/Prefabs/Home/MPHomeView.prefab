@@ -11544,7 +11544,7 @@ MonoBehaviour:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_RaycastPadding: {x: 90, y: 90, z: 90, w: 90}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
@@ -13310,7 +13310,6 @@ GameObject:
   - component: {fileID: 5571623464410334061}
   - component: {fileID: 3193456250423771975}
   - component: {fileID: 1994571356105160911}
-  - component: {fileID: 1576789636124293107}
   m_Layer: 5
   m_Name: StaurationMask
   m_TagString: Untagged
@@ -13401,18 +13400,6 @@ MonoBehaviour:
   m_OverrideTransform: {fileID: 0}
   m_RaycastTarget: 0
   m_RaycastThreshold: 0.25
---- !u!114 &1576789636124293107
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8386510973128865161}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ada1f5588aa975b49a54797147e78aea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &8461371890712780644
 GameObject:
   m_ObjectHideFlags: 0
