@@ -454,8 +454,8 @@ public partial class MPCustomView
 
         for (int i = 0; i < cellCount; i++)
         {
-            m_blocks[i].Fill(false);
-            m_blocks[i].ClearColor();
+            m_blocks[i].Fill(false, false);
+            m_blocks[i].ClearColor(false);
         }
     }
 
@@ -743,6 +743,5 @@ public partial class MPCustomView
         MPLoad.ReleaseAll(this);
     }
 }
-
 
 

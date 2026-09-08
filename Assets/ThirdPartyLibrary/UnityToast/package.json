@@ -1,0 +1,14 @@
+{
+  "name": "com.hq.unity.unitytoast",
+  "displayName": "UnityToast",
+  "version": "2.0.0",
+  "unity": "2019.4",
+  "description": "UnityToast",
+  "samples": [
+    {
+      "displayName": "Example Sample",
+      "description": "暂时没有例子",
+      "path": "Samples~/Example"
+    }
+  ]
+}

@@ -60,11 +60,11 @@ public partial class MPHomeView
         for (int i = 0; i < m_customBlocks.Count; i++)
         {
             MPCustomBlock block = m_customBlocks[i];
-            block.Fill(filledIndexes.Contains(i));
+            block.Fill(filledIndexes.Contains(i), false);
             if (colors.TryGetValue(i, out Color color))
-                block.SetColor(color);
+                block.SetColor(color, false);
             else
-                block.ClearColor();
+                block.ClearColor(false);
         }
 
         RefreshCustomSizeState();
@@ -87,8 +87,8 @@ public partial class MPHomeView
         for (int i = 0; i < cellCount; i++)
         {
             MPCustomBlock block = m_customBlockPool.Get();
-            block.ClearColor();
-            block.Fill(false);
+            block.ClearColor(false);
+            block.Fill(false, false);
             block.SetMode(m_customIsFillMode);
             m_customBlocks.Add(block);
         }

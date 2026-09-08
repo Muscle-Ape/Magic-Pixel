@@ -1,11 +1,11 @@
 using DG.Tweening;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class MPCustomBlock : MonoBehaviour
 {
+    private const float MARK_SCALE_ANIMATION_DURATION = 0.18f;
+
     /// <summary>
     /// 用于显示颜色的图片
     /// </summary>
@@ -22,13 +22,11 @@ public class MPCustomBlock : MonoBehaviour
     private Sprite m_defaultFrameSprite;
 
     /// <summary>
-    /// 填充状态及其颜色层使用的图片。
+    /// 填充状态使用的图片。
     /// </summary>
     private Image m_fillImage;
-    private Image m_fillColorImage;
     private Sprite m_defaultColorSprite;
     private Sprite m_defaultFillSprite;
-    private Sprite m_defaultFillColorSprite;
 
     /// <summary>
     /// 用于填色的图片
@@ -40,6 +38,11 @@ public class MPCustomBlock : MonoBehaviour
     /// </summary>
     private bool m_isFill;
     public bool isFill => m_isFill;
+
+    /// <summary>
+    /// 当前是否处于填充编辑模式，用于中断动画后恢复正确显示。
+    /// </summary>
+    private bool m_isFillMode;
 
     /// <summary>
     /// 是否已经上色
@@ -57,6 +60,8 @@ public class MPCustomBlock : MonoBehaviour
     /// 颜色渐变动画
     /// </summary>
     private Tween m_colorTween;
+    private Tween m_colorScaleTween;
+    private Tween m_fillScaleTween;
 
     public void Init()
     {
@@ -68,9 +73,7 @@ public class MPCustomBlock : MonoBehaviour
         Transform fill = transform.Find("Fill");
         m_fill = fill == null ? null : fill.gameObject;
         m_fillImage = fill == null ? null : fill.GetComponent<Image>();
-        m_fillColorImage = transform.Find("Fill/Color")?.GetComponent<Image>();
         m_defaultFillSprite = m_fillImage == null ? null : m_fillImage.sprite;
-        m_defaultFillColorSprite = m_fillColorImage == null ? null : m_fillColorImage.sprite;
     }
 
     /// <summary>
@@ -89,14 +92,13 @@ public class MPCustomBlock : MonoBehaviour
     }
 
     /// <summary>
-    /// Color、Fill、Fill/Color 使用同一张当前尺寸的填充图片。
+    /// Color 和 Fill 使用同一张当前尺寸的填充图片。
     /// 传空时分别恢复预制体中对应节点的默认图片。
     /// </summary>
     public void SetFillSprite(Sprite sprite)
     {
         SetImageSprite(m_colorImg, sprite != null ? sprite : m_defaultColorSprite);
         SetImageSprite(m_fillImage, sprite != null ? sprite : m_defaultFillSprite);
-        SetImageSprite(m_fillColorImage, sprite != null ? sprite : m_defaultFillColorSprite);
     }
 
     private static void SetImageSprite(Image image, Sprite sprite)
@@ -110,31 +112,110 @@ public class MPCustomBlock : MonoBehaviour
         return m_isColor && m_color == color;
     }
 
-    public void SetColor(Color color)
+    public void SetColor(Color color, bool playAnimation = true)
     {
-        if (!m_isColor || m_color != color)
+        if (m_colorImg == null || (m_isColor && m_color == color))
+            return;
+
+        m_colorTween?.Kill();
+        m_colorTween = null;
+        m_colorScaleTween?.Kill();
+        m_colorScaleTween = null;
+        m_isColor = true;
+        m_color = color;
+        m_colorImg.color = color;
+
+        RectTransform colorTransform = m_colorImg.rectTransform;
+        if (!playAnimation)
         {
-            m_colorTween?.Kill();
-            m_colorTween = null;
-            m_isColor = true;
-            m_color = color;
-            m_colorImg.color = color;
+            colorTransform.localScale = Vector3.one;
+            return;
         }
+
+        colorTransform.localScale = Vector3.zero;
+        m_colorScaleTween = colorTransform
+            .DOScale(Vector3.one, MARK_SCALE_ANIMATION_DURATION)
+            .SetEase(Ease.OutBack)
+            .SetLink(gameObject)
+            .OnComplete(() => m_colorScaleTween = null);
     }
 
-    public void ClearColor()
+    public void ClearColor(bool playAnimation = true)
     {
         m_colorTween?.Kill();
         m_colorTween = null;
-        m_isColor = false;
-        m_colorImg.color = m_color = new Color(1, 1, 1, 0);
+        m_colorScaleTween?.Kill();
+        m_colorScaleTween = null;
 
+        bool wasColored = m_isColor;
+        m_isColor = false;
+        if (m_colorImg == null)
+            return;
+
+        Color displayColor = m_colorImg.color;
+        displayColor.a = 1f;
+        m_colorImg.color = displayColor;
+
+        RectTransform colorTransform = m_colorImg.rectTransform;
+        if (!playAnimation || !wasColored)
+        {
+            colorTransform.localScale = Vector3.zero;
+            return;
+        }
+
+        colorTransform.localScale = Vector3.one;
+        Tween tween = colorTransform
+            .DOScale(Vector3.zero, MARK_SCALE_ANIMATION_DURATION)
+            .SetEase(Ease.InBack)
+            .SetLink(gameObject);
+        m_colorScaleTween = tween;
+        tween.OnComplete(() =>
+        {
+            if (m_colorScaleTween == tween)
+                m_colorScaleTween = null;
+        });
     }
 
-    public void Fill(bool active)
+    public void Fill(bool active, bool playAnimation = true)
     {
+        bool stateChanged = m_isFill != active;
         m_isFill = active;
-        m_fill.SetActive(active);
+        if (m_fill == null)
+            return;
+
+        m_fillScaleTween?.Kill();
+        m_fillScaleTween = null;
+        RectTransform fillTransform = m_fill.transform as RectTransform;
+        if (fillTransform == null)
+        {
+            m_fill.SetActive(active);
+            return;
+        }
+
+        if (!playAnimation || !stateChanged)
+        {
+            fillTransform.localScale = active ? Vector3.one : Vector3.zero;
+            m_fill.SetActive(active);
+            return;
+        }
+
+        m_fill.SetActive(true);
+        fillTransform.localScale = active ? Vector3.zero : Vector3.one;
+        Vector3 targetScale = active ? Vector3.one : Vector3.zero;
+        Tween tween = fillTransform
+            .DOScale(targetScale, MARK_SCALE_ANIMATION_DURATION)
+            .SetEase(active ? Ease.OutBack : Ease.InBack)
+            .SetLink(gameObject);
+        m_fillScaleTween = tween;
+        tween.OnComplete(() =>
+        {
+            if (m_fillScaleTween != tween)
+                return;
+
+            m_fillScaleTween = null;
+            if (!m_isFill)
+                m_fill.SetActive(false);
+        });
     }
 
     /// <summary>
@@ -143,10 +224,17 @@ public class MPCustomBlock : MonoBehaviour
     /// <param name="isFill">是否为填充模式</param>
     public void SetMode(bool isFill)
     {
+        m_isFillMode = isFill;
+        m_fillScaleTween?.Kill();
+        m_fillScaleTween = null;
+        if (m_fill != null)
+        {
+            m_fill.transform.localScale = m_isFill ? Vector3.one : Vector3.zero;
+            m_fill.SetActive(isFill && m_isFill);
+        }
+
         if (isFill)
         {
-            m_fill.SetActive(m_isFill);
-
             if (m_isColor)
             {
                 m_colorTween?.Kill();
@@ -155,8 +243,6 @@ public class MPCustomBlock : MonoBehaviour
         }
         else
         {
-            m_fill.SetActive(false);
-
             if (m_isColor)
             {
                 m_colorTween?.Kill();
@@ -169,6 +255,24 @@ public class MPCustomBlock : MonoBehaviour
     {
         m_colorTween?.Kill();
         m_colorTween = null;
+        m_colorScaleTween?.Kill();
+        m_colorScaleTween = null;
+        m_fillScaleTween?.Kill();
+        m_fillScaleTween = null;
+
+        if (m_colorImg != null)
+        {
+            m_colorImg.rectTransform.localScale = m_isColor ? Vector3.one : Vector3.zero;
+            Color displayColor = m_colorImg.color;
+            displayColor.a = m_isColor && m_isFillMode ? 0.5f : 1f;
+            m_colorImg.color = displayColor;
+        }
+
+        if (m_fill != null)
+        {
+            m_fill.transform.localScale = m_isFill ? Vector3.one : Vector3.zero;
+            m_fill.SetActive(m_isFillMode && m_isFill);
+        }
     }
 
 }

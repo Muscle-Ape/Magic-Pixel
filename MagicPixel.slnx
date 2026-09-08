@@ -16,6 +16,7 @@
   <Project Path="HQ.UIManager.csproj" />
   <Project Path="AMSUISoftMask.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
+  <Project Path="UnityToast.csproj" />
   <Project Path="MaxSdk.Scripts.IntegrationManager.Editor.csproj" />
   <Project Path="Google.Play.Games.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />

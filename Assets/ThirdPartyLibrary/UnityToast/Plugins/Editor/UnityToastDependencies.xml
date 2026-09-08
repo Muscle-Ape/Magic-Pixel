@@ -1,0 +1,5 @@
+<dependencies>
+  <iosPods>
+    <iosPod name="Toast" version="~> 4.1.1"/>
+  </iosPods>
+</dependencies>

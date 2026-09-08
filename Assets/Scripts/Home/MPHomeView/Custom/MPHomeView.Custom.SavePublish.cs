@@ -75,7 +75,8 @@ public partial class MPHomeView
         MPCustomLevelInfo levelInfo = SaveCurrentHomeCustomLevel();
         if (levelInfo == null)
         {
-            Debug.LogWarning("[MPHomeView] 自定义关卡必须完成全部格子的上色后才能保存。");
+            // Debug.LogWarning("[MPHomeView] 自定义关卡必须完成全部格子的上色后才能保存。");
+            UnityToast.Instance.ShowToast("Custom levels can only be saved after all the squares have been colored.");
             return;
         }
 
@@ -90,7 +91,8 @@ public partial class MPHomeView
 
         if (!CanUseCustomCloudPublish())
         {
-            Debug.LogWarning("[MPHomeView] 请先登录后再上传公开自定义关卡。");
+            // Debug.LogWarning("[MPHomeView] 请先登录后再上传公开自定义关卡。");
+            UnityToast.Instance.ShowToast("Please log in before uploading a public custom level.");
             RefreshCustomPublishButtonState();
             return;
         }
@@ -112,13 +114,13 @@ public partial class MPHomeView
 
             if (levelInfo == null)
             {
-                Debug.LogWarning("[MPHomeView] 当前自定义关卡未完成，无法上传。");
+                UnityToast.Instance.ShowToast("The current custom level is incomplete and cannot be uploaded.");
                 return;
             }
 
             if (MPCustomLevelPublishManager.Instance.IsLocalLevelPublished(levelInfo.ID))
             {
-                Debug.LogWarning("[MPHomeView] 当前自定义关卡已经上传，不能重复上传。");
+                UnityToast.Instance.ShowToast("The current custom level has already been uploaded and cannot be uploaded again.");
                 return;
             }
 
@@ -127,11 +129,13 @@ public partial class MPHomeView
                 cancellation.Token);
             if (publishResult == null || !publishResult.success)
             {
-                Debug.LogWarning($"[MPHomeView] 上传公开关卡失败：{publishResult?.message}");
+                // Debug.LogWarning($"[MPHomeView] 上传公开关卡失败：{publishResult?.message}");
+                UnityToast.Instance.ShowToast("Uploading public levels failed.");
             }
             else
             {
-                Debug.Log($"[MPHomeView] 已上传公开关卡：{publishResult.publicLevelId}");
+                // Debug.Log($"[MPHomeView] 已上传公开关卡：{publishResult.publicLevelId}");
+                UnityToast.Instance.ShowToast("Public levels have been uploaded.");
             }
         }
         catch (OperationCanceledException)
@@ -226,8 +230,8 @@ public partial class MPHomeView
         int count = Mathf.Min(cellCount, m_customBlocks.Count);
         for (int i = 0; i < count; i++)
         {
-            m_customBlocks[i].Fill(false);
-            m_customBlocks[i].ClearColor();
+            m_customBlocks[i].Fill(false, false);
+            m_customBlocks[i].ClearColor(false);
         }
     }
 

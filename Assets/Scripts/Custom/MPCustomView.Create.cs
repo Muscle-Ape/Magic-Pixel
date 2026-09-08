@@ -23,8 +23,9 @@ public partial class MPCustomView
             {
                 MPCustomBlock block = m_blockPool.Get();
 
-                block.ClearColor();
-                block.Fill(false);
+                block.ClearColor(false);
+                block.Fill(false, false);
+                block.SetMode(m_isFillMode);
 
                 m_blocks.Add(block);
             }
