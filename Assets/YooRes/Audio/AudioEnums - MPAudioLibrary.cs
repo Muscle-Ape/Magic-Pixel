@@ -3,7 +3,12 @@
         MPSoundFill,
         MPSoundWrong,
         MPSoundPixelAnimation,
-        MPSoundGameCompleted
+        MPSoundGameCompleted,
+        MPSoundBlockFinish,
+        MPSoundStar,
+        MPSoundGameUseHint,
+        MPSoundGameUseLife,
+        MPSoundOpenBox
     }
     public enum MPMusic {
         MPBGMMain

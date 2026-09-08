@@ -521,6 +521,7 @@ public abstract partial class MPGameViewBase : AWindow
         love.transform.DOKill();
         love.transform.localScale = Vector3.one;
         love.SetActive(false);
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong, replay: true);
 
         SaveProgressCache();
         RefreshPropButtons();
@@ -543,6 +544,7 @@ public abstract partial class MPGameViewBase : AWindow
         love.SetActive(true);
         love.transform.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack).SetLink(love);
         m_lovesCount++;
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameUseLife, replay: true);
 
         SaveProgressCache();
         RefreshPropButtons();
@@ -579,7 +581,7 @@ public abstract partial class MPGameViewBase : AWindow
             return;
         }
 
-        CompleteHintTarget();
+        CompleteHintTargetWithSound();
         SaveProgressCache();
         RefreshPropButtons();
     }
@@ -604,7 +606,7 @@ public abstract partial class MPGameViewBase : AWindow
                     return;
                 }
 
-                CompleteHintTarget();
+                CompleteHintTargetWithSound();
                 SaveProgressCache();
                 break;
             case MPPetSkillOption.RecoverLife:
@@ -625,6 +627,13 @@ public abstract partial class MPGameViewBase : AWindow
         }
 
         RefreshPropButtons();
+    }
+
+    /// <summary>完成一次有效提示，并播放提示道具音效。</summary>
+    private void CompleteHintTargetWithSound()
+    {
+        CompleteHintTarget();
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameUseHint, replay: true);
     }
 
     private void OnLoveRecoverPropClick()

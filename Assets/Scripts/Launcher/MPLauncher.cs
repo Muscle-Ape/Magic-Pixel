@@ -2,11 +2,16 @@ using System;
 using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
+using DG.Tweening;
 using HQ.UIManager;
 using UnityEngine;
 
 public class MPLauncher : MonoBehaviour
 {
+    // 15×15 开场和结算波浪会同时使用大量 Tween，启动时预分配可避免运行中自动扩容。
+    private const int DOTWEEN_TWEENER_CAPACITY = 600;
+    private const int DOTWEEN_SEQUENCE_CAPACITY = 200;
+
     // 启动预制体直接随场景依赖加载，不能等 YooAsset 初始化之后再加载首屏。
     [SerializeField] private GameObject m_loadingViewPrefab;
     [SerializeField] private RectTransform m_loadingViewParent;
@@ -18,6 +23,15 @@ public class MPLauncher : MonoBehaviour
     private bool m_userReady;
     private bool m_isLaunching;
     private bool m_hasEnteredGame;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void InitializeDOTweenCapacity()
+    {
+        DOTween.Init();
+        DOTween.SetTweensCapacity(
+            DOTWEEN_TWEENER_CAPACITY,
+            DOTWEEN_SEQUENCE_CAPACITY);
+    }
 
     private void Start()
     {

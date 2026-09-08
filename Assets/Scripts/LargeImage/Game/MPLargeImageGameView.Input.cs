@@ -415,7 +415,7 @@ public partial class MPLargeImageGameView
                 SubLoves();
 
                 // 错误提示音效
-                MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
+                
             }
         }
     }
@@ -473,7 +473,7 @@ public partial class MPLargeImageGameView
                     SubLoves();
 
                     // 错误提示音效
-                    MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
+                    
                     return;
                 }
 
@@ -521,7 +521,7 @@ public partial class MPLargeImageGameView
                 SubLoves();
 
                 // 错误提示音效
-                MPAudioManager.Instance.PlaySound(MPSound.MPSoundWrong);
+                
                 return;
             }
 

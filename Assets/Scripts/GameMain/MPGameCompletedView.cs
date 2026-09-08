@@ -960,6 +960,7 @@ public class MPGameCompletedView : AWindow
                 if (open == null || this == null || IsDestoried)
                     return;
 
+                MPAudioManager.Instance.PlaySound(MPSound.MPSoundStar, replay: true);
                 open.localScale = targetScale * STAR_DROP_START_SCALE;
                 open.gameObject.SetActive(true);
             });

@@ -237,6 +237,7 @@ public abstract partial class MPGameViewBase
             (!completedColumn && !completedRow))
             return;
 
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundBlockFinish, replay: true);
         PlayLineCompleteAnimationItem(originBlock, 0f);
         int gridSize = VisibleGridSize;
         for (int distance = 1; distance < gridSize; distance++)

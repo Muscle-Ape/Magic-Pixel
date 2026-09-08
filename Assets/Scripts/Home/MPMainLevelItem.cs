@@ -434,6 +434,7 @@ public class MPMainLevelItem : MonoBehaviour
         if (!MPUser.instance.TryClaimMainLevelBoxAward(m_data, out MPRewardReceipt receipt))
             return;
 
+        MPAudioManager.Instance.PlaySound(MPSound.MPSoundOpenBox, replay: true);
         RefreshBox(m_index);
         m_refresh?.Invoke();
         MPRewardsClaimPop.Show(receipt);
