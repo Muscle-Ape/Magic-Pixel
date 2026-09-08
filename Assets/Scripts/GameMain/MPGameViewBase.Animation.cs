@@ -8,9 +8,9 @@ using UnityEngine.UI;
 /// <summary>普通与大图游戏页共用的开场动画和行列完成波浪。</summary>
 public abstract partial class MPGameViewBase
 {
-    private const float GAME_ENTER_TOTAL_DURATION = 1f;
-    private const float GAME_ENTER_ITEM_DURATION = 0.3f;
-    private const float GAME_ENTER_LINE_FADE_DURATION = 0.15f;
+    private const float GAME_ENTER_TOTAL_DURATION = 0.6f;
+    private const float GAME_ENTER_ITEM_DURATION = 0.2f;
+    private const float GAME_ENTER_LINE_FADE_DURATION = 0.1f;
     private const float GAME_ENTER_CONTENT_END_TIME =
         GAME_ENTER_TOTAL_DURATION - GAME_ENTER_LINE_FADE_DURATION;
     private const float GAME_ENTER_WAVE_SPAN =
@@ -66,7 +66,7 @@ public abstract partial class MPGameViewBase
 
     /// <summary>
     /// 由过渡页面退场完成回调触发。数字栏与网格按方向波浪展开，最后淡入分隔线，
-    /// 整段动画固定为一秒。
+    /// 整段动画固定为 0.6 秒。
     /// </summary>
     public void PlayEnterAnimationAfterTransition()
     {
