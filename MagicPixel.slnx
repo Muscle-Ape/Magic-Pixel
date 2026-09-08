@@ -1,13 +1,13 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="AO.Ads.csproj" />
   <Project Path="spine-unity.csproj" />
-  <Project Path="spine-csharp.csproj" />
+  <Project Path="AO.Ads.csproj" />
+  <Project Path="spine-unity-editor.csproj" />
   <Project Path="com.Brogrammist.JSAM.csproj" />
   <Project Path="Google.Play.Games.csproj" />
-  <Project Path="spine-unity-editor.csproj" />
   <Project Path="MaxSdk.Scripts.csproj" />
+  <Project Path="spine-csharp.csproj" />
   <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="com.Brogrammist.JSAM.Editor.csproj" />
   <Project Path="Lofelt.NiceVibrations.Editor.csproj" />
