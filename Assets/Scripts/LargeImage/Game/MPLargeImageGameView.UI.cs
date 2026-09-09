@@ -154,12 +154,27 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
-    /// 判断当前展示范围内是否还有未完成的格子。
+    /// 判断当前展示范围内是否还有未完成且需要填充的格子。
     /// </summary>
     /// <returns>当前展示范围内存在未完成格子返回true，否则返回false。</returns>
     protected override bool HasHintTarget()
     {
-        return GetVisibleHintBlock() != null;
+        if (m_blockGrid2Array == null)
+            return false;
+
+        for (int i = 0; i < FIXED_SIZE; i++)
+        {
+            for (int j = 0; j < FIXED_SIZE; j++)
+            {
+                MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
+                if (block != null && !block.completed && block.isFill)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -171,14 +186,7 @@ public partial class MPLargeImageGameView
         if (block == null)
             return;
 
-        if (block.isFill)
-        {
-            block.Fill();
-        }
-        else
-        {
-            block.Blank();
-        }
+        block.Fill();
 
         block.Disable();
         block.PlayHintAnimation();
@@ -186,7 +194,7 @@ public partial class MPLargeImageGameView
     }
 
     /// <summary>
-    /// 获取当前展示范围内提示道具本次要自动完成的格子，优先选择需要填充的未完成格子。
+    /// 从当前展示范围内所有尚未完成且需要填充的格子中等概率随机选择一个。
     /// </summary>
     /// <returns>当前展示范围内可自动完成的格子，没有可用格子时返回null。</returns>
     private MPLargeImageGameBlock GetVisibleHintBlock()
@@ -194,31 +202,25 @@ public partial class MPLargeImageGameView
         if (m_blockGrid2Array == null)
             return null;
 
+        MPLargeImageGameBlock selectedBlock = null;
+        int candidateCount = 0;
         for (int i = 0; i < FIXED_SIZE; i++)
         {
             for (int j = 0; j < FIXED_SIZE; j++)
             {
                 MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
-                if (!block.completed && block.isFill)
+                if (block == null || block.completed || !block.isFill)
+                    continue;
+
+                candidateCount++;
+                if (Random.Range(0, candidateCount) == 0)
                 {
-                    return block;
+                    selectedBlock = block;
                 }
             }
         }
 
-        for (int i = 0; i < FIXED_SIZE; i++)
-        {
-            for (int j = 0; j < FIXED_SIZE; j++)
-            {
-                MPLargeImageGameBlock block = m_blockGrid2Array[i][j];
-                if (!block.completed)
-                {
-                    return block;
-                }
-            }
-        }
-
-        return null;
+        return selectedBlock;
     }
 
     /// <summary>

@@ -37,7 +37,7 @@ public partial class MPGameView
     }
 
     /// <summary>
-    /// 判断当前关卡是否还有未完成的格子。
+    /// 判断当前关卡是否还有未完成且需要填充的格子。
     /// </summary>
     protected override bool HasHintTarget()
     {
@@ -46,7 +46,8 @@ public partial class MPGameView
 
         for (int i = 0; i < m_blocks.Count; i++)
         {
-            if (!m_blocks[i].completed)
+            MPGameBlock block = m_blocks[i];
+            if (block != null && !block.completed && block.isFill)
             {
                 return true;
             }
@@ -64,14 +65,7 @@ public partial class MPGameView
         if (block == null)
             return;
 
-        if (block.isFill)
-        {
-            block.Fill();
-        }
-        else
-        {
-            block.Blank();
-        }
+        block.Fill();
 
         block.Disable();
         block.PlayHintAnimation();
@@ -79,30 +73,29 @@ public partial class MPGameView
     }
 
     /// <summary>
-    /// 获取提示道具本次要自动完成的格子，优先选择需要填充的未完成格子。
+    /// 从所有尚未完成且需要填充的格子中等概率随机选择一个。
     /// </summary>
     private MPGameBlock GetHintBlock()
     {
         if (m_blocks == null)
             return null;
 
+        MPGameBlock selectedBlock = null;
+        int candidateCount = 0;
         for (int i = 0; i < m_blocks.Count; i++)
         {
-            if (!m_blocks[i].completed && m_blocks[i].isFill)
+            MPGameBlock block = m_blocks[i];
+            if (block == null || block.completed || !block.isFill)
+                continue;
+
+            candidateCount++;
+            if (Random.Range(0, candidateCount) == 0)
             {
-                return m_blocks[i];
+                selectedBlock = block;
             }
         }
 
-        for (int i = 0; i < m_blocks.Count; i++)
-        {
-            if (!m_blocks[i].completed)
-            {
-                return m_blocks[i];
-            }
-        }
-
-        return null;
+        return selectedBlock;
     }
 
     /// <summary>切换主游戏填充/标记模式。</summary>
