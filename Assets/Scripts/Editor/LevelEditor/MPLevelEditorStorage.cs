@@ -19,7 +19,7 @@ internal enum MPLevelEditorMode
 
 /// <summary>
 /// 关卡编辑器在内存中使用的完整关卡数据。
-/// 底色和 Blocks 都使用从左上角开始的行优先下标。
+/// 底色、Blocks 和默认叉都使用从左上角开始的行优先下标。
 /// </summary>
 internal sealed class MPLevelEditorData
 {
@@ -32,6 +32,7 @@ internal sealed class MPLevelEditorData
     public Color[] Colors;
     public bool[] ColorAssigned;
     public bool[] Blocks;
+    public bool[] DefaultBlanks;
     public string SourceAssetPath;
 }
 
@@ -187,6 +188,7 @@ internal static class MPLevelEditorStorage
         }
 
         List<int> blockIndexes;
+        List<int> defaultBlankIndexes = new List<int>();
         string levelName = string.Empty;
         int awardCoin = 0;
         if (mode == MPLevelEditorMode.Main)
@@ -202,6 +204,7 @@ internal static class MPLevelEditorStorage
 
             MPMainLevelEditorJsonRecord record = records[0];
             blockIndexes = record.block ?? new List<int>();
+            defaultBlankIndexes = record.blank ?? new List<int>();
         }
         else
         {
@@ -222,6 +225,7 @@ internal static class MPLevelEditorStorage
 
         int cellCount = size * size;
         bool[] blocks = new bool[cellCount];
+        bool[] defaultBlanks = new bool[cellCount];
         for (int i = 0; i < blockIndexes.Count; i++)
         {
             int index = blockIndexes[i];
@@ -232,6 +236,24 @@ internal static class MPLevelEditorStorage
             }
 
             blocks[index] = true;
+        }
+
+        for (int i = 0; i < defaultBlankIndexes.Count; i++)
+        {
+            int index = defaultBlankIndexes[i];
+            if (index < 0 || index >= cellCount)
+            {
+                error = $"关卡 {id} 的 blank 下标 {index} 超出图片尺寸 {size}×{size}。";
+                return false;
+            }
+
+            if (blocks[index])
+            {
+                error = $"关卡 {id} 的下标 {index} 同时存在于 block 和 blank 中。";
+                return false;
+            }
+
+            defaultBlanks[index] = true;
         }
 
         data = new MPLevelEditorData
@@ -245,6 +267,7 @@ internal static class MPLevelEditorStorage
             Colors = colors,
             ColorAssigned = Enumerable.Repeat(true, cellCount).ToArray(),
             Blocks = blocks,
+            DefaultBlanks = defaultBlanks,
             SourceAssetPath = assetPath,
         };
         return true;
@@ -265,8 +288,9 @@ internal static class MPLevelEditorStorage
         bool shouldCreateThumb = data.Mode == MPLevelEditorMode.LargeImage;
         EnsureAssetDirectories(shouldCreateThumb);
         List<int> blockIndexes = GetBlockIndexes(data.Blocks);
+        List<int> defaultBlankIndexes = GetBlockIndexes(data.DefaultBlanks);
         MPLevelEditorConfigUpdate configUpdate = data.Mode == MPLevelEditorMode.Main
-            ? CreateMainConfigUpdate(data, blockIndexes)
+            ? CreateMainConfigUpdate(data, blockIndexes, defaultBlankIndexes)
             : CreateLargeImageConfigUpdate(data, blockIndexes);
         CreateLevelImageBytes(data, out byte[] pixelBytes, out byte[] thumbBytes);
 
@@ -323,7 +347,10 @@ internal static class MPLevelEditorStorage
         };
     }
 
-    private static MPLevelEditorConfigUpdate CreateMainConfigUpdate(MPLevelEditorData data, List<int> blockIndexes)
+    private static MPLevelEditorConfigUpdate CreateMainConfigUpdate(
+        MPLevelEditorData data,
+        List<int> blockIndexes,
+        List<int> defaultBlankIndexes)
     {
         List<MPMainLevelEditorJsonRecord> records = LoadMainRecords();
         List<MPMainLevelEditorJsonRecord> matchedRecords = records
@@ -339,6 +366,7 @@ internal static class MPLevelEditorStorage
 
             updatedRecord = matchedRecords[0];
             updatedRecord.block = blockIndexes;
+            updatedRecord.blank = defaultBlankIndexes;
         }
         else
         {
@@ -351,6 +379,7 @@ internal static class MPLevelEditorStorage
             {
                 id = data.ID,
                 block = blockIndexes,
+                blank = defaultBlankIndexes,
             };
         }
 
@@ -470,7 +499,8 @@ internal static class MPLevelEditorStorage
         int cellCount = data.Size * data.Size;
         if (data.Colors == null || data.Colors.Length != cellCount
             || data.ColorAssigned == null || data.ColorAssigned.Length != cellCount
-            || data.Blocks == null || data.Blocks.Length != cellCount)
+            || data.Blocks == null || data.Blocks.Length != cellCount
+            || data.DefaultBlanks == null || data.DefaultBlanks.Length != cellCount)
         {
             throw new InvalidDataException("关卡网格数据长度与尺寸不一致。");
         }
@@ -484,6 +514,20 @@ internal static class MPLevelEditorStorage
         {
             throw new InvalidDataException("大图关卡名称不能为空。");
         }
+
+        if (data.Mode == MPLevelEditorMode.Main)
+        {
+            for (int i = 0; i < cellCount; i++)
+            {
+                if (!data.DefaultBlanks[i])
+                    continue;
+
+                if (data.Blocks[i])
+                {
+                    throw new InvalidDataException($"格子 {i} 不能同时标记为 Block 和默认叉。");
+                }
+            }
+        }
     }
 
     private static void ValidateId(MPLevelEditorMode mode, string id)
@@ -494,6 +538,29 @@ internal static class MPLevelEditorStorage
         {
             throw new InvalidDataException($"关卡 ID 不合法，必须以 {expectedPrefix} 开头。");
         }
+    }
+
+    /// <summary>
+    /// 根据网格尺寸和 Block 密度计算自动生成默认叉时使用的比例范围与目标数量。
+    /// 当非 Block 格子不足时，目标数量会限制为全部可用空格数。
+    /// </summary>
+    public static void GetDefaultBlankRule(
+        int size,
+        int blockCount,
+        out float minRatio,
+        out float maxRatio,
+        out int requiredCount)
+    {
+        int cellCount = size * size;
+        bool useExpandedRange = size == 10 || size == 15;
+        minRatio = useExpandedRange ? 0.2f : 0.05f;
+        maxRatio = useExpandedRange ? 0.25f : 0.15f;
+        int minCount = Mathf.CeilToInt(cellCount * minRatio);
+        int maxCount = Mathf.FloorToInt(cellCount * maxRatio);
+        float blockDensity = cellCount > 0 ? blockCount / (float)cellCount : 1f;
+        float targetRatio = Mathf.Lerp(maxRatio, minRatio, Mathf.Clamp01(blockDensity));
+        requiredCount = Mathf.Clamp(Mathf.RoundToInt(cellCount * targetRatio), minCount, maxCount);
+        requiredCount = Mathf.Min(requiredCount, Mathf.Max(0, cellCount - blockCount));
     }
 
     private static void CreateLevelImageBytes(MPLevelEditorData data, out byte[] pixelBytes, out byte[] thumbBytes)
@@ -1093,10 +1160,13 @@ internal static class MPLevelEditorStorage
         [JsonProperty(Order = 0)]
         public string id;
 
-        [JsonProperty("box_award", Order = 1, NullValueHandling = NullValueHandling.Ignore)]
+        [JsonProperty("blank", Order = 1)]
+        public List<int> blank = new List<int>();
+
+        [JsonProperty("box_award", Order = 2, NullValueHandling = NullValueHandling.Ignore)]
         public MPMainLevelEditorBoxAwardJsonRecord boxAward;
 
-        [JsonProperty(Order = 2)]
+        [JsonProperty(Order = 3)]
         public List<int> block = new List<int>();
     }
 

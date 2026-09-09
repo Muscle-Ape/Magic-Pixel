@@ -32,6 +32,13 @@ public class MPMainBlockInfo
     private List<int> block;
 
     /// <summary>
+    /// 首次进入且没有进度缓存时，默认标记为叉的格子下标。
+    /// 下标规则与 block 一致，并且不允许与 block 重复。
+    /// </summary>
+    [JsonProperty("blank")]
+    private List<int> blank = new List<int>();
+
+    /// <summary>
     /// 可选宝箱奖励。配置为空或奖励无效时不显示宝箱。
     /// </summary>
     [JsonProperty("box_award")]
@@ -40,6 +47,8 @@ public class MPMainBlockInfo
     public string ID { get => id; }
 
     public List<int> Block { get => block; }
+
+    public List<int> Blank { get => blank; }
 
     public MPMainLevelBoxAward BoxAward { get => boxAward; }
 }

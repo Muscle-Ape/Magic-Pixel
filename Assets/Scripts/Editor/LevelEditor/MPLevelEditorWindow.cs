@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -13,6 +14,7 @@ public sealed class MPLevelEditorWindow : EditorWindow
     {
         Background,
         Blocks,
+        DefaultBlanks,
     }
 
     private enum EditOperation
@@ -31,6 +33,8 @@ public sealed class MPLevelEditorWindow : EditorWindow
     private static readonly Color MissingColorB = new Color(0.32f, 0.32f, 0.32f, 1f);
     private static readonly Color BlockOverlayColor = new Color(0f, 0f, 0f, 0.28f);
     private static readonly Color BlockBorderColor = new Color(1f, 0.72f, 0.12f, 1f);
+    private static readonly Color DefaultBlankOverlayColor = new Color(0.05f, 0.72f, 1f, 0.28f);
+    private static readonly Color DefaultBlankBorderColor = new Color(0.15f, 0.85f, 1f, 1f);
     private static readonly Color GridLineColor = new Color(0f, 0f, 0f, 0.45f);
 
     private MPLevelEditorMode m_mode = MPLevelEditorMode.Main;
@@ -47,6 +51,7 @@ public sealed class MPLevelEditorWindow : EditorWindow
     private Color[] m_colors = Array.Empty<Color>();
     private bool[] m_colorAssigned = Array.Empty<bool>();
     private bool[] m_blocks = Array.Empty<bool>();
+    private bool[] m_defaultBlanks = Array.Empty<bool>();
 
     private EditLayer m_editLayer = EditLayer.Background;
     private EditOperation m_editOperation = EditOperation.Paint;
@@ -224,7 +229,14 @@ public sealed class MPLevelEditorWindow : EditorWindow
     private void DrawToolSection()
     {
         DrawSectionTitle("3. 编辑工具");
-        string[] layerNames = { "底色", "Blocks" };
+        if (m_mode != MPLevelEditorMode.Main && m_editLayer == EditLayer.DefaultBlanks)
+        {
+            m_editLayer = EditLayer.Blocks;
+        }
+
+        string[] layerNames = m_mode == MPLevelEditorMode.Main
+            ? new[] { "底色", "Blocks", "默认叉" }
+            : new[] { "底色", "Blocks" };
         m_editLayer = (EditLayer)GUILayout.Toolbar((int)m_editLayer, layerNames);
 
         EditorGUILayout.Space(4f);
@@ -254,7 +266,7 @@ public sealed class MPLevelEditorWindow : EditorWindow
                 "绘制底色：左键单击或拖动绘制，Alt + 左键吸取颜色。单格删除：左键单击或拖动只删除经过的格子。右键始终可以删除底色。",
                 MessageType.None);
         }
-        else
+        else if (m_editLayer == EditLayer.Blocks)
         {
             string[] operationNames = { "添加 Block", "单格删除" };
             m_editOperation = (EditOperation)GUILayout.Toolbar((int)m_editOperation, operationNames);
@@ -277,14 +289,52 @@ public sealed class MPLevelEditorWindow : EditorWindow
                 "添加 Block：左键单击或拖动添加。单格删除：左键单击或拖动只删除经过的 Block。右键始终可以删除；橙色边框表示该格属于 block 数据。",
                 MessageType.None);
         }
+        else
+        {
+            string[] operationNames = { "添加默认叉", "单格删除" };
+            m_editOperation = (EditOperation)GUILayout.Toolbar((int)m_editOperation, operationNames);
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("按规则随机生成"))
+            {
+                GenerateDefaultBlanks();
+            }
+            if (GUILayout.Button("清空默认叉"))
+            {
+                ClearDefaultBlanks();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            int blockCountForRule = m_blocks.Count(value => value);
+            MPLevelEditorStorage.GetDefaultBlankRule(
+                m_gridSize,
+                blockCountForRule,
+                out float minRatio,
+                out float maxRatio,
+                out int requiredCount);
+            int availableBlankCount = m_gridSize * m_gridSize - blockCountForRule;
+            int normalMinCount = Mathf.CeilToInt(m_gridSize * m_gridSize * minRatio);
+            string capacityTip = availableBlankCount < normalMinCount
+                ? $"当前仅有 {availableBlankCount} 个非 Block 格子，已按全部可用空格数限制。"
+                : string.Empty;
+            EditorGUILayout.HelpBox(
+                $"默认叉只在主关卡没有进度缓存时生效。当前 {blockCountForRule} 个 Block，随机生成会添加 {requiredCount} 个默认叉" +
+                $"（生成比例范围 {minRatio:P0}～{maxRatio:P0}）；手动添加不受该数量限制。青色 × 表示 blank。" +
+                capacityTip + "默认叉与 Block 互斥，标记其中一种时会自动移除同格的另一种。",
+                MessageType.None);
+        }
 
         int assignedCount = m_colorAssigned == null ? 0 : m_colorAssigned.Count(value => value);
         int blockCount = m_blocks == null ? 0 : m_blocks.Count(value => value);
+        int defaultBlankCount = m_defaultBlanks == null ? 0 : m_defaultBlanks.Count(value => value);
         int cellCount = m_gridSize * m_gridSize;
         string hoverText = m_hoveredIndex < 0
             ? string.Empty
             : $"    当前格：index {m_hoveredIndex}（行 {m_hoveredIndex / m_gridSize}，列 {m_hoveredIndex % m_gridSize}）";
-        EditorGUILayout.LabelField($"底色：{assignedCount}/{cellCount}    Blocks：{blockCount}/{cellCount}{hoverText}");
+        string defaultBlankText = m_mode == MPLevelEditorMode.Main
+            ? $"    默认叉：{defaultBlankCount}/{cellCount}"
+            : string.Empty;
+        EditorGUILayout.LabelField($"底色：{assignedCount}/{cellCount}    Blocks：{blockCount}/{cellCount}{defaultBlankText}{hoverText}");
     }
 
     private void DrawGridSection()
@@ -393,6 +443,12 @@ public sealed class MPLevelEditorWindow : EditorWindow
                     EditorGUI.DrawRect(cellRect, BlockOverlayColor);
                     DrawCellBorder(cellRect, BlockBorderColor, Mathf.Clamp(m_cellSize * 0.08f, 1f, 3f));
                 }
+                else if (m_defaultBlanks[index])
+                {
+                    EditorGUI.DrawRect(cellRect, DefaultBlankOverlayColor);
+                    DrawCellBorder(cellRect, DefaultBlankBorderColor, Mathf.Clamp(m_cellSize * 0.08f, 1f, 3f));
+                    DrawDefaultBlankMark(cellRect);
+                }
             }
         }
 
@@ -424,6 +480,17 @@ public sealed class MPLevelEditorWindow : EditorWindow
         EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - width, rect.width, width), color);
         EditorGUI.DrawRect(new Rect(rect.x, rect.y, width, rect.height), color);
         EditorGUI.DrawRect(new Rect(rect.xMax - width, rect.y, width, rect.height), color);
+    }
+
+    private static void DrawDefaultBlankMark(Rect rect)
+    {
+        GUIStyle style = new GUIStyle(EditorStyles.boldLabel)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            fontSize = Mathf.Clamp(Mathf.RoundToInt(rect.height * 0.72f), 10, 34),
+        };
+        style.normal.textColor = DefaultBlankBorderColor;
+        GUI.Label(rect, "×", style);
     }
 
     private void HandleGridInput(Rect gridRect)
@@ -484,10 +551,15 @@ public sealed class MPLevelEditorWindow : EditorWindow
                 PaintBackground(index, erase);
             }
         }
-        else
+        else if (m_editLayer == EditLayer.Blocks)
         {
             bool erase = current.button == 1 || m_editOperation == EditOperation.Erase;
             PaintBlock(index, erase);
+        }
+        else
+        {
+            bool erase = current.button == 1 || m_editOperation == EditOperation.Erase;
+            PaintDefaultBlank(index, erase);
         }
 
         m_lastPaintedIndex = index;
@@ -524,7 +596,25 @@ public sealed class MPLevelEditorWindow : EditorWindow
 
     private void PaintBlock(int index, bool erase)
     {
-        m_blocks[index] = !erase;
+        bool value = !erase;
+        m_blocks[index] = value;
+        if (value)
+        {
+            m_defaultBlanks[index] = false;
+        }
+
+        MarkDirty();
+    }
+
+    private void PaintDefaultBlank(int index, bool erase)
+    {
+        bool value = !erase;
+        m_defaultBlanks[index] = value;
+        if (value)
+        {
+            m_blocks[index] = false;
+        }
+
         MarkDirty();
     }
 
@@ -592,10 +682,12 @@ public sealed class MPLevelEditorWindow : EditorWindow
             return;
         }
 
-        bool hasContent = m_colorAssigned.Any(value => value) || m_blocks.Any(value => value);
+        bool hasContent = m_colorAssigned.Any(value => value)
+            || m_blocks.Any(value => value)
+            || m_defaultBlanks.Any(value => value);
         if (hasContent && !EditorUtility.DisplayDialog(
                 "调整网格尺寸",
-                "调整尺寸会清空当前已经编辑的底色和 Blocks，是否继续？",
+                "调整尺寸会清空当前已经编辑的底色、Blocks 和默认叉，是否继续？",
                 "继续",
                 "取消"))
         {
@@ -615,6 +707,7 @@ public sealed class MPLevelEditorWindow : EditorWindow
         m_colors = new Color[cellCount];
         m_colorAssigned = new bool[cellCount];
         m_blocks = new bool[cellCount];
+        m_defaultBlanks = new bool[cellCount];
     }
 
     private void ApplyData(MPLevelEditorData data, Texture2D texture)
@@ -631,6 +724,9 @@ public sealed class MPLevelEditorWindow : EditorWindow
         m_colors = (Color[])data.Colors.Clone();
         m_colorAssigned = (bool[])data.ColorAssigned.Clone();
         m_blocks = (bool[])data.Blocks.Clone();
+        m_defaultBlanks = data.DefaultBlanks == null
+            ? new bool[data.Size * data.Size]
+            : (bool[])data.DefaultBlanks.Clone();
         m_sourceTexture = texture;
         m_sourceAssetPath = data.SourceAssetPath;
         m_gridScroll = Vector2.zero;
@@ -668,6 +764,10 @@ public sealed class MPLevelEditorWindow : EditorWindow
         for (int i = 0; i < m_blocks.Length; i++)
         {
             m_blocks[i] = value;
+            if (value)
+            {
+                m_defaultBlanks[i] = false;
+            }
         }
 
         MarkDirty();
@@ -678,8 +778,66 @@ public sealed class MPLevelEditorWindow : EditorWindow
         for (int i = 0; i < m_blocks.Length; i++)
         {
             m_blocks[i] = !m_blocks[i];
+            if (m_blocks[i])
+            {
+                m_defaultBlanks[i] = false;
+            }
         }
 
+        MarkDirty();
+    }
+
+    private void GenerateDefaultBlanks()
+    {
+        int cellCount = m_gridSize * m_gridSize;
+        int blockCount = m_blocks.Count(value => value);
+        MPLevelEditorStorage.GetDefaultBlankRule(
+            m_gridSize,
+            blockCount,
+            out _,
+            out _,
+            out int targetCount);
+        List<int> candidates = new List<int>(cellCount);
+        for (int i = 0; i < cellCount; i++)
+        {
+            if (!m_blocks[i])
+            {
+                candidates.Add(i);
+            }
+        }
+
+        if (candidates.Count < targetCount)
+        {
+            EditorUtility.DisplayDialog(
+                "无法生成默认叉",
+                $"当前只有 {candidates.Count} 个非 Block 格子，但当前 Block 密度要求 {targetCount} 个默认叉。请先减少 Blocks。",
+                "确定");
+            return;
+        }
+
+        Array.Clear(m_defaultBlanks, 0, m_defaultBlanks.Length);
+        var random = new System.Random(Guid.NewGuid().GetHashCode());
+        for (int i = candidates.Count - 1; i > 0; i--)
+        {
+            int swapIndex = random.Next(i + 1);
+            (candidates[i], candidates[swapIndex]) = (candidates[swapIndex], candidates[i]);
+        }
+
+        targetCount = Mathf.Min(targetCount, candidates.Count);
+        for (int i = 0; i < targetCount; i++)
+        {
+            m_defaultBlanks[candidates[i]] = true;
+        }
+
+        MarkDirty();
+    }
+
+    private void ClearDefaultBlanks()
+    {
+        if (!m_defaultBlanks.Any(value => value))
+            return;
+
+        Array.Clear(m_defaultBlanks, 0, m_defaultBlanks.Length);
         MarkDirty();
     }
 
@@ -718,6 +876,22 @@ public sealed class MPLevelEditorWindow : EditorWindow
             return false;
         }
 
+        if (m_mode == MPLevelEditorMode.Main)
+        {
+            int cellCount = m_gridSize * m_gridSize;
+            for (int i = 0; i < cellCount; i++)
+            {
+                if (!m_defaultBlanks[i])
+                    continue;
+
+                if (m_blocks[i])
+                {
+                    message = $"格子 {i} 不能同时标记为 Block 和默认叉。";
+                    return false;
+                }
+            }
+        }
+
         int unassignedCount = m_colorAssigned.Count(value => !value);
         if (unassignedCount > 0)
         {
@@ -747,9 +921,11 @@ public sealed class MPLevelEditorWindow : EditorWindow
         return m_colors != null
             && m_colorAssigned != null
             && m_blocks != null
+            && m_defaultBlanks != null
             && m_colors.Length == expectedCount
             && m_colorAssigned.Length == expectedCount
-            && m_blocks.Length == expectedCount;
+            && m_blocks.Length == expectedCount
+            && m_defaultBlanks.Length == expectedCount;
     }
 
     private void SaveCurrentLevel()
@@ -782,6 +958,7 @@ public sealed class MPLevelEditorWindow : EditorWindow
             Colors = (Color[])m_colors.Clone(),
             ColorAssigned = (bool[])m_colorAssigned.Clone(),
             Blocks = (bool[])m_blocks.Clone(),
+            DefaultBlanks = (bool[])m_defaultBlanks.Clone(),
             SourceAssetPath = m_sourceAssetPath,
         };
 

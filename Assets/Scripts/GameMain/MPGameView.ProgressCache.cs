@@ -15,13 +15,19 @@ public partial class MPGameView
             ? m_entryProgressCache
             : MPUser.instance.GetMainLevelProgressCache(m_blockInfo.ID);
         cacheInfo = cacheInfo?.GetValidIncompleteCopy(m_size, false, m_loves.Count);
-        if (cacheInfo == null)
-            return;
 
         m_isRestoringProgress = true;
 
         try
         {
+            // 默认叉只属于“新开局”数据。存在有效缓存时完全以缓存为准，
+            // 避免配置热更新后改变玩家已经开始的盘面。
+            if (cacheInfo == null)
+            {
+                RestoreBlocks(GetValidDefaultBlankIndexes());
+                return;
+            }
+
             RestoreLoves(cacheInfo.UsedLoves);
             RestorePetSkillUsage(cacheInfo.PetId, cacheInfo.UsedPetSkillCount);
             RestoreBlocks(cacheInfo.CompletedBlocks);
@@ -31,6 +37,54 @@ public partial class MPGameView
             m_isRestoringProgress = false;
             m_entryProgressCache = null;
         }
+    }
+
+    /// <summary>
+    /// 过滤配置中的越界、重复和答案格下标。
+    /// blank 的比例只用于编辑器自动生成，手动配置的合法下标会全部生效。
+    /// </summary>
+    private List<int> GetValidDefaultBlankIndexes()
+    {
+        List<int> configuredIndexes = m_blockInfo?.Blank;
+        if (configuredIndexes == null || configuredIndexes.Count == 0)
+            return null;
+
+        int cellCount = m_size * m_size;
+        HashSet<int> fillIndexes = new HashSet<int>();
+        List<int> blockIndexes = m_blockInfo.Block;
+        if (blockIndexes != null)
+        {
+            for (int i = 0; i < blockIndexes.Count; i++)
+            {
+                int index = blockIndexes[i];
+                if (index >= 0 && index < cellCount)
+                {
+                    fillIndexes.Add(index);
+                }
+            }
+        }
+
+        HashSet<int> uniqueIndexes = new HashSet<int>();
+        List<int> validIndexes = new List<int>(configuredIndexes.Count);
+
+        for (int i = 0; i < configuredIndexes.Count; i++)
+        {
+            int index = configuredIndexes[i];
+            if (index < 0 || index >= cellCount || fillIndexes.Contains(index) || !uniqueIndexes.Add(index))
+                continue;
+
+            validIndexes.Add(index);
+        }
+
+        if (validIndexes.Count != configuredIndexes.Count)
+        {
+            Debug.LogWarning(
+                $"[MPGameView] 关卡 {m_blockInfo.ID} 的 blank 配置不符合要求：" +
+                $"配置 {configuredIndexes.Count} 个，有效 {validIndexes.Count} 个。" +
+                "已忽略越界、重复或与 block 重复的数据。");
+        }
+
+        return validIndexes;
     }
 
     /// <summary>
