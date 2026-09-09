@@ -29,6 +29,10 @@ public abstract partial class MPGameViewBase : AWindow
     [TransformPath("View")]
     protected CanvasGroup m_viewCanvasGroup;
 
+    /// <summary>游戏区域底部背景，结算时与按钮区域同步淡出。</summary>
+    [TransformPath("View/Bg/Floor")]
+    protected Image m_backgroundFloor;
+
     [TransformPath("View/Content/Vertical")]
     protected RectTransform m_numberVertical;
 

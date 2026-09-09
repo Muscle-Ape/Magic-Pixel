@@ -158,12 +158,13 @@ public partial class MPGameView
     }
 
     /// <summary>
-    /// 淡出结算期间不再需要展示的标题、生命值、模式切换和道具区域。
+    /// 淡出结算期间不再需要展示的标题、生命值、底部背景、模式切换和道具区域。
     /// </summary>
     private void FadeSettlementUI()
     {
         FadeGraphics(m_titleText.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
+        FadeGraphics(m_backgroundFloor == null ? null : m_backgroundFloor.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
 
         // 四个按钮已合并到 Btns，只遍历一次，避免对子节点重复创建淡出动画。
         FadeGraphics(m_btns, SETTLEMENT_NUMBER_FADE_DURATION);
