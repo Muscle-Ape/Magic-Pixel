@@ -55,7 +55,101 @@ public partial class MPUser
             m_key_mainlevel_box_award_claimed,
             new List<string>());
 
-        MainLevelUnlock(MPDataManager.Instance.m_mainLevelModel.blockInfos[0].ID);
+        ReconcileMainLevelOrderProgress();
+    }
+
+    /// <summary>
+    /// 配置插入或重新排序后，根据历史通关 ID 修复主线推进下标和解锁列表。
+    /// passIndex 表示旧配置中已经推进过的关卡数量边界；通过稳定的通关 ID，
+    /// 在新配置中找到同等进度对应的位置，并解锁该位置之前新插入的关卡。
+    /// </summary>
+    private void ReconcileMainLevelOrderProgress()
+    {
+        List<MPMainBlockInfo> levels = MPDataManager.Instance.m_mainLevelModel?.blockInfos;
+        if (levels == null || levels.Count == 0)
+            return;
+
+        m_mainlevel_unlocklist = m_mainlevel_unlocklist ?? new List<string>();
+        m_mainlevel_passlist = m_mainlevel_passlist ?? new List<string>();
+
+        int lastIndex = levels.Count - 1;
+        int originalPassIndex = m_mainlevel_pass_index;
+        int targetPassIndex = Mathf.Clamp(originalPassIndex, 0, lastIndex);
+        int progressedPassCount = Mathf.Max(0, originalPassIndex);
+        HashSet<string> passedIds = new HashSet<string>(m_mainlevel_passlist);
+
+        // 正常流程中 passIndex 等于主线边界之前已经通过的关卡数量。
+        // 新关卡插入到边界前时，统计相同数量的历史通关 ID 即可得到新边界。
+        if (progressedPassCount > 0)
+        {
+            int matchedPassCount = 0;
+            for (int i = 0; i < levels.Count; i++)
+            {
+                MPMainBlockInfo level = levels[i];
+                if (level == null || !passedIds.Contains(level.ID))
+                    continue;
+
+                matchedPassCount++;
+                if (matchedPassCount < progressedPassCount)
+                    continue;
+
+                targetPassIndex = Mathf.Max(targetPassIndex, Mathf.Min(i + 1, lastIndex));
+                break;
+            }
+        }
+
+        // 边界位置本身如果已经通关，继续移动到下一条未通关记录。
+        while (targetPassIndex < lastIndex)
+        {
+            MPMainBlockInfo level = levels[targetPassIndex];
+            if (level == null || !passedIds.Contains(level.ID))
+                break;
+
+            targetPassIndex++;
+        }
+
+        bool unlockListChanged = false;
+        for (int i = 0; i <= targetPassIndex; i++)
+        {
+            string levelId = levels[i]?.ID;
+            if (string.IsNullOrEmpty(levelId) || m_mainlevel_unlocklist.Contains(levelId))
+                continue;
+
+            m_mainlevel_unlocklist.Add(levelId);
+            unlockListChanged = true;
+        }
+
+        // 已通关记录始终应该保持解锁，兼容关卡被移动到主线边界之后的情况。
+        for (int i = 0; i < levels.Count; i++)
+        {
+            string levelId = levels[i]?.ID;
+            if (string.IsNullOrEmpty(levelId)
+                || !passedIds.Contains(levelId)
+                || m_mainlevel_unlocklist.Contains(levelId))
+            {
+                continue;
+            }
+
+            m_mainlevel_unlocklist.Add(levelId);
+            unlockListChanged = true;
+        }
+
+        bool passIndexChanged = targetPassIndex != originalPassIndex;
+        m_mainlevel_pass_index = targetPassIndex;
+        if (passIndexChanged)
+        {
+            ES3.Save(m_key_mainlevel_pass_index, m_mainlevel_pass_index);
+        }
+
+        if (unlockListChanged)
+        {
+            ES3.Save(m_key_mainlevel_unlocklist, m_mainlevel_unlocklist);
+        }
+
+        if (passIndexChanged || unlockListChanged)
+        {
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.MainLevel);
+        }
     }
 
     /// <summary>

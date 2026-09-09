@@ -213,10 +213,7 @@ public partial class MPUser
             m_key_mainlevel_box_award_claimed,
             m_mainlevel_box_award_claimed);
 
-        if (MPDataManager.Instance.m_mainLevelModel?.blockInfos != null && MPDataManager.Instance.m_mainLevelModel.blockInfos.Count > 0)
-        {
-            MainLevelUnlock(MPDataManager.Instance.m_mainLevelModel.blockInfos[0].ID);
-        }
+        ReconcileMainLevelOrderProgress();
     }
 
     /// <summary>
