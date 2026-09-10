@@ -104,6 +104,9 @@ public class MPSettingPop : AWindow
     [TransformPath("View/Window/ReplayBtn")]
     private Button m_replayBtn;
 
+    [TransformPath("View/Window/GuideBtn")]
+    private Button m_guideBtn;
+
     [TransformPath("View/Window/AccountStatus")]
     private TMP_Text m_accountStatus;
 
@@ -236,6 +239,12 @@ public class MPSettingPop : AWindow
             m_replayBtn.onClick.AddListener(OnReplayClick);
         }
 
+        if (m_guideBtn != null)
+        {
+            m_guideBtn.onClick.RemoveListener(OnGuideClick);
+            m_guideBtn.onClick.AddListener(OnGuideClick);
+        }
+
         MPLoginManager.Instance.LoginSucceeded -= OnLoginSucceeded;
         MPLoginManager.Instance.LoginSucceeded += OnLoginSucceeded;
         MPLoginManager.Instance.LoggedOut -= OnLoggedOut;
@@ -278,6 +287,8 @@ public class MPSettingPop : AWindow
         }
         if (m_replayBtn != null)
             m_replayBtn.onClick.RemoveListener(OnReplayClick);
+        if (m_guideBtn != null)
+            m_guideBtn.onClick.RemoveListener(OnGuideClick);
 
         MPLoginManager.Instance.LoginSucceeded -= OnLoginSucceeded;
         MPLoginManager.Instance.LoggedOut -= OnLoggedOut;
@@ -706,12 +717,20 @@ public class MPSettingPop : AWindow
         SetButtonInteractable(m_logOutBtn, interactable);
         SetButtonInteractable(m_closeBtn, !m_isLoginActionRunning && !m_isClosing);
         SetButtonInteractable(m_replayBtn, !m_isLoginActionRunning && !m_isClosing);
+        SetButtonInteractable(m_guideBtn, !m_isLoginActionRunning && !m_isClosing);
     }
 
     private void RefreshGameOptions()
     {
         bool inGame = m_gameData != null && m_gameData.isInGame;
         SetButtonVisible(m_replayBtn, inGame && m_gameData.replayAction != null);
+        if (m_guideBtn != null)
+        {
+            bool showReplay = inGame && m_gameData.replayAction != null;
+            RectTransform guideRect = (RectTransform)m_guideBtn.transform;
+            guideRect.anchoredPosition = new Vector2(showReplay ? 155f : 0f, guideRect.anchoredPosition.y);
+            guideRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, showReplay ? 290f : 600f);
+        }
         if (m_gameOptions != null)
             m_gameOptions.gameObject.SetActive(inGame);
         ClearColorListeners();
@@ -792,6 +811,12 @@ public class MPSettingPop : AWindow
             if (pair.Key != null)
                 pair.Key.onClick.RemoveListener(pair.Value);
         m_colorListeners.Clear();
+    }
+
+    private void OnGuideClick()
+    {
+        if (m_isClosing || m_isLoginActionRunning || m_isActionPromptShowing) return;
+        CloseSettingPop(() => MPGuideView.Show(isReplay: true));
     }
 
     private void OnReplayClick()

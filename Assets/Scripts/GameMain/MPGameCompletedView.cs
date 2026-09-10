@@ -127,6 +127,11 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private bool m_isLargeImageLevel;
 
+    /// <summary>独立新手引导的结算，只复用表现，不发放正式关卡奖励。</summary>
+    private bool m_isGuide;
+    private bool m_isGuideReplay;
+    private Color[] m_guidePixelColors;
+
     /// <summary>
     /// 当前完成的关卡下标。
     /// </summary>
@@ -251,6 +256,9 @@ public class MPGameCompletedView : AWindow
         m_customLevelInfo = data.customLevelInfo;
         m_isCustomLevel = data.isCustomLevel;
         m_isLargeImageLevel = data.isLargeImageLevel && !m_isCustomLevel;
+        m_isGuide = data.isGuide;
+        m_isGuideReplay = data.isGuide && data.isGuideReplay;
+        m_guidePixelColors = data.guidePixelColors;
         m_index = data.index;
         m_lovesCount = data.lovesCount;
         m_largeImageViewHead = data.largeImageViewHead;
@@ -414,11 +422,11 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 自定义关卡没有下一关按钮，重玩按钮需要居中显示。
+    /// 自定义关卡和设置页重看的引导没有下一关按钮，重玩按钮居中显示。
     /// </summary>
     private void RefreshCustomModeLayout()
     {
-        if (!m_isCustomLevel)
+        if (!m_isCustomLevel && !m_isGuideReplay)
             return;
 
         if (m_nextBtn != null)
@@ -539,6 +547,13 @@ public class MPGameCompletedView : AWindow
 
         if (m_pictureGrid == null)
             return;
+
+        if (m_isGuide)
+        {
+            if (m_guidePixelColors != null && m_guidePixelColors.Length == 25)
+                CreatePixelGrid(5, m_guidePixelColors);
+            return;
+        }
 
         if (m_isCustomLevel)
         {
@@ -976,6 +991,11 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void OnReplayClick()
     {
+        if (m_isGuide)
+        {
+            if (MPGuideView.Show(m_isGuideReplay) != null) DestroyWindow();
+            return;
+        }
         if (m_isCustomLevel)
         {
             OpenCustomLevel();
@@ -996,6 +1016,16 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void OnNextLevelClick()
     {
+        if (m_isGuideReplay) return;
+        if (m_isGuide)
+        {
+            List<MPMainBlockInfo> firstLevels = MPDataManager.Instance.m_mainLevelModel?.blockInfos;
+            if (firstLevels != null && firstLevels.Count > 0)
+                OpenMainLevel(firstLevels[0], 0);
+            else
+                ReturnHome();
+            return;
+        }
         if (m_isCustomLevel)
         {
             ReturnHome();
@@ -1158,6 +1188,7 @@ public class MPGameCompletedView : AWindow
         UnregisterUI();
         KillAnimations();
         ClearPixelGrid();
+        m_guidePixelColors = null;
         MPLoad.ReleaseAll(this);
         base.OnRelease();
     }
@@ -1172,6 +1203,11 @@ public class MPGameCompletedView : AWindow
 
 public class MPGameCompletedViewUIMsgData : UIMsgData
 {
+    /// <summary>引导结算复用当前页面。首次引导的下一关进入主线索引 0。</summary>
+    public bool isGuide;
+    /// <summary>设置入口重看时隐藏下一关，Replay 保持重看模式。</summary>
+    public bool isGuideReplay;
+    public Color[] guidePixelColors;
     /// <summary>
     /// 当前完成的主线关卡配置。
     /// </summary>

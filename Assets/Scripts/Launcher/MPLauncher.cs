@@ -179,23 +179,25 @@ public class MPLauncher : MonoBehaviour
     {
         if (m_hasEnteredGame || m_lifetime.IsCancellationRequested)
             return;
-        // 先创建主页，失败时保留加载页的重试入口，不留下空白首屏。
+        // 首次启动先进入独立引导；资源、登录与用户数据仍沿用上面的初始化流程。
         try
         {
-            MPHomeView home = UIManager.Inst.ShowWindow<MPHomeView>();
-            if (home == null)
-                throw new InvalidOperationException("MPHomeView could not be loaded.");
+            AWindow entry = MPGuideView.ShouldShowOnStartup()
+                ? (AWindow)MPGuideView.Show()
+                : UIManager.Inst.ShowWindow<MPHomeView>();
+            if (entry == null)
+                throw new InvalidOperationException("The startup page could not be loaded.");
             m_hasEnteredGame = true;
             m_loadingView.DestroyWindow();
             m_loadingView = null;
         }
         catch (Exception exception)
         {
-            Debug.LogWarning($"[MPLauncher] 打开主页失败：{exception.GetType().Name}");
+            Debug.LogWarning($"[MPLauncher] 打开首个页面失败：{exception.GetType().Name}");
             if (m_loadingView != null && !m_loadingView.IsDestoried)
             {
                 m_loadingView.GetFocus();
-                m_loadingView.ShowInitializationFailure("Could not open Home.");
+                m_loadingView.ShowInitializationFailure("Could not open the game.");
             }
         }
     }

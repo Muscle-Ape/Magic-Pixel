@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using HQ.UIManager;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,8 +10,6 @@ using UnityEngine.UI;
 [Component("MPNoNetworkPop")]
 public sealed class MPNoNetworkPop : AWindow
 {
-    [TransformPath("View/Window/Desc")] private TMP_Text m_description;
-    [TransformPath("View/Window/Status")] private TMP_Text m_status;
     [TransformPath("View/Window/RetryBtn")] private Button m_retryButton;
 
     private static readonly Dictionary<string, MPNoNetworkPop> s_openPopups = new Dictionary<string, MPNoNetworkPop>();
@@ -37,7 +34,7 @@ public sealed class MPNoNetworkPop : AWindow
         if (HasDeviceNetwork())
             return true;
 
-        Show(key, "No network connection. Connect to the internet before entering this level.",
+        Show(key,
             token => Task.FromResult(!token.IsCancellationRequested && SourceIsAlive(source) && HasDeviceNetwork()),
             () =>
             {
@@ -58,7 +55,7 @@ public sealed class MPNoNetworkPop : AWindow
     private static bool SourceIsAlive(AWindow source) => ReferenceEquals(source, null) || (source != null && !source.IsDestoried);
     private static string LevelEntryKey(AWindow source) => "level-entry-" + (ReferenceEquals(source, null) ? "none" : source.GetInstanceID().ToString());
 
-    public static MPNoNetworkPop Show(string faultKey, string description,
+    public static MPNoNetworkPop Show(string faultKey,
         Func<CancellationToken, Task<bool>> retryAsync, Action onRecovered = null)
     {
         if (string.IsNullOrWhiteSpace(faultKey))
@@ -68,7 +65,7 @@ public sealed class MPNoNetworkPop : AWindow
         if (s_openPopups.TryGetValue(faultKey, out MPNoNetworkPop existing) && existing != null && !existing.IsDestoried)
             return existing;
         return UIManager.Inst.ShowWindow<MPNoNetworkPop>(
-            new MPNoNetworkPopUIMsgData(faultKey, description, retryAsync, onRecovered), true, UILayer.Top);
+            new MPNoNetworkPopUIMsgData(faultKey, retryAsync, onRecovered), true, UILayer.Top);
     }
 
     /// <summary>原页面销毁或原操作被取消时撤回其重试入口，不继续访问已销毁页面。</summary>
@@ -87,8 +84,6 @@ public sealed class MPNoNetworkPop : AWindow
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_data = uiMsg?.GetMsg<MPNoNetworkPopUIMsgData>();
-        m_description.text = m_data?.Description ?? "No network connection. Check your connection and try again.";
-        m_status.text = string.Empty;
         m_retryButton.interactable = m_data?.RetryAsync != null;
         if (m_data != null)
             s_openPopups[m_data.FaultKey] = this;
@@ -100,7 +95,6 @@ public sealed class MPNoNetworkPop : AWindow
             return;
         m_busy = true;
         m_retryButton.interactable = false;
-        m_status.text = "Connecting...";
         m_operation?.Dispose();
         var operation = new CancellationTokenSource();
         m_operation = operation;
@@ -111,7 +105,6 @@ public sealed class MPNoNetworkPop : AWindow
                 return;
             if (!recovered)
             {
-                m_status.text = "Still offline. Please check your connection and retry.";
                 return;
             }
             m_closing = true;
@@ -127,14 +120,11 @@ public sealed class MPNoNetworkPop : AWindow
         }
         catch (OperationCanceledException)
         {
-            if (this != null && !IsDestoried)
-                m_status.text = "Connection cancelled. You can retry.";
+            // 页面关闭时取消未完成的重试，不需要额外界面反馈。
         }
         catch (Exception exception)
         {
             Debug.LogWarning($"[MPNoNetworkPop] 重试失败：{exception.GetType().Name}");
-            if (this != null && !IsDestoried)
-                m_status.text = "Unable to connect. Please try again.";
         }
         finally
         {
@@ -160,15 +150,13 @@ public sealed class MPNoNetworkPop : AWindow
 public sealed class MPNoNetworkPopUIMsgData : UIMsgData
 {
     public string FaultKey { get; }
-    public string Description { get; }
     public Func<CancellationToken, Task<bool>> RetryAsync { get; }
     public Action OnRecovered { get; }
 
-    public MPNoNetworkPopUIMsgData(string faultKey, string description,
+    public MPNoNetworkPopUIMsgData(string faultKey,
         Func<CancellationToken, Task<bool>> retryAsync, Action onRecovered = null)
     {
         FaultKey = faultKey;
-        Description = description;
         RetryAsync = retryAsync;
         OnRecovered = onRecovered;
     }
