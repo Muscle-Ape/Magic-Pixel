@@ -10,6 +10,8 @@ using UnityEngine.UI;
 /// </summary>
 public partial class MPGameView
 {
+    private MPRewardReceipt m_petCompletionRewardReceipt;
+
     /// <summary>
     /// 结算数字提示框渐隐时长。
     /// </summary>
@@ -44,9 +46,19 @@ public partial class MPGameView
             return;
         }
 
+        bool firstCompletion = !MPUser.instance.MainLevelIsPass(m_blockInfo.ID);
+
         // 1、记录当前已通关关卡。宝箱奖励返回主关卡页面后由用户主动领取。
         MPUser.instance.MainLevelPass(m_blockInfo.ID, m_lovesCount);
         MPUser.instance.AddPlayerExperience(MPUser.MAIN_LEVEL_COMPLETION_EXPERIENCE);
+        if (firstCompletion)
+        {
+            MPUser.instance.TryGrantPetCompletionReward(
+                m_activePetConfig,
+                "main",
+                m_blockInfo.ID,
+                out m_petCompletionRewardReceipt);
+        }
 
         // 2、更新解锁到的关卡位置，解锁新关卡
         if (m_index == MPUser.instance.GetMainLevlPassIndex())
@@ -214,6 +226,7 @@ public partial class MPGameView
 
         UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
         DestroyWindow();
+        MPRewardsClaimPop.Show(m_petCompletionRewardReceipt);
     }
 
     /// <summary>

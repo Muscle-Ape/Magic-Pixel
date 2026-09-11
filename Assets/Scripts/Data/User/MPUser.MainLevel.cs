@@ -295,12 +295,20 @@ public partial class MPUser
         }
 
         var claimed = new List<string>(m_mainlevel_box_award_claimed) { levelInfo.ID };
+        int rewardCount = award.Count;
+        MPPetConfig selectedPet = GetSelectedPetConfig();
+        if (selectedPet != null && selectedPet.BoxRewardBonusPercent > 0f)
+        {
+            int bonus = Mathf.RoundToInt(rewardCount * selectedPet.BoxRewardBonusPercent * 0.01f);
+            rewardCount = checked(rewardCount + Mathf.Max(0, bonus));
+        }
+
         var result = new MPRewardReceipt
         {
             sourceId = levelInfo.ID,
             sourceName = "Level chest",
             transactionId = "main_chest:" + levelInfo.ID,
-            rewards = new List<MPRewardItem> { new MPRewardItem(award.Type, award.Count) }
+            rewards = new List<MPRewardItem> { new MPRewardItem(award.Type, rewardCount) }
         };
         if (!TryCommitReward(result, null,
             file => file.Save(m_key_mainlevel_box_award_claimed, claimed),

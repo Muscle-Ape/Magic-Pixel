@@ -155,6 +155,44 @@ public partial class MPUser
         NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Pets);
     }
 
+    /// <summary>
+    /// 发放携带宠物首次完成正式关卡时的额外奖励。
+    /// mode 与 levelId 共同作为幂等键，避免重复结算或重复回调造成多次入账。
+    /// </summary>
+    public bool TryGrantPetCompletionReward(
+        MPPetConfig pet,
+        string mode,
+        string levelId,
+        out MPRewardReceipt receipt)
+    {
+        receipt = null;
+        MPPetRewardConfig reward = pet?.CompletionReward;
+        if (reward == null
+            || !reward.IsValid
+            || string.IsNullOrWhiteSpace(mode)
+            || string.IsNullOrWhiteSpace(levelId))
+        {
+            return false;
+        }
+
+        string sourceId = $"{mode}:{levelId}";
+        var result = new MPRewardReceipt
+        {
+            sourceId = sourceId,
+            sourceName = "Pet level bonus",
+            transactionId = $"pet_completion:{sourceId}",
+            rewards = new List<MPRewardItem>
+            {
+                new MPRewardItem(reward.Type, reward.Count)
+            }
+        };
+        if (!TryGrantRewards(result))
+            return false;
+
+        receipt = result;
+        return true;
+    }
+
     private void SaveSelectedPet()
     {
         if (string.IsNullOrEmpty(m_selected_pet_id))

@@ -54,6 +54,10 @@ public abstract partial class MPGameViewBase : AWindow
     [TransformPath("View/Content/Input")]
     protected RectTransform m_input;
 
+    /// <summary>当前关卡携带宠物的局内展示图片。</summary>
+    [TransformPath("View/Content/Pet")]
+    protected Image m_gamePetImage;
+
     [TransformPath("View/Btns/ModeSwitch")]
     protected Button m_modeSwitchFrame;
 
@@ -439,6 +443,50 @@ public abstract partial class MPGameViewBase : AWindow
         m_petSkillRemainingUses = m_activePetConfig == null
             ? 0
             : m_activePetConfig.SkillUseCount;
+        RefreshGamePetDisplay();
+    }
+
+    /// <summary>
+    /// 使用 GamePet 目录中与配置 icon 对应的 {icon}_game 图片刷新局内宠物。
+    /// 按图片原始尺寸显示，位置直接读取配置的 Positon。
+    /// </summary>
+    private void RefreshGamePetDisplay()
+    {
+        if (m_gamePetImage == null)
+            return;
+
+        m_gamePetImage.raycastTarget = false;
+        if (m_activePetConfig == null || string.IsNullOrWhiteSpace(m_activePetConfig.Icon))
+        {
+            m_gamePetImage.gameObject.SetActive(false);
+            return;
+        }
+
+        RectTransform petRect = m_gamePetImage.rectTransform;
+        petRect.anchoredPosition = m_activePetConfig.Positon;
+
+        string location = $"{m_activePetConfig.Icon}_game";
+        try
+        {
+            Sprite sprite = MPLoad.Load<Sprite>(location, this);
+            if (sprite == null)
+            {
+                m_gamePetImage.gameObject.SetActive(false);
+                Debug.LogWarning($"[MPGameView] 局内宠物图片为空：{location}");
+                return;
+            }
+
+            m_gamePetImage.sprite = sprite;
+            m_gamePetImage.SetNativeSize();
+            m_gamePetImage.color = Color.white;
+            m_gamePetImage.preserveAspect = true;
+            m_gamePetImage.gameObject.SetActive(true);
+        }
+        catch (Exception exception)
+        {
+            m_gamePetImage.gameObject.SetActive(false);
+            Debug.LogWarning($"[MPGameView] 局内宠物图片加载失败：{location}，{exception.Message}");
+        }
     }
 
     private void RefreshPetSkillButton()
@@ -498,6 +546,7 @@ public abstract partial class MPGameViewBase : AWindow
             config => config != null && config.ID == petId);
         int totalUses = m_activePetConfig == null ? 0 : m_activePetConfig.SkillUseCount;
         m_petSkillRemainingUses = totalUses - Mathf.Clamp(usedCount, 0, totalUses);
+        RefreshGamePetDisplay();
         RefreshPropButtons();
     }
 

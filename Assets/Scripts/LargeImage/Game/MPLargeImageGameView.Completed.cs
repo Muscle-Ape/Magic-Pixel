@@ -38,10 +38,21 @@ public partial class MPLargeImageGameView
         ClearProgressCache();
         RefreshPropButtons();
 
+        bool firstCompletion = !MPUser.instance.LargeImageLevelIsPass(m_blockInfo.ID);
+
         // 1、记录当前已通关关卡
         MPUser.instance.LargeImageLevelPass(m_blockInfo.ID, m_lovesCount);
         MPUser.instance.AddPlayerExperience(MPUser.LARGE_IMAGE_COMPLETION_EXPERIENCE);
         MPUser.instance.TryClaimLargeImageLevelCoinAward(m_blockInfo, out m_completedRewardReceipt);
+        if (firstCompletion
+            && MPUser.instance.TryGrantPetCompletionReward(
+                m_activePetConfig,
+                "large",
+                m_blockInfo.ID,
+                out MPRewardReceipt petRewardReceipt))
+        {
+            MergeCompletedRewardReceipt(petRewardReceipt);
+        }
 
         // 2、更新解锁到的关卡位置，解锁新关卡
         if (m_index == MPUser.instance.GetLargeImageLevlPassIndex())
@@ -64,6 +75,24 @@ public partial class MPLargeImageGameView
         }
 
         m_refreshAction?.Invoke();
+    }
+
+    /// <summary>把已分别入账的宠物奖励合并到结算奖励弹窗中，仅用于统一展示。</summary>
+    private void MergeCompletedRewardReceipt(MPRewardReceipt petRewardReceipt)
+    {
+        if (petRewardReceipt == null)
+            return;
+
+        if (m_completedRewardReceipt == null)
+        {
+            m_completedRewardReceipt = petRewardReceipt;
+            return;
+        }
+
+        if (m_completedRewardReceipt.rewards == null)
+            m_completedRewardReceipt.rewards = new System.Collections.Generic.List<MPRewardItem>();
+        if (petRewardReceipt.rewards != null)
+            m_completedRewardReceipt.rewards.AddRange(petRewardReceipt.rewards);
     }
 
     /// <summary>

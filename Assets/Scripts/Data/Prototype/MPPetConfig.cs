@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using System;
+using UnityEngine;
 
 /// <summary>
 /// 宠物静态配置，对应 YooRes/Config/pets_config.json。
@@ -49,6 +50,17 @@ public class MPPetConfig
     [JsonProperty]
     private string claimSkillText;
 
+    [JsonProperty]
+    private Vector2 position;
+
+    /// <summary>领取主线关卡宝箱时的额外奖励百分比。</summary>
+    [JsonProperty]
+    private float boxRewardBonusPercent;
+
+    /// <summary>携带该宠物首次完成正式关卡时发放的额外奖励。</summary>
+    [JsonProperty]
+    private MPPetRewardConfig completionReward;
+
     public string ID => id;
     public string Name => string.IsNullOrWhiteSpace(name) ? id : name;
     public string Icon => icon;
@@ -56,6 +68,9 @@ public class MPPetConfig
     public string OptionText => string.IsNullOrWhiteSpace(optionText) ? Option : optionText;
     public int SkillUseCount => Math.Max(0, skillUseCount);
     public string Unlock => unlock ?? string.Empty;
+    public Vector2 Positon => position;
+    public float BoxRewardBonusPercent => Math.Max(0f, boxRewardBonusPercent);
+    public MPPetRewardConfig CompletionReward => completionReward;
     public string Tag => string.IsNullOrWhiteSpace(tag) ? "Companion" : tag;
     public string ClaimSkillText => !string.IsNullOrWhiteSpace(claimSkillText) ? claimSkillText
         : Option == MPPetSkillOption.Hint ? "Helps you complete an unfinished block."
@@ -65,7 +80,6 @@ public class MPPetConfig
     public bool DefaultUnlocked => string.Equals(Unlock.Trim(), "default", StringComparison.OrdinalIgnoreCase)
         || string.Equals(Unlock.Trim(), "free", StringComparison.OrdinalIgnoreCase)
         || string.Equals(Unlock.Trim(), "unlocked", StringComparison.OrdinalIgnoreCase);
-
     public string UnlockText
     {
         get
@@ -99,6 +113,20 @@ public class MPPetConfig
 
         return int.TryParse(parts[1], out value);
     }
+}
+
+/// <summary>宠物被动奖励配置。</summary>
+public sealed class MPPetRewardConfig
+{
+    [JsonProperty]
+    private string type;
+
+    [JsonProperty]
+    private int count;
+
+    public string Type => type ?? string.Empty;
+    public int Count => Math.Max(0, count);
+    public bool IsValid => !string.IsNullOrWhiteSpace(Type) && Count > 0;
 }
 
 /// <summary>

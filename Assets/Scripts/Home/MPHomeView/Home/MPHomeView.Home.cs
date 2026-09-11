@@ -160,8 +160,7 @@ public partial class MPHomeView
     private void InitializeHomePets()
     {
         HidePetTip(false);
-        m_petConfigs = MPDataManager.Instance.m_petsModel?.petConfigs
-            ?? new List<MPPetConfig>();
+        m_petConfigs = BuildHomePetDisplayConfigs();
         MPUser.instance.SyncPetSelection(m_petConfigs);
 
         if (m_petScrollRect != null)
@@ -219,8 +218,9 @@ public partial class MPHomeView
     /// </summary>
     private void RefreshHomePets()
     {
-        if (m_petConfigs == null)
-            return;
+        // 领取状态可能在主页外发生变化；每次回到主页时重新进行稳定分组。
+        // 只调整主页展示列表，不修改 MPDataManager 中由 JSON 保留的原始配置顺序。
+        m_petConfigs = BuildHomePetDisplayConfigs();
 
         MPUser.instance.SyncPetSelection(m_petConfigs);
         string selectedPetId = MPUser.instance.GetSelectedPetId();
@@ -235,6 +235,34 @@ public partial class MPHomeView
         }
 
         RefreshHomePetInfo(selectedPetId);
+    }
+
+    /// <summary>
+    /// 按“已解锁在前、未解锁在后”构建主页展示顺序。
+    /// 两个分组内部均按 pets_config.json 中的原始先后顺序展示。
+    /// </summary>
+    private static List<MPPetConfig> BuildHomePetDisplayConfigs()
+    {
+        List<MPPetConfig> source = MPDataManager.Instance.m_petsModel?.petConfigs;
+        if (source == null || source.Count == 0)
+            return new List<MPPetConfig>();
+
+        List<MPPetConfig> unlocked = new List<MPPetConfig>(source.Count);
+        List<MPPetConfig> locked = new List<MPPetConfig>(source.Count);
+        for (int i = 0; i < source.Count; i++)
+        {
+            MPPetConfig config = source[i];
+            if (config == null)
+                continue;
+
+            if (MPUser.instance.PetIsUnlock(config.ID))
+                unlocked.Add(config);
+            else
+                locked.Add(config);
+        }
+
+        unlocked.AddRange(locked);
+        return unlocked;
     }
 
     private void OnHomePetItemClick(MPPetConfig config)

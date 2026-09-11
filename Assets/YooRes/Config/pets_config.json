@@ -1,52 +1,95 @@
 [
   {
-    "id": "pet_dog",
-    "name": "Dog",
-    "icon": "pet_dog",
+    "id": "pet_shiba",
+    "name": "Shiba",
+    "icon": "pet_shiba",
     "option": "hint",
-    "optionText": "Complete one unfinished block per level",
-    "skillUseCount": 1,
+    "optionText": "Woof woof woof, have a pleasant experience!",
+    "skillUseCount": 0,
     "unlock": "default",
-    "unlockText": "Unlocked"
+    "unlockText": "Unlocked",
+    "position": {
+      "x": -413,
+      "y": 383
+    }
   },
   {
-    "id": "pet_cat_black",
-    "name": "Tuxedo Cat",
-    "icon": "pet_cat_black",
+    "id": "pet_red_panda",
+    "name": "Red Panda",
+    "icon": "pet_red_panda",
     "option": "hint",
-    "optionText": "Complete up to two unfinished blocks per level",
-    "skillUseCount": 2,
-    "unlock": "mainlevel 5",
-    "unlockText": "Complete Main Level 5, then claim the pet reward"
-  },
-  {
-    "id": "pet_dog_tidy_white",
-    "name": "White Tidy",
-    "icon": "pet_dog_tidy_white",
-    "option": "recover_life",
-    "optionText": "Recover one life per level",
+    "optionText": "Complete an unfinished block",
     "skillUseCount": 1,
-    "unlock": "mainlevel 10",
-    "unlockText": "Complete Main Level 10, then claim the pet reward"
+    "unlock": "level 10",
+    "unlockText": "Complete Main Level 10",
+    "position": {
+      "x": 385,
+      "y": 606.5
+    }
   },
   {
-    "id": "pet_dog_tidy_brown",
-    "name": "Brown Tidy",
-    "icon": "pet_dog_tidy_brown",
-    "option": "hint",
-    "optionText": "Complete up to three unfinished blocks per level",
-    "skillUseCount": 3,
-    "unlock": "mainlevel 15",
-    "unlockText": "Complete Main Level 15, then claim the pet reward"
-  },
-  {
-    "id": "pet_rabbit",
-    "name": "Rabbit",
-    "icon": "pet_rabbit",
+    "id": "pet_otter",
+    "name": "Otter",
+    "icon": "pet_otter",
     "option": "recover_life",
-    "optionText": "Recover up to two lives per level",
+    "optionText": "Restore some health, then go all out!",
+    "skillUseCount": 1,
+    "unlock": "large level 1",
+    "unlockText": "Complete Large Image Level 1",
+    "position": {
+      "x": 380,
+      "y": 612.5
+    }
+  },
+  {
+    "id": "pet_lop_rabbit",
+    "name": "Lop Rabbit",
+    "icon": "pet_lop_rabbit",
+    "option": "hint",
+    "optionText": "You can get an extra 5% when claiming the level's fluorite treasure chest",
+    "skillUseCount": 0,
+    "boxRewardBonusPercent": 5,
+    "unlock": "player level 50",
+    "unlockText": "Once your character reaches level 50",
+    "position": {
+      "x": 377,
+      "y": 612.5
+    }
+  },
+  {
+    "id": "pet_poodle_gold",
+    "name": "Poodle Gold",
+    "icon": "pet_poodle_gold",
+    "option": "hint",
+    "optionText": "You'll receive an extra 10 fluorite upon completion, and two hints will be provided during the game.",
     "skillUseCount": 2,
-    "unlock": "mainlevel 25",
-    "unlockText": "Complete Main Level 25, then claim the pet reward"
+    "completionReward": {
+      "type": "diamond",
+      "count": 10
+    },
+    "unlock": "default",
+    "unlockText": "This needs to be purchased with gold coins in the store",
+    "position": {
+      "x": 395,
+      "y": 627.5
+    }
+  },
+  {
+    "id": "pet_fox_royal",
+    "name": "Fox Royal",
+    "icon": "pet_fox_royal",
+    "option": "recover_life",
+    "optionText": "You get an extra 10 fluorite upon clearing a stage, and you have two chances to recover health during the game.",
+    "skillUseCount": 2,
+    "completionReward": {
+      "type": "diamond",
+      "count": 10
+    },
+    "unlock": "default",
+    "unlockText": "Get it for free after becoming a VIP",
+    "position": {
+      "x": 377,
+      "y": 612.5
+    }
   }
 ]
