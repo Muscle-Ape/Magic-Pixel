@@ -2,186 +2,110 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using HQ.UIManager;
-using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 /// <summary>
-/// 游客账号绑定提示弹窗。
-/// 用于新手引导完成、首次付费前等时机提醒玩家绑定可恢复账号。
+/// 游客账号绑定弹窗。界面文案与图片均由预制体提供，脚本只管理六个按钮及绑定生命周期。
 /// </summary>
 [Component("MPAccountBindPop")]
 public class MPAccountBindPop : AWindow
 {
-    protected override bool ShouldAdaptToNotchScreen()
-    {
-        return false;
-    }
+    private const string LEGAL_DOCUMENT_URL = "http://yunovagames.com:19100/";
 
-    /// <summary>弹窗标题文本。</summary>
-    [TransformPath("View/Window/Title")]
-    private TMP_Text m_titleText;
-
-    /// <summary>绑定提示说明文本。</summary>
-    [TransformPath("View/Window/Desc")]
-    private TMP_Text m_descText;
-
-    /// <summary>绑定状态或错误说明文本。</summary>
-    [TransformPath("View/Window/Status")]
-    private TMP_Text m_statusText;
-
-    /// <summary>账号输入框，用于给当前游客添加账号密码。</summary>
-    [TransformPath("View/Window/AccountInput")]
-    private TMP_InputField m_accountInput;
-
-    /// <summary>密码输入框，用于给当前游客添加账号密码。</summary>
-    [TransformPath("View/Window/PasswordInput")]
-    private TMP_InputField m_passwordInput;
-
-    /// <summary>关闭或暂不绑定按钮。</summary>
     [TransformPath("View/Window/CloseBtn")]
     private Button m_closeBtn;
 
-    /// <summary>绑定账号密码按钮。</summary>
-    [TransformPath("View/Window/PasswordBindBtn")]
-    private Button m_passwordBindBtn;
-
-    /// <summary>绑定 Google 按钮。</summary>
-    [TransformPath("View/Window/GoogleBindBtn")]
+    [TransformPath("View/Window/Plattform/GoogleBindBtn")]
     private Button m_googleBindBtn;
 
-    /// <summary>绑定 Apple 按钮。</summary>
-    [TransformPath("View/Window/AppleBindBtn")]
+    [TransformPath("View/Window/Plattform/AppleBindBtn")]
     private Button m_appleBindBtn;
 
-    /// <summary>绑定 Facebook 按钮。</summary>
-    [TransformPath("View/Window/FacebookBindBtn")]
+    [TransformPath("View/Window/Plattform/FacebookBindBtn")]
     private Button m_facebookBindBtn;
 
-    /// <summary>弹窗关闭时的外部回调。</summary>
+    [TransformPath("View/Window/PrivacyPolicyBtn")]
+    private Button m_privacyPolicyBtn;
+
+    [TransformPath("View/Window/TermsOfServiceBtn")]
+    private Button m_termsOfServiceBtn;
+
     private Action m_onClose;
-
-    /// <summary>绑定成功时的外部回调。</summary>
     private Action<MPLoginResult> m_onBindSucceeded;
-
-    /// <summary>当前是否正在执行绑定操作。</summary>
-    private bool m_isRunning;
-
-    /// <summary>当前绑定操作的取消源。</summary>
     private CancellationTokenSource m_operationCancellation;
+    private bool m_isRunning;
+    private bool m_isClosing;
 
-    /// <summary>
-    /// 注册按钮事件。
-    /// </summary>
+    protected override bool ShouldAdaptToNotchScreen() => false;
+
     public override void OnCreate()
     {
         RegisterButton(m_closeBtn, OnCloseClick);
-        RegisterButton(m_passwordBindBtn, OnPasswordBindClick);
         RegisterButton(m_googleBindBtn, OnGoogleBindClick);
         RegisterButton(m_appleBindBtn, OnAppleBindClick);
         RegisterButton(m_facebookBindBtn, OnFacebookBindClick);
+        RegisterButton(m_privacyPolicyBtn, OnPrivacyPolicyClick);
+        RegisterButton(m_termsOfServiceBtn, OnTermsOfServiceClick);
         ApplyConfiguration();
     }
 
-    /// <summary>
-    /// 接收绑定提示文案和回调。
-    /// </summary>
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
-        MPAccountBindPopUIMsgData data = uiMsg == null ? null : uiMsg.GetMsg<MPAccountBindPopUIMsgData>();
-        if (data == null)
-        {
-            SetTitle("Bind Account");
-            SetDesc("After binding your account, you can restore your progress when changing devices or reinstalling the game.");
-            return;
-        }
-
-        m_onClose = data.OnClose;
-        m_onBindSucceeded = data.OnBindSucceeded;
-        SetTitle(data.Title);
-        SetDesc(data.Description);
+        MPAccountBindPopUIMsgData data = uiMsg?.GetMsg<MPAccountBindPopUIMsgData>();
+        m_onClose = data?.OnClose;
+        m_onBindSucceeded = data?.OnBindSucceeded;
     }
 
-    /// <summary>
-    /// 清理事件和异步任务。
-    /// </summary>
     public override void OnRelease()
     {
         CancelOperation();
         UnregisterButton(m_closeBtn, OnCloseClick);
-        UnregisterButton(m_passwordBindBtn, OnPasswordBindClick);
         UnregisterButton(m_googleBindBtn, OnGoogleBindClick);
         UnregisterButton(m_appleBindBtn, OnAppleBindClick);
         UnregisterButton(m_facebookBindBtn, OnFacebookBindClick);
+        UnregisterButton(m_privacyPolicyBtn, OnPrivacyPolicyClick);
+        UnregisterButton(m_termsOfServiceBtn, OnTermsOfServiceClick);
+        m_onClose = null;
+        m_onBindSucceeded = null;
     }
 
-    /// <summary>
-    /// 根据登录配置显示可用绑定入口。
-    /// </summary>
+    /// <summary>按平台与登录配置隐藏不可用的第三方绑定入口。</summary>
     private void ApplyConfiguration()
     {
         MPLoginConfiguration configuration = MPLoginManager.Instance.Configuration;
-        SetButtonVisible(m_passwordBindBtn, configuration.EnableUsernamePasswordLogin);
         SetButtonVisible(
             m_googleBindBtn,
             configuration.EnableGooglePlayGamesLogin && MPGooglePlayGamesAuthService.IsCurrentPlatformSupported);
-        SetButtonVisible(m_appleBindBtn, configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
+        SetButtonVisible(
+            m_appleBindBtn,
+            configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
         SetButtonVisible(m_facebookBindBtn, configuration.EnableFacebookLogin);
     }
 
-    /// <summary>
-    /// 关闭弹窗。
-    /// </summary>
     private void OnCloseClick()
     {
+        if (m_isRunning || m_isClosing)
+            return;
+
+        m_isClosing = true;
         Action callback = m_onClose;
         DestroyWindow();
         callback?.Invoke();
     }
 
-    /// <summary>
-    /// 给当前游客账号绑定 Unity Authentication 账号密码。
-    /// </summary>
-    private async void OnPasswordBindClick()
-    {
-        string account = m_accountInput == null ? string.Empty : m_accountInput.text;
-        string password = m_passwordInput == null ? string.Empty : m_passwordInput.text;
-        if (string.IsNullOrWhiteSpace(account) || string.IsNullOrWhiteSpace(password))
-        {
-            SetStatus("账号和密码不能为空。");
-            return;
-        }
-
-        await RunBindOperationAsync(token => MPLoginManager.Instance.LinkAsync(
-            MPLoginType.UsernamePassword,
-            new MPPasswordLoginRequest
-            {
-                account = account,
-                password = password,
-                mode = MPPasswordLoginMode.AddToCurrentUser
-            },
-            token));
-    }
-
-    /// <summary>
-    /// Google 绑定入口。
-    /// 当前通过 Google Play Games SDK 获取 Auth Code，并绑定到当前 Unity Authentication 账号。
-    /// </summary>
+    /// <summary>先由 Google Play Games 获取 Auth Code，再绑定到当前 Unity Authentication 账号。</summary>
     private async void OnGoogleBindClick()
     {
         await RunBindOperationAsync(async token =>
         {
-            SetStatus("正在拉起 Google Play Games 登录...");
             MPThirdPartyAuthResult authResult = await MPGooglePlayGamesAuthService.RequestAuthCodeAsync(
                 forceRefreshToken: false,
                 cancellationToken: token);
-
             if (authResult == null || !authResult.success)
-            {
                 return CreateThirdPartyAuthFailure(MPLoginType.GooglePlayGames, authResult);
-            }
 
-            SetStatus("正在绑定 Google Play Games...");
             return await MPLoginManager.Instance.LinkAsync(
                 MPLoginType.GooglePlayGames,
                 new MPThirdPartyLoginRequest
@@ -196,210 +120,144 @@ public class MPAccountBindPop : AWindow
         });
     }
 
-    /// <summary>
-    /// Apple 绑定入口。Adapter 会拉起系统授权并把 Identity Token 绑定到当前 Unity Authentication 账号。
-    /// </summary>
+    /// <summary>拉起原生 Apple 授权并绑定到当前账号。</summary>
     private async void OnAppleBindClick()
     {
-        await RunBindOperationAsync(async token =>
-        {
-            SetStatus("正在请求 Apple 授权...");
-            return await MPLoginManager.Instance.LinkAsync(
-                MPLoginType.Apple,
-                new MPThirdPartyLoginRequest
-                {
-                    loginType = MPLoginType.Apple,
-                    provider = MPLoginType.Apple,
-                    forceLink = false
-                },
-                token);
-        });
+        await RunBindOperationAsync(token => MPLoginManager.Instance.LinkAsync(
+            MPLoginType.Apple,
+            new MPThirdPartyLoginRequest
+            {
+                loginType = MPLoginType.Apple,
+                provider = MPLoginType.Apple,
+                forceLink = false
+            },
+            token));
     }
 
-    /// <summary>
-    /// Facebook 绑定入口，后续由 SDK Adapter 提供 Access Token。
-    /// </summary>
-    private void OnFacebookBindClick()
+    /// <summary>通过已接入 MPFacebookAuthAdapter 的平台授权回调绑定 Facebook。</summary>
+    private async void OnFacebookBindClick()
     {
-        SetStatus("Facebook 绑定入口已预留。接入平台 token 后调用 MPLoginManager.BindProviderAsync。");
+        await RunBindOperationAsync(token => MPLoginManager.Instance.LinkAsync(
+            MPLoginType.Facebook,
+            new MPThirdPartyLoginRequest
+            {
+                loginType = MPLoginType.Facebook,
+                provider = MPLoginType.Facebook,
+                forceLink = false
+            },
+            token));
     }
 
-    /// <summary>
-    /// 运行绑定异步操作。
-    /// </summary>
+    private static void OnPrivacyPolicyClick()
+    {
+        Application.OpenURL(LEGAL_DOCUMENT_URL);
+    }
+
+    private static void OnTermsOfServiceClick()
+    {
+        Application.OpenURL(LEGAL_DOCUMENT_URL);
+    }
+
+    /// <summary>同一时间只执行一次绑定，结束前禁止六个按钮重复触发。</summary>
     private async Task RunBindOperationAsync(Func<CancellationToken, Task<MPLoginResult>> operation)
     {
-        if (m_isRunning)
-        {
+        if (m_isRunning || m_isClosing || operation == null)
             return;
-        }
 
         CancelOperation();
-        m_operationCancellation = new CancellationTokenSource();
+        CancellationTokenSource operationCancellation = new CancellationTokenSource();
+        CancellationToken operationToken = operationCancellation.Token;
+        m_operationCancellation = operationCancellation;
         m_isRunning = true;
         SetInteractable(false);
-        SetStatus("正在绑定账号...");
 
         try
         {
-            MPLoginResult result = await operation(m_operationCancellation.Token);
-            if (m_operationCancellation == null || m_operationCancellation.IsCancellationRequested)
+            MPLoginResult result = await operation(operationToken);
+            operationToken.ThrowIfCancellationRequested();
+            if (result != null && result.isSuccess)
             {
+                Action<MPLoginResult> callback = m_onBindSucceeded;
+                m_isClosing = true;
+                DestroyWindow();
+                callback?.Invoke(result);
                 return;
             }
 
-            if (result != null && result.isSuccess)
-            {
-                SetStatus("账号绑定成功。");
-                Action<MPLoginResult> callback = m_onBindSucceeded;
-                DestroyWindow();
-                callback?.Invoke(result);
-            }
-            else
-            {
-                SetStatus(result == null ? "账号绑定失败，请稍后重试。" : result.errorMessage);
-            }
+            Debug.LogWarning($"[MPAccountBindPop] 账号绑定失败：{result?.errorMessage ?? "未知错误"}");
         }
         catch (OperationCanceledException)
         {
-            SetStatus("绑定操作已取消。");
+            // 页面关闭时取消等待，不再访问已经释放的 UI。
         }
         catch (Exception exception)
         {
             Debug.LogError($"[MPAccountBindPop] 绑定操作异常：{exception}");
-            SetStatus($"绑定操作异常：{exception.Message}");
         }
         finally
         {
+            if (ReferenceEquals(m_operationCancellation, operationCancellation))
+            {
+                m_operationCancellation = null;
+                operationCancellation.Dispose();
+            }
+
             m_isRunning = false;
-            SetInteractable(true);
+            if (this != null && !IsDestoried && !m_isClosing)
+                SetInteractable(true);
         }
     }
 
-    /// <summary>
-    /// 取消当前异步操作。
-    /// </summary>
     private void CancelOperation()
     {
-        if (m_operationCancellation == null)
-        {
-            return;
-        }
-
-        m_operationCancellation.Cancel();
-        m_operationCancellation.Dispose();
+        CancellationTokenSource cancellation = m_operationCancellation;
         m_operationCancellation = null;
+        if (cancellation == null)
+            return;
+
+        cancellation.Cancel();
+        cancellation.Dispose();
     }
 
-    /// <summary>
-    /// 设置标题文本。
-    /// </summary>
-    private void SetTitle(string title)
-    {
-        if (m_titleText != null)
-        {
-            m_titleText.text = string.IsNullOrEmpty(title) ? "绑定账号" : title;
-        }
-    }
-
-    /// <summary>
-    /// 设置说明文本。
-    /// </summary>
-    private void SetDesc(string desc)
-    {
-        if (m_descText != null)
-        {
-            m_descText.text = string.IsNullOrEmpty(desc) ? "绑定账号后可以恢复游客进度。" : desc;
-        }
-    }
-
-    /// <summary>
-    /// 设置状态文本。
-    /// </summary>
-    private void SetStatus(string status)
-    {
-        if (m_statusText != null)
-        {
-            m_statusText.text = string.IsNullOrEmpty(status) ? string.Empty : status;
-        }
-    }
-
-    /// <summary>
-    /// 设置所有交互控件是否可用。
-    /// </summary>
     private void SetInteractable(bool interactable)
     {
         SetButtonInteractable(m_closeBtn, interactable);
-        SetButtonInteractable(m_passwordBindBtn, interactable);
         SetButtonInteractable(m_googleBindBtn, interactable);
         SetButtonInteractable(m_appleBindBtn, interactable);
         SetButtonInteractable(m_facebookBindBtn, interactable);
-
-        if (m_accountInput != null)
-        {
-            m_accountInput.interactable = interactable;
-        }
-
-        if (m_passwordInput != null)
-        {
-            m_passwordInput.interactable = interactable;
-        }
+        SetButtonInteractable(m_privacyPolicyBtn, interactable);
+        SetButtonInteractable(m_termsOfServiceBtn, interactable);
     }
 
-    /// <summary>
-    /// 注册按钮事件。
-    /// </summary>
-    private static void RegisterButton(Button button, UnityEngine.Events.UnityAction action)
+    private static void RegisterButton(Button button, UnityAction action)
     {
         if (button == null)
-        {
             return;
-        }
-
         button.onClick.RemoveListener(action);
         button.onClick.AddListener(action);
     }
 
-    /// <summary>
-    /// 移除按钮事件。
-    /// </summary>
-    private static void UnregisterButton(Button button, UnityEngine.Events.UnityAction action)
+    private static void UnregisterButton(Button button, UnityAction action)
     {
         if (button != null)
-        {
             button.onClick.RemoveListener(action);
-        }
     }
 
-    /// <summary>
-    /// 设置按钮显隐。
-    /// </summary>
     private static void SetButtonVisible(Button button, bool visible)
     {
         if (button != null)
-        {
             button.gameObject.SetActive(visible);
-        }
     }
 
-    /// <summary>
-    /// 设置按钮可交互状态。
-    /// </summary>
     private static void SetButtonInteractable(Button button, bool interactable)
     {
         if (button != null)
-        {
             button.interactable = interactable;
-        }
     }
 
-    /// <summary>
-    /// 将第三方 SDK 授权失败转换为绑定流程可展示的统一失败结果。
-    /// </summary>
-    /// <param name="loginType">绑定类型。</param>
-    /// <param name="authResult">SDK 授权结果。</param>
-    /// <returns>绑定失败结果。</returns>
-    private static MPLoginResult CreateThirdPartyAuthFailure(MPLoginType loginType, MPThirdPartyAuthResult authResult)
+    private static MPLoginResult CreateThirdPartyAuthFailure(
+        MPLoginType loginType,
+        MPThirdPartyAuthResult authResult)
     {
         string errorCode = authResult == null || string.IsNullOrEmpty(authResult.errorCode)
             ? MPLoginErrorCodes.ThirdPartyAuthFailed
@@ -407,29 +265,25 @@ public class MPAccountBindPop : AWindow
         string errorMessage = authResult == null || string.IsNullOrEmpty(authResult.errorMessage)
             ? "第三方平台授权失败。"
             : authResult.errorMessage;
-
-        return MPLoginResult.Failed(loginType, MPLoginError.Create(errorCode, errorMessage, errorCode != MPLoginErrorCodes.UserCancelled));
+        return MPLoginResult.Failed(
+            loginType,
+            MPLoginError.Create(errorCode, errorMessage, errorCode != MPLoginErrorCodes.UserCancelled));
     }
 }
 
-/// <summary>
-/// 游客账号绑定弹窗打开参数。
-/// </summary>
+/// <summary>保留原有打开参数结构，现有调用方无需调整。</summary>
 public sealed class MPAccountBindPopUIMsgData : UIMsgData
 {
-    /// <summary>弹窗标题。</summary>
     public string Title { get; private set; }
-
-    /// <summary>绑定原因说明。</summary>
     public string Description { get; private set; }
-
-    /// <summary>关闭弹窗后的回调。</summary>
     public Action OnClose { get; private set; }
-
-    /// <summary>绑定成功后的回调。</summary>
     public Action<MPLoginResult> OnBindSucceeded { get; private set; }
 
-    public MPAccountBindPopUIMsgData(string title, string description, Action onClose, Action<MPLoginResult> onBindSucceeded)
+    public MPAccountBindPopUIMsgData(
+        string title,
+        string description,
+        Action onClose,
+        Action<MPLoginResult> onBindSucceeded)
     {
         Title = title;
         Description = description;
