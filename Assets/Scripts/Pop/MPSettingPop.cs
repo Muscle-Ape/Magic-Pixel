@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using DG.Tweening;
 using HQ.UIManager;
-using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -28,6 +27,13 @@ public class MPSettingPop : AWindow
     private const float SWITCH_FADE_DURATION = 0.15f;
 
     /// <summary>
+    /// 非游戏场景隐藏 Game 节点后，设置窗口使用的高度。
+    /// </summary>
+    private const float NON_GAME_WINDOW_HEIGHT = 1520f;
+
+    private const string LEGAL_DOCUMENT_URL = "http://yunovagames.com:19100/";
+
+    /// <summary>
     /// 关闭按钮。
     /// </summary>
     [TransformPath("View/Window/CloseBtn")]
@@ -36,108 +42,106 @@ public class MPSettingPop : AWindow
     /// <summary>
     /// 背景音乐开关。
     /// </summary>
-    [TransformPath("View/Window/BGM/Switch")]
+    [TransformPath("View/Window/Audio/BGM/Switch")]
     private Button m_bgmSwitch;
 
     /// <summary>
     /// 背景音乐开关滑块。
     /// </summary>
-    [TransformPath("View/Window/BGM/Switch/Btn")]
+    [TransformPath("View/Window/Audio/BGM/Switch/Btn")]
     private RectTransform m_bgmSwitchBtn;
 
     /// <summary>
     /// 背景音乐开关打开状态显示节点。
     /// </summary>
-    [TransformPath("View/Window/BGM/Switch/On")]
+    [TransformPath("View/Window/Audio/BGM/Switch/On")]
     private RectTransform m_bgmSwitchOn;
 
     /// <summary>
     /// 音效开关。
     /// </summary>
-    [TransformPath("View/Window/Sound/Switch")]
+    [TransformPath("View/Window/Audio/Sound/Switch")]
     private Button m_soundSwitch;
 
     /// <summary>
     /// 音效开关滑块。
     /// </summary>
-    [TransformPath("View/Window/Sound/Switch/Btn")]
+    [TransformPath("View/Window/Audio/Sound/Switch/Btn")]
     private RectTransform m_soundSwitchBtn;
 
     /// <summary>
     /// 音效开关打开状态显示节点。
     /// </summary>
-    [TransformPath("View/Window/Sound/Switch/On")]
+    [TransformPath("View/Window/Audio/Sound/Switch/On")]
     private RectTransform m_soundSwitchOn;
 
     /// <summary>
     /// 震动开关。
     /// </summary>
-    [TransformPath("View/Window/Vibration/Switch")]
+    [TransformPath("View/Window/Audio/Vibration/Switch")]
     private Button m_vibrationSwitch;
 
     /// <summary>
     /// 震动开关滑块。
     /// </summary>
-    [TransformPath("View/Window/Vibration/Switch/Btn")]
+    [TransformPath("View/Window/Audio/Vibration/Switch/Btn")]
     private RectTransform m_vibrationSwitchBtn;
 
     /// <summary>
     /// 震动开关打开状态显示节点。
     /// </summary>
-    [TransformPath("View/Window/Vibration/Switch/On")]
+    [TransformPath("View/Window/Audio/Vibration/Switch/On")]
     private RectTransform m_vibrationSwitchOn;
 
     /// <summary>
     /// 未绑定正式登录方式时显示的登录/绑定按钮。
     /// 匿名账号虽然已经通过 Unity Authentication 登录，但还不能跨设备恢复，因此这里仍展示 LogIn 引导绑定。
     /// </summary>
-    [TransformPath("View/Window/LogIn")]
+    [TransformPath("View/Window/Account/LogIn")]
     private Button m_logInBtn;
 
     /// <summary>
     /// 已绑定正式登录方式后显示的登出按钮。
     /// 点击后会清理当前凭证，并打开登录页让玩家重新选择登录方式。
     /// </summary>
-    [TransformPath("View/Window/LogOut")]
+    [TransformPath("View/Window/Account/LogOut")]
     private Button m_logOutBtn;
 
-    [TransformPath("View/Window/ReplayBtn")]
+    [TransformPath("View/Window/Game/ReplayBtn")]
     private Button m_replayBtn;
 
     [TransformPath("View/Window/GuideBtn")]
     private Button m_guideBtn;
 
-    [TransformPath("View/Window/AccountStatus")]
-    private TMP_Text m_accountStatus;
+    [TransformPath("View/Window/PrivacyPolicyBtn")]
+    private Button m_privacyPolicyBtn;
 
-    [TransformPath("View/Window/GameOptions")]
+    [TransformPath("View/Window/TermsOfServiceBtn")]
+    private Button m_termsOfServiceBtn;
+
+    [TransformPath("View/Window")]
+    private RectTransform m_window;
+
+    [TransformPath("View/Window/Game")]
     private RectTransform m_gameOptions;
 
-    [TransformPath("View/Window/GameOptions/CurrentColor")]
-    private Image m_currentColor;
-
-    [TransformPath("View/Window/GameOptions/Colors")]
+    [TransformPath("View/Window/Game/Colors")]
     private RectTransform m_colors;
 
     private static readonly Color[] FILL_COLORS =
     {
-        // Color1 展示 popup_fill_blue，实际填充也必须使用蓝色，不能用白色占位。
+        // Color1 保持当前默认蓝色；颜色直接赋给预制体中预先搭建的 Color 子节点。
         MPUser.DefaultGameFillColor,
         new Color(1f, 0.64f, 0.25f),
         new Color(0.5f, 1f, 0.55f),
         new Color(0.83f, 0.6f, 1f),
         new Color(1f, 0.52f, 0.73f),
         new Color(0.28f, 0.3f, 0.36f),
-    };
-
-    private static readonly string[] FILL_COLOR_ICONS =
-    {
-        "popup_fill_blue", "popup_fill_orange", "popup_fill_green",
-        "popup_fill_purple", "popup_fill_pink", "popup_fill_gray",
+        new Color32(244, 198, 59, 255),
+        new Color32(239, 72, 37, 255),
     };
 
     private readonly Dictionary<Button, UnityAction> m_colorListeners = new Dictionary<Button, UnityAction>();
-    private readonly Sprite[] m_fillColorSprites = new Sprite[FILL_COLORS.Length];
     private MPSettingPopUIMsgData m_gameData;
     private bool m_isActionPromptShowing;
     private bool m_isClosing;
@@ -164,12 +168,15 @@ public class MPSettingPop : AWindow
     private bool m_isLoginActionRunning;
     private bool m_logoutCommitted;
     private MPLocalLoginProfile m_logoutProfile;
+    private float m_gameWindowHeight;
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
         m_gameData = uiMsg as MPSettingPopUIMsgData;
         m_isClosing = false;
+        if (m_window != null && m_gameWindowHeight <= 0f)
+            m_gameWindowHeight = m_window.sizeDelta.y;
 
         RegisterUI();
         RefreshGameOptions();
@@ -186,10 +193,8 @@ public class MPSettingPop : AWindow
         KillSwitchTween(m_soundSwitchBtn, m_soundSwitchOn);
         KillSwitchTween(m_vibrationSwitchBtn, m_vibrationSwitchOn);
         ClearColorListeners();
-        Array.Clear(m_fillColorSprites, 0, m_fillColorSprites.Length);
         m_gameData = null;
         m_logoutProfile = null;
-        MPLoad.ReleaseAll(this);
     }
 
     /// <summary>
@@ -245,6 +250,18 @@ public class MPSettingPop : AWindow
             m_guideBtn.onClick.AddListener(OnGuideClick);
         }
 
+        if (m_privacyPolicyBtn != null)
+        {
+            m_privacyPolicyBtn.onClick.RemoveListener(OnPrivacyPolicyClick);
+            m_privacyPolicyBtn.onClick.AddListener(OnPrivacyPolicyClick);
+        }
+
+        if (m_termsOfServiceBtn != null)
+        {
+            m_termsOfServiceBtn.onClick.RemoveListener(OnTermsOfServiceClick);
+            m_termsOfServiceBtn.onClick.AddListener(OnTermsOfServiceClick);
+        }
+
         MPLoginManager.Instance.LoginSucceeded -= OnLoginSucceeded;
         MPLoginManager.Instance.LoginSucceeded += OnLoginSucceeded;
         MPLoginManager.Instance.LoggedOut -= OnLoggedOut;
@@ -289,6 +306,10 @@ public class MPSettingPop : AWindow
             m_replayBtn.onClick.RemoveListener(OnReplayClick);
         if (m_guideBtn != null)
             m_guideBtn.onClick.RemoveListener(OnGuideClick);
+        if (m_privacyPolicyBtn != null)
+            m_privacyPolicyBtn.onClick.RemoveListener(OnPrivacyPolicyClick);
+        if (m_termsOfServiceBtn != null)
+            m_termsOfServiceBtn.onClick.RemoveListener(OnTermsOfServiceClick);
 
         MPLoginManager.Instance.LoginSucceeded -= OnLoginSucceeded;
         MPLoginManager.Instance.LoggedOut -= OnLoggedOut;
@@ -572,13 +593,6 @@ public class MPSettingPop : AWindow
         bool showLogOut = ShouldShowLogOut(profile);
         SetButtonVisible(m_logInBtn, !showLogOut);
         SetButtonVisible(m_logOutBtn, showLogOut);
-        if (m_accountStatus != null)
-        {
-            m_accountStatus.text = !MPLoginManager.Instance.IsLoggedIn
-                ? "Offline — sign in to protect your progress."
-                : showLogOut ? "Account linked — progress can be restored."
-                : "Guest account — link an account before changing devices.";
-        }
     }
 
     /// <summary>
@@ -718,19 +732,15 @@ public class MPSettingPop : AWindow
         SetButtonInteractable(m_closeBtn, !m_isLoginActionRunning && !m_isClosing);
         SetButtonInteractable(m_replayBtn, !m_isLoginActionRunning && !m_isClosing);
         SetButtonInteractable(m_guideBtn, !m_isLoginActionRunning && !m_isClosing);
+        SetButtonInteractable(m_privacyPolicyBtn, !m_isLoginActionRunning && !m_isClosing);
+        SetButtonInteractable(m_termsOfServiceBtn, !m_isLoginActionRunning && !m_isClosing);
     }
 
     private void RefreshGameOptions()
     {
         bool inGame = m_gameData != null && m_gameData.isInGame;
+        RefreshWindowHeight(inGame);
         SetButtonVisible(m_replayBtn, inGame && m_gameData.replayAction != null);
-        if (m_guideBtn != null)
-        {
-            bool showReplay = inGame && m_gameData.replayAction != null;
-            RectTransform guideRect = (RectTransform)m_guideBtn.transform;
-            guideRect.anchoredPosition = new Vector2(showReplay ? 155f : 0f, guideRect.anchoredPosition.y);
-            guideRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, showReplay ? 290f : 600f);
-        }
         if (m_gameOptions != null)
             m_gameOptions.gameObject.SetActive(inGame);
         ClearColorListeners();
@@ -745,14 +755,10 @@ public class MPSettingPop : AWindow
             if (!valid)
                 continue;
             Button button = option.GetComponent<Button>();
-            Image image = option.GetComponent<Image>();
             Color color = FILL_COLORS[i];
-            if (m_fillColorSprites[i] == null)
-                m_fillColorSprites[i] = MPRewardPopupIcons.LoadSprite(FILL_COLOR_ICONS[i], this, FILL_COLOR_ICONS[0]);
-            MPRewardPopupIcons.Apply(image, m_fillColorSprites[i]);
-            Transform select = option.Find("Select");
-            if (select != null)
-                MPRewardPopupIcons.Load(select.GetComponent<Image>(), "popup_selection_frame", this, null);
+            Image colorImage = option.Find("Color")?.GetComponent<Image>();
+            if (colorImage != null)
+                colorImage.color = color;
             if (button != null)
             {
                 UnityAction listener = () => OnFillColorClick(color);
@@ -761,6 +767,21 @@ public class MPSettingPop : AWindow
             }
         }
         RefreshColorSelection();
+    }
+
+    /// <summary>
+    /// 游戏内保留预制体原始高度；其他页面隐藏 Game 后收起窗口底部空间。
+    /// </summary>
+    private void RefreshWindowHeight(bool inGame)
+    {
+        if (m_window == null)
+            return;
+
+        Vector2 sizeDelta = m_window.sizeDelta;
+        sizeDelta.y = inGame && m_gameWindowHeight > 0f
+            ? m_gameWindowHeight
+            : NON_GAME_WINDOW_HEIGHT;
+        m_window.sizeDelta = sizeDelta;
     }
 
     private void OnFillColorClick(Color color)
@@ -777,7 +798,6 @@ public class MPSettingPop : AWindow
     {
         Color color = MPUser.instance.gameFillColor;
         int selectedIndex = FindFillColorIndex(color);
-        MPRewardPopupIcons.Apply(m_currentColor, m_fillColorSprites[selectedIndex]);
         if (m_colors == null)
             return;
         for (int i = 0; i < m_colors.childCount && i < FILL_COLORS.Length; i++)
@@ -811,6 +831,16 @@ public class MPSettingPop : AWindow
             if (pair.Key != null)
                 pair.Key.onClick.RemoveListener(pair.Value);
         m_colorListeners.Clear();
+    }
+
+    private static void OnPrivacyPolicyClick()
+    {
+        Application.OpenURL(LEGAL_DOCUMENT_URL);
+    }
+
+    private static void OnTermsOfServiceClick()
+    {
+        Application.OpenURL(LEGAL_DOCUMENT_URL);
     }
 
     private void OnGuideClick()

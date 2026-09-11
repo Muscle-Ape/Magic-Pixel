@@ -166,7 +166,10 @@ public class MPLoginFlowController : IMPLoginFlowController
             return result;
         }
 
-        ChangeState(IsTemporaryError(result.error) ? MPLoginState.TemporaryUnavailable : MPLoginState.Failed);
+        // 绑定失败不影响原有登录会话，流程状态也应回到已登录，避免 UI 将玩家误判为已登出。
+        ChangeState(m_loginManager.CurrentSession != null
+            ? MPLoginState.Authenticated
+            : IsTemporaryError(result.error) ? MPLoginState.TemporaryUnavailable : MPLoginState.Failed);
         return result;
     }
 

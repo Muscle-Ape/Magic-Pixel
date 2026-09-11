@@ -267,7 +267,7 @@ public class MPLoginManagerCore : IMPLoginManager
     {
         if (CurrentSession == null)
         {
-            return PublishFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "当前没有可绑定的登录会话。"));
+            return PublishLinkFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "当前没有可绑定的登录会话。"));
         }
 
         try
@@ -279,7 +279,7 @@ public class MPLoginManagerCore : IMPLoginManager
             {
                 if (!(request is MPPasswordLoginRequest passwordRequest))
                 {
-                    return PublishFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "账号密码绑定请求类型不正确。"));
+                    return PublishLinkFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "账号密码绑定请求类型不正确。"));
                 }
 
                 if (passwordRequest.mode == MPPasswordLoginMode.UpdatePassword)
@@ -287,7 +287,7 @@ public class MPLoginManagerCore : IMPLoginManager
                     if (string.IsNullOrWhiteSpace(passwordRequest.currentPassword) ||
                         string.IsNullOrWhiteSpace(passwordRequest.password))
                     {
-                        return PublishFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "当前密码和新密码不能为空。"));
+                        return PublishLinkFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "当前密码和新密码不能为空。"));
                     }
 
                     session = await m_authApi.UpdatePasswordAsync(passwordRequest.currentPassword, passwordRequest.password, cancellationToken);
@@ -298,7 +298,7 @@ public class MPLoginManagerCore : IMPLoginManager
                     if (string.IsNullOrWhiteSpace(passwordRequest.account) ||
                         string.IsNullOrWhiteSpace(passwordRequest.password))
                     {
-                        return PublishFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "账号和密码不能为空。"));
+                        return PublishLinkFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "账号和密码不能为空。"));
                     }
 
                     session = await m_authApi.LinkUsernamePasswordAsync(passwordRequest.account, passwordRequest.password, cancellationToken);
@@ -308,7 +308,7 @@ public class MPLoginManagerCore : IMPLoginManager
             {
                 if (!(request is MPThirdPartyLoginRequest thirdPartyRequest))
                 {
-                    return PublishFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "第三方绑定请求类型不正确。"));
+                    return PublishLinkFailure(loginType, MPLoginError.Create(MPLoginErrorCodes.InvalidRequest, "第三方绑定请求类型不正确。"));
                 }
 
                 // 第三方 SDK 的接入细节留在 Adapter 内部，核心层只关心最终 Token/AuthCode。
@@ -319,7 +319,7 @@ public class MPLoginManagerCore : IMPLoginManager
                     string errorCode = string.IsNullOrEmpty(authResult.errorCode)
                         ? MPLoginErrorCodes.ThirdPartyAuthFailed
                         : authResult.errorCode;
-                    return PublishFailure(loginType, MPLoginError.Create(
+                    return PublishLinkFailure(loginType, MPLoginError.Create(
                         errorCode,
                         authResult.errorMessage,
                         errorCode != MPLoginErrorCodes.UserCancelled));
@@ -335,7 +335,7 @@ public class MPLoginManagerCore : IMPLoginManager
         }
         catch (Exception exception)
         {
-            return PublishFailure(loginType, MPLoginExceptionMapper.Map(exception));
+            return PublishLinkFailure(loginType, MPLoginExceptionMapper.Map(exception));
         }
     }
 
@@ -440,6 +440,17 @@ public class MPLoginManagerCore : IMPLoginManager
     {
         LastError = error;
         ChangeState(MPLoginState.Failed);
+        LoginFailed?.Invoke(error);
+        return MPLoginResult.Failed(loginType, error);
+    }
+
+    /// <summary>
+    /// 绑定失败只代表新增身份失败，不应让仍然有效的原登录会话变成未登录状态。
+    /// </summary>
+    private MPLoginResult PublishLinkFailure(MPLoginType loginType, MPLoginError error)
+    {
+        LastError = error;
+        ChangeState(CurrentSession == null ? MPLoginState.Failed : MPLoginState.Authenticated);
         LoginFailed?.Invoke(error);
         return MPLoginResult.Failed(loginType, error);
     }
