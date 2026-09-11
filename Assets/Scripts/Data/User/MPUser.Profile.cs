@@ -5,6 +5,8 @@ using UnityEngine;
 public partial class MPUser
 {
     private const string PROFILE_KEY_PREFIX = "MPUser.Profile.v1.";
+    private const string DEFAULT_PROFILE_NAME_PREFIX = "Player";
+    private const int DEFAULT_PROFILE_NAME_SUFFIX_LENGTH = 4;
     private MPPlayerProfile m_playerProfile;
     private string m_profileOwner;
 
@@ -55,6 +57,31 @@ public partial class MPUser
         {
             Debug.LogWarning($"[MPUser] 读取用户资料失败，使用默认资料：{exception.Message}");
         }
+
+        // 登录后的账号没有名称时只生成一次，并立即按 PlayerId 保存。
+        // owner 为空代表登录流程尚未完成，不能把临时名称写入公共空账号存档。
+        if (string.IsNullOrEmpty(owner) || !string.IsNullOrWhiteSpace(m_playerProfile.displayName))
+            return;
+
+        m_playerProfile.displayName = CreateDefaultProfileName();
+        m_playerProfile.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
+        try
+        {
+            ES3.Save(PROFILE_KEY_PREFIX + owner, JsonConvert.SerializeObject(m_playerProfile));
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPUser] 保存首次随机用户名失败：{exception.Message}");
+        }
+    }
+
+    /// <summary>生成符合用户名校验规则且不超过长度限制的首次展示名。</summary>
+    private static string CreateDefaultProfileName()
+    {
+        string suffix = Guid.NewGuid().ToString("N")
+            .Substring(0, DEFAULT_PROFILE_NAME_SUFFIX_LENGTH)
+            .ToUpperInvariant();
+        return DEFAULT_PROFILE_NAME_PREFIX + suffix;
     }
 }
 

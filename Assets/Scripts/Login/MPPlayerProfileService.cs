@@ -11,19 +11,30 @@ public static class MPPlayerProfileService
     private static readonly SemaphoreSlim s_saveLock = new SemaphoreSlim(1, 1);
     private static readonly IMPCloudSaveApi s_api = new MPUnityCloudSaveApi();
 
-    public static bool Validate(string name, int avatarId, out string error)
+    /// <summary>用户名只接受 ASCII 英文、数字、空格、横线和下划线，不接受中文等 Unicode 字符。</summary>
+    public static bool ValidateName(string name, out string error)
     {
         if (string.IsNullOrWhiteSpace(name))
             error = "Please enter a name.";
         else if (name.Trim().Length > MAX_NAME_LENGTH)
             error = $"Use at most {MAX_NAME_LENGTH} characters.";
-        else if (!Regex.IsMatch(name.Trim(), @"^[\p{L}\p{M}\p{N} _\-]+$"))
-            error = "Use letters, numbers, spaces, - or _.";
-        else if (avatarId < 0 || avatarId >= MPPlayerProfile.AVATAR_COUNT)
-            error = "Please choose an avatar.";
+        else if (!Regex.IsMatch(name.Trim(), @"^[A-Za-z0-9 _\-]+$", RegexOptions.CultureInvariant))
+            error = "Use English letters, numbers, spaces, - or _.";
         else
             error = null;
         return error == null;
+    }
+
+    public static bool Validate(string name, int avatarId, out string error)
+    {
+        if (!ValidateName(name, out error))
+            return false;
+        if (avatarId < 0 || avatarId >= MPPlayerProfile.AVATAR_COUNT)
+        {
+            error = "Please choose an avatar.";
+            return false;
+        }
+        return true;
     }
 
     public static async Task SaveAsync(string name, int avatarId, CancellationToken token)
