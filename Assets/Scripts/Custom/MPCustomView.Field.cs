@@ -149,8 +149,8 @@ public partial class MPCustomView : AWindow
     /// <summary>
     /// 钻石数量
     /// </summary>
-    [TransformPath("View/Up/Diamond/Count")]
-    private TMP_Text m_diamondText;
+    [TransformPath("View/Up/Fluorite/Count")]
+    private TMP_Text m_fluoriteText;
 
     /// <summary>
     /// 方块预制体

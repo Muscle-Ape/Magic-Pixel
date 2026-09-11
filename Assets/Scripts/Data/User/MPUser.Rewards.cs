@@ -157,7 +157,7 @@ public partial class MPUser
                 return false;
 
             int coins = checked(m_coins + RewardAmount(totals, "coin"));
-            int diamond = checked(m_diamond + RewardAmount(totals, "diamond"));
+            int fluorite = checked(m_fluorite + RewardAmount(totals, "fluorite"));
             int hints = checked(m_hintProps + RewardAmount(totals, "hint"));
             int lives = checked(m_loveRecoverProps + RewardAmount(totals, "life"));
             state.transactionIds.Add(receipt.transactionId);
@@ -166,7 +166,7 @@ public partial class MPUser
             // 同步失败时保留原内存值，不依赖动画或多个 ES3.Save 的先后顺序。
             var file = new ES3File();
             file.Save(m_key_coins, coins);
-            file.Save(m_ket_diamond, diamond);
+            file.Save(m_key_fluorite, fluorite);
             file.Save(m_key_hint_props, hints);
             file.Save(m_key_love_recover_props, lives);
             file.Save(REWARD_PROGRESS_KEY_PREFIX + GetRewardProgressOwner(), JsonConvert.SerializeObject(state));
@@ -174,7 +174,7 @@ public partial class MPUser
             file.Sync();
 
             m_coins = coins;
-            m_diamond = diamond;
+            m_fluorite = fluorite;
             m_hintProps = hints;
             m_loveRecoverProps = lives;
             applySourceState?.Invoke();
@@ -202,7 +202,7 @@ public static class MPRewardPresentation
         switch ((type ?? string.Empty).Trim().ToLowerInvariant())
         {
             case "coin": case "coins": return "coin";
-            case "diamond": return "diamond";
+            case "fluorite": return "fluorite";
             case "hint": case "hint_prop": return "hint";
             case "life": case "recover_life": case "love_recover": return "life";
             default: return null;
@@ -214,7 +214,7 @@ public static class MPRewardPresentation
         switch (NormalizeType(type))
         {
             case "coin": return "Coins";
-            case "diamond": return "Diamonds";
+            case "fluorite": return "Fluorite";
             case "hint": return "Hints";
             case "life": return "Life recovery";
             default: return "Reward";
@@ -226,7 +226,7 @@ public static class MPRewardPresentation
         switch (NormalizeType(type))
         {
             case "coin": return "popup_reward_coin";
-            case "diamond": return "popup_reward_diamond";
+            case "fluorite": return "popup_reward_fluorite";
             case "hint": return "popup_reward_hint";
             case "life": return "popup_reward_life";
             default: return "popup_reward_placeholder";

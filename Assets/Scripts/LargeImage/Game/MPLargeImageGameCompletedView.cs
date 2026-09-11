@@ -41,8 +41,8 @@ public class MPLargeImageGameCompletedView : AWindow
     /// <summary>
     /// 钻石数量文本。
     /// </summary>
-    [TransformPath("View/Up/Diamond/Count")]
-    private TMP_Text m_diamondText;
+    [TransformPath("View/Up/Fluorite/Count")]
+    private TMP_Text m_fluoriteText;
 
     /// <summary>
     /// 返回大图关卡列表按钮。
@@ -434,9 +434,9 @@ public class MPLargeImageGameCompletedView : AWindow
             m_coinText.text = MPUser.instance.GetCoins().ToString();
         }
 
-        if (m_diamondText != null)
+        if (m_fluoriteText != null)
         {
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+            m_fluoriteText.text = MPUser.instance.GetFluorite().ToString();
         }
     }
 

@@ -25,6 +25,9 @@ public abstract partial class MPGameViewBase : AWindow
     /// </summary>
     protected const int GRID_SIZE = 800;
 
+    /// <summary>失败弹窗使用萤石复活时的消耗数量。</summary>
+    private const int FAIL_REVIVE_FLUORITE_COST = 100;
+
     // 以下字段统一绑定 MPGameView.prefab 中主游戏和大图模式共用的 UGUI 节点。
     [TransformPath("View")]
     protected CanvasGroup m_viewCanvasGroup;
@@ -715,9 +718,12 @@ public abstract partial class MPGameViewBase : AWindow
         m_isFailPopShowing = true;
         MPGameFailPopUIMsgData data = new MPGameFailPopUIMsgData()
         {
+            levelIndex = m_index + 1,
             exitAction = OnFailExitClick,
             replayAction = OnFailReplayClick,
-            restoreLifeAction = OnFailRestoreLifeClick,
+            reviveItemAction = OnFailReviveWithItemClick,
+            reviveFluoriteAction = OnFailReviveWithFluoriteClick,
+            reviveAdAction = OnFailReviveWithAdClick,
         };
 
         m_failPop = UIManager.Inst.ShowWindow<MPGameFailPop>(data, true, UILayer.Top);
@@ -753,13 +759,10 @@ public abstract partial class MPGameViewBase : AWindow
         RestartLevel();
     }
 
-    private bool OnFailRestoreLifeClick()
+    private bool OnFailReviveWithItemClick()
     {
-        if (!UsesLives || m_loves == null || m_lovesCount >= m_loves.Count)
-        {
-            RefreshPropButtons();
+        if (!CanReviveAfterFail())
             return false;
-        }
 
         if (!MPUser.instance.UseLoveRecoverProp())
         {
@@ -767,6 +770,41 @@ public abstract partial class MPGameViewBase : AWindow
             return false;
         }
 
+        return CompleteFailRevive();
+    }
+
+    private bool OnFailReviveWithFluoriteClick()
+    {
+        if (!CanReviveAfterFail())
+            return false;
+
+        // 资产检查和扣除必须是一次操作，防止余额变化后出现弹窗关闭但未正确扣款的情况。
+        if (!MPUser.instance.UseFluorite(FAIL_REVIVE_FLUORITE_COST))
+        {
+            UnityToast.Instance.ShowToast($"Not enough Fluorite. Need {FAIL_REVIVE_FLUORITE_COST}.");
+            return false;
+        }
+
+        m_head?.Refresh();
+        return CompleteFailRevive();
+    }
+
+    private bool OnFailReviveWithAdClick()
+    {
+        return CanReviveAfterFail() && CompleteFailRevive();
+    }
+
+    private bool CanReviveAfterFail()
+    {
+        return UsesLives
+            && m_loves != null
+            && m_lovesCount < m_loves.Count
+            && !m_hasCompleted
+            && !m_isReturningToLevelList;
+    }
+
+    private bool CompleteFailRevive()
+    {
         AddLoves();
         m_failPop = null;
         m_isFailPopShowing = false;

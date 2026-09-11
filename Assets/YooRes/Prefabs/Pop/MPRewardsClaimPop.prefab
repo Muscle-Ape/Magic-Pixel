@@ -1097,7 +1097,7 @@ GameObject:
   - component: {fileID: 6366743005510048}
   - component: {fileID: 6366743005510049}
   m_Layer: 5
-  m_Name: Diamond
+  m_Name: Fluorite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1303,7 +1303,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Diamonds"
+  m_text: "Fluorite"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6cb92be9a08c4c8085b1bc4fbff3bbaa, type: 2}
   m_sharedMaterial: {fileID: 5142779561773096714, guid: 6cb92be9a08c4c8085b1bc4fbff3bbaa, type: 2}

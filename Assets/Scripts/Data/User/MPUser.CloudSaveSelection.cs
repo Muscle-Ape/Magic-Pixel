@@ -29,7 +29,7 @@ public partial class MPUser
         int experience = Math.Max(0, candidate.totalExperience ?? ReadPlayerExperience(owner));
 
         assets.coins = Mathf.Max(0, assets.coins);
-        assets.diamond = Mathf.Max(0, assets.diamond);
+        assets.fluorite = Mathf.Max(0, assets.fluorite);
         assets.hintProps = Mathf.Max(0, assets.hintProps);
         assets.loveRecoverProps = Mathf.Max(0, assets.loveRecoverProps);
         if (!IsValidHomeRewardReadyAtUtcTicks(assets.homeRewardReadyAtUtcTicks))
@@ -75,7 +75,7 @@ public partial class MPUser
 
         var file = new ES3File();
         file.Save(m_key_coins, assets.coins);
-        file.Save(m_ket_diamond, assets.diamond);
+        file.Save(m_key_fluorite, assets.fluorite);
         file.Save(m_key_hint_props, assets.hintProps);
         file.Save(m_key_love_recover_props, assets.loveRecoverProps);
         file.Save(m_key_home_reward_ready_at_utc_ticks, assets.homeRewardReadyAtUtcTicks);
@@ -103,7 +103,7 @@ public partial class MPUser
 
         // 先完成全部引用/值赋值，再统一通知 UI；期间不再序列化或写盘。
         m_coins = assets.coins;
-        m_diamond = assets.diamond;
+        m_fluorite = assets.fluorite;
         m_hintProps = assets.hintProps;
         m_loveRecoverProps = assets.loveRecoverProps;
         m_homeRewardReadyAtUtcTicks = assets.homeRewardReadyAtUtcTicks;

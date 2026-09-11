@@ -45,7 +45,7 @@ public sealed class MPRewardsClaimPop : AWindow
             switch (MPRewardPresentation.NormalizeType(reward.type))
             {
                 case "coin": rowName = "Coin"; break;
-                case "diamond": rowName = "Diamond"; break;
+                case "fluorite": rowName = "Fluorite"; break;
                 case "hint": rowName = "Hint"; break;
                 case "life": rowName = "Life"; break;
                 default: continue;

@@ -344,8 +344,6 @@ public class MPSettingPop : AWindow
         }
 
         RefreshSwitch(m_bgmSwitchBtn, m_bgmSwitchOn, isOpen, true);
-
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     /// <summary>
@@ -356,18 +354,12 @@ public class MPSettingPop : AWindow
         bool isOpen = !MPUser.instance.isSound;
         MPUser.instance.SetSoundStatus(isOpen);
 
-        if (isOpen)
-        {
-            MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
-        }
-        else
+        if (!isOpen)
         {
             MPAudioManager.Instance.StopAllSound();
         }
 
         RefreshSwitch(m_soundSwitchBtn, m_soundSwitchOn, isOpen, true);
-
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     /// <summary>
@@ -385,7 +377,6 @@ public class MPSettingPop : AWindow
             MPVibrationManager.Instance.PlaySelection();
         }
 
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     /// <summary>
@@ -436,7 +427,6 @@ public class MPSettingPop : AWindow
             return;
         }
 
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
         m_isActionPromptShowing = true;
         m_logoutCommitted = false;
         m_logoutProfile = null;
@@ -519,7 +509,6 @@ public class MPSettingPop : AWindow
         if (m_isLoginActionRunning || m_isClosing)
             return;
         CloseSettingPop();
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     /// <summary>
@@ -791,7 +780,6 @@ public class MPSettingPop : AWindow
         MPUser.instance.SetGameFillColor(color);
         m_gameData.fillColorChanged?.Invoke(color);
         RefreshColorSelection();
-        MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
     private void RefreshColorSelection()

@@ -42,7 +42,7 @@ Cloud Save 玩家数据是挂在 Unity Authentication 玩家身份上的。也�
 | --- | --- | --- | --- | --- |
 | 资源 | `MPUser.Assets.cs` | `key_coins` | 金币，默认 200 | 需要同步，但正式上线前建议服务端校验或 Cloud Code 兜底 |
 | 资源 | `MPUser.Assets.cs` | `key_home_reward_ready_at_utc_ticks` | 主页三小时奖励下一次可领取的 UTC 时间 | 需要同步 |
-| 资源 | `MPUser.Assets.cs` | `m_ket_diamond` | 钻石 | 需要同步，属于高价值数据 |
+| 资源 | `MPUser.Assets.cs` | `m_key_fluorite` | 萤石 | 需要同步，属于高价值数据 |
 | 资源 | `MPUser.Assets.cs` | `key_hint_props` | 提示道具数量 | 需要同步 |
 | 资源 | `MPUser.Assets.cs` | `key_love_recover_props` | 生命恢复道具数量 | 需要同步 |
 | 设置 | `MPUser.Setting.cs` | `key_isMusic` | 音乐开关 | 可同步，也可按设备本地保存 |

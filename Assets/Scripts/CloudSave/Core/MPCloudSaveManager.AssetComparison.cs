@@ -190,7 +190,7 @@ public partial class MPCloudSaveManager
     {
         MPUserAssetsSnapshot a = local.assets ?? new MPUserAssetsSnapshot();
         MPUserAssetsSnapshot b = cloud.assets ?? new MPUserAssetsSnapshot();
-        return a.coins != b.coins || a.diamond != b.diamond || a.hintProps != b.hintProps || a.loveRecoverProps != b.loveRecoverProps ||
+        return a.coins != b.coins || a.fluorite != b.fluorite || a.hintProps != b.hintProps || a.loveRecoverProps != b.loveRecoverProps ||
             HasDivergentProgress(local.mainLevel?.passList, cloud.mainLevel?.passList) ||
             HasDivergentProgress(local.largeImageLevel?.passList, cloud.largeImageLevel?.passList);
     }

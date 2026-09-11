@@ -26,8 +26,8 @@ public partial class MPHomeView
     [TransformPath("View/Head/Coin/Count")]
     private TMP_Text m_coinText;
 
-    [TransformPath("View/Head/Diamond/Count")]
-    private TMP_Text m_diamondText;
+    [TransformPath("View/Head/Fluorite/Count")]
+    private TMP_Text m_fluoriteText;
 
     [TransformPath("View/Down/Tab/LargeImage")]
     private Button m_largerTabBtn;
@@ -248,8 +248,8 @@ public partial class MPHomeView
     {
         if (m_coinText != null)
             m_coinText.text = MPUser.instance.GetCoins().ToString();
-        if (m_diamondText != null)
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        if (m_fluoriteText != null)
+            m_fluoriteText.text = MPUser.instance.GetFluorite().ToString();
     }
 
     private void KillSwitchSequence()

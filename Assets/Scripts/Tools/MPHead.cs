@@ -13,12 +13,12 @@ public sealed class MPHead : MonoBehaviour
     [SerializeField] private Button m_backButton;
     [SerializeField] private Button m_settingButton;
     [SerializeField] private Button m_coinButton;
-    [SerializeField] private Button m_diamondButton;
+    [SerializeField] private Button m_fluoriteButton;
     [SerializeField] private Button[] m_openButtons;
     [SerializeField] private TMP_Text m_playerName;
     [SerializeField] private Image m_avatar;
     [SerializeField] private TMP_Text m_coinText;
-    [SerializeField] private TMP_Text m_diamondText;
+    [SerializeField] private TMP_Text m_fluoriteText;
     [SerializeField] private TMP_Text m_level;
     [SerializeField] private Image m_levelFill;
 
@@ -26,7 +26,7 @@ public sealed class MPHead : MonoBehaviour
     private UnityAction m_onSetting;
     private UnityAction m_onProfile;
     private UnityAction m_onCoin;
-    private UnityAction m_onDiamond;
+    private UnityAction m_onFluorite;
     private bool m_initialized;
     private int m_loadedAvatarId = -1;
     private Sprite m_loadedAvatar;
@@ -36,14 +36,14 @@ public sealed class MPHead : MonoBehaviour
     /// 可重复调用，替换回调前会解绑旧监听；未传回调的按钮不执行业务操作。
     /// </summary>
     public void Init(UnityAction onBack, UnityAction onSetting, UnityAction onProfile = null,
-        UnityAction onCoin = null, UnityAction onDiamond = null)
+        UnityAction onCoin = null, UnityAction onFluorite = null)
     {
         SetListeners(false);
         m_onBack = onBack;
         m_onSetting = onSetting;
         m_onProfile = onProfile;
         m_onCoin = onCoin;
-        m_onDiamond = onDiamond;
+        m_onFluorite = onFluorite;
         m_initialized = true;
         SetInteractable(true);
         if (isActiveAndEnabled)
@@ -59,8 +59,8 @@ public sealed class MPHead : MonoBehaviour
 
         if (m_coinText != null)
             m_coinText.text = MPUser.instance.GetCoins().ToString();
-        if (m_diamondText != null)
-            m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        if (m_fluoriteText != null)
+            m_fluoriteText.text = MPUser.instance.GetFluorite().ToString();
         RefreshProfile();
         RefreshLevel();
     }
@@ -125,7 +125,7 @@ public sealed class MPHead : MonoBehaviour
         SetButtonInteractable(m_backButton, interactable);
         SetButtonInteractable(m_settingButton, interactable);
         SetButtonInteractable(m_coinButton, interactable);
-        SetButtonInteractable(m_diamondButton, interactable);
+        SetButtonInteractable(m_fluoriteButton, interactable);
         if (m_openButtons != null)
             foreach (Button button in m_openButtons)
                 SetButtonInteractable(button, interactable);
@@ -151,7 +151,7 @@ public sealed class MPHead : MonoBehaviour
         SetButtonListener(m_backButton, m_onBack, subscribe);
         SetButtonListener(m_settingButton, m_onSetting, subscribe);
         SetButtonListener(m_coinButton, m_onCoin, subscribe);
-        SetButtonListener(m_diamondButton, m_onDiamond, subscribe);
+        SetButtonListener(m_fluoriteButton, m_onFluorite, subscribe);
         if (m_openButtons != null)
             foreach (Button button in m_openButtons)
                 SetButtonListener(button, m_onProfile, subscribe);
@@ -191,7 +191,7 @@ public sealed class MPHead : MonoBehaviour
         m_onSetting = null;
         m_onProfile = null;
         m_onCoin = null;
-        m_onDiamond = null;
+        m_onFluorite = null;
         SetInteractable(false);
         ReleaseAvatar();
     }

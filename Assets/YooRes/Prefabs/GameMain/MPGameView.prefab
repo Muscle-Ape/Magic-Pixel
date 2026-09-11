@@ -262,7 +262,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 257, y: -35}
+  m_AnchoredPosition: {x: 257, y: 53}
   m_SizeDelta: {x: 174, y: 56}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3626358441312512652
@@ -808,7 +808,7 @@ GameObject:
   - component: {fileID: 5468021005787781437}
   - component: {fileID: 2389565210926927325}
   m_Layer: 5
-  m_Name: Diamond
+  m_Name: Fluorite
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -833,7 +833,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 257, y: 53}
+  m_AnchoredPosition: {x: 257, y: -35}
   m_SizeDelta: {x: 174, y: 56}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2655426306474519517
@@ -4840,14 +4840,14 @@ MonoBehaviour:
   m_backButton: {fileID: 8929142636317627893}
   m_settingButton: {fileID: 1805160052097901223}
   m_coinButton: {fileID: 5516510629402048935}
-  m_diamondButton: {fileID: 2389565210926927325}
+  m_fluoriteButton: {fileID: 2389565210926927325}
   m_openButtons:
   - {fileID: 8048927559483510365}
   - {fileID: 138628378729460001}
   m_playerName: {fileID: 7469809247577107169}
   m_avatar: {fileID: 2368674960690688092}
   m_coinText: {fileID: 7473491376855657690}
-  m_diamondText: {fileID: 8543240047449852381}
+  m_fluoriteText: {fileID: 8543240047449852381}
   m_level: {fileID: 8506229418664127336}
   m_levelFill: {fileID: 8769457587084764195}
 --- !u!1 &7526695735992564994

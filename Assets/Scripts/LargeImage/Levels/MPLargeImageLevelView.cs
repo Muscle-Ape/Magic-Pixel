@@ -45,8 +45,8 @@ public class MPLargeImageLevelView : AWindow
     /// <summary>
     /// 钻石数量文本。
     /// </summary>
-    [TransformPath("View/Up/Diamond/Count")]
-    private TMP_Text m_diamondText;
+    [TransformPath("View/Up/Fluorite/Count")]
+    private TMP_Text m_fluoriteText;
 
     /// <summary>
     /// 关卡数据。
@@ -94,7 +94,7 @@ public class MPLargeImageLevelView : AWindow
     private void RefreshUI()
     {
         m_coinText.text = MPUser.instance.GetCoins().ToString();
-        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        m_fluoriteText.text = MPUser.instance.GetFluorite().ToString();
     }
 
     /// <summary>

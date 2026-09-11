@@ -64,7 +64,7 @@
     "optionText": "You'll receive an extra 10 fluorite upon completion, and two hints will be provided during the game.",
     "skillUseCount": 2,
     "completionReward": {
-      "type": "diamond",
+      "type": "fluorite",
       "count": 10
     },
     "unlock": "default",
@@ -82,7 +82,7 @@
     "optionText": "You get an extra 10 fluorite upon clearing a stage, and you have two chances to recover health during the game.",
     "skillUseCount": 2,
     "completionReward": {
-      "type": "diamond",
+      "type": "fluorite",
       "count": 10
     },
     "unlock": "default",

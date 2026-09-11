@@ -55,7 +55,7 @@ public class MPUserCloudSnapshot
     public int? totalExperience;
 
     /// <summary>
-    /// 金币、钻石、道具等资产数据。
+    /// 金币、萤石、道具等资产数据。
     /// </summary>
     public MPUserAssetsSnapshot assets = new MPUserAssetsSnapshot();
 
@@ -105,7 +105,7 @@ public class MPUserCloudSnapshot
             assets = new MPUserAssetsSnapshot
             {
                 coins = 200,
-                diamond = 0,
+                fluorite = 0,
                 hintProps = 0,
                 loveRecoverProps = 0,
                 homeRewardReadyAtUtcTicks = DateTime.UtcNow.AddHours(3).Ticks
@@ -132,8 +132,8 @@ public class MPUserAssetsSnapshot
     /// <summary>金币数量。</summary>
     public int coins;
 
-    /// <summary>钻石数量。</summary>
-    public int diamond;
+    /// <summary>萤石数量。</summary>
+    public int fluorite;
 
     /// <summary>提示道具数量。</summary>
     public int hintProps;

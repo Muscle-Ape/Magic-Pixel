@@ -33,7 +33,7 @@ public partial class MPUser
             assets = new MPUserAssetsSnapshot
             {
                 coins = Mathf.Max(0, m_coins),
-                diamond = Mathf.Max(0, m_diamond),
+                fluorite = Mathf.Max(0, m_fluorite),
                 hintProps = Mathf.Max(0, m_hintProps),
                 loveRecoverProps = Mathf.Max(0, m_loveRecoverProps),
                 homeRewardReadyAtUtcTicks = m_homeRewardReadyAtUtcTicks
@@ -154,7 +154,7 @@ public partial class MPUser
     {
         snapshot = snapshot ?? new MPUserAssetsSnapshot();
         m_coins = Mathf.Max(0, snapshot.coins);
-        m_diamond = Mathf.Max(0, snapshot.diamond);
+        m_fluorite = Mathf.Max(0, snapshot.fluorite);
         m_hintProps = Mathf.Max(0, snapshot.hintProps);
         m_loveRecoverProps = Mathf.Max(0, snapshot.loveRecoverProps);
 
@@ -170,7 +170,7 @@ public partial class MPUser
         EnsureHomeRewardCountdown();
 
         ES3.Save(m_key_coins, m_coins);
-        ES3.Save(m_ket_diamond, m_diamond);
+        ES3.Save(m_key_fluorite, m_fluorite);
         ES3.Save(m_key_hint_props, m_hintProps);
         ES3.Save(m_key_love_recover_props, m_loveRecoverProps);
         ES3.Save(m_key_home_reward_ready_at_utc_ticks, m_homeRewardReadyAtUtcTicks);

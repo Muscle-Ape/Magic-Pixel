@@ -104,7 +104,7 @@ public class MPAssetComparisonPop : AWindow
             "Main levels: " + (user.mainLevel?.passIndex ?? 0),
             "Large levels: " + (user.largeImageLevel?.passIndex ?? 0),
             "Coins: " + Mathf.Max(0, assets.coins),
-            "Diamonds: " + Mathf.Max(0, assets.diamond),
+            "Fluorite: " + Mathf.Max(0, assets.fluorite),
             "Hints: " + Mathf.Max(0, assets.hintProps),
             "Life items: " + Mathf.Max(0, assets.loveRecoverProps),
             "Custom levels: " + (custom?.customLevel?.levels?.Count ?? 0),

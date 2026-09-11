@@ -11,7 +11,7 @@ public partial class MPUser
     #region Key
     private string m_key_coins = "key_coins";
 
-    private string m_ket_diamond = "m_ket_diamond";
+    private string m_key_fluorite = "key_fluorite";
 
     /// <summary>
     /// 提示道具数量存档Key。
@@ -37,9 +37,9 @@ public partial class MPUser
     private int m_coins;
 
     /// <summary>
-    /// 钻石
+    /// 萤石
     /// </summary>
-    private int m_diamond;
+    private int m_fluorite;
 
     /// <summary>
     /// 当前拥有的提示道具数量。
@@ -63,8 +63,8 @@ public partial class MPUser
 
     private void InitAssets()
     {
-        m_coins = ES3.Load<int>(m_key_coins, 200);
-        m_diamond = ES3.Load<int>(m_ket_diamond, 0);
+        m_coins = ES3.Load<int>(m_key_coins, 0);
+        m_fluorite = ES3.Load<int>(m_key_fluorite, 200);
         m_hintProps = ES3.Load<int>(m_key_hint_props, 0);
         m_loveRecoverProps = ES3.Load<int>(m_key_love_recover_props, 0);
         m_homeRewardReadyAtUtcTicks = ES3.Load<long>(m_key_home_reward_ready_at_utc_ticks, 0L);
@@ -153,25 +153,31 @@ public partial class MPUser
     }
 
 
-    public void AddDiamond(int count)
+    public void AddFluorite(int count)
     {
-        m_diamond += count;
+        if (count <= 0)
+            return;
 
-        ES3.Save(m_ket_diamond, m_diamond);
+        m_fluorite += count;
+        ES3.Save(m_key_fluorite, m_fluorite);
         NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
     }
 
-    public void UseDiamond(int count)
+    /// <summary>尝试消耗指定数量的萤石，余额不足时不会修改资产。</summary>
+    public bool UseFluorite(int count)
     {
-        m_diamond = Mathf.Max(m_diamond - count, 0);
+        if (count <= 0 || m_fluorite < count)
+            return false;
 
-        ES3.Save(m_ket_diamond, m_diamond);
+        m_fluorite -= count;
+        ES3.Save(m_key_fluorite, m_fluorite);
         NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
+        return true;
     }
 
-    public int GetDiamond()
+    public int GetFluorite()
     {
-        return m_diamond;
+        return m_fluorite;
     }
 
     /// <summary>

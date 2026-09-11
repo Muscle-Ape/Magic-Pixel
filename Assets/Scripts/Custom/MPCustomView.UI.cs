@@ -191,7 +191,7 @@ public partial class MPCustomView
     private void RefreshUI()
     {
         m_coinText.text = MPUser.instance.GetCoins().ToString();
-        m_diamondText.text = MPUser.instance.GetDiamond().ToString();
+        m_fluoriteText.text = MPUser.instance.GetFluorite().ToString();
     }
 
 
@@ -743,5 +743,4 @@ public partial class MPCustomView
         MPLoad.ReleaseAll(this);
     }
 }
-
 
