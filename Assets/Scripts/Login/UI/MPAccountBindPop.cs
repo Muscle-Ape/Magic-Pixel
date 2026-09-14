@@ -37,6 +37,8 @@ public class MPAccountBindPop : AWindow
     private CancellationTokenSource m_operationCancellation;
     private bool m_isRunning;
     private bool m_isClosing;
+    private MPSecondConfirmationPop m_conflictConfirmation;
+    private bool m_conflictPromptShowing;
 
     protected override bool ShouldAdaptToNotchScreen() => false;
 
@@ -60,6 +62,9 @@ public class MPAccountBindPop : AWindow
 
     public override void OnRelease()
     {
+        if (m_conflictConfirmation != null && !m_conflictConfirmation.IsDestoried)
+            m_conflictConfirmation.DestroyWindow();
+        m_conflictConfirmation = null;
         CancelOperation();
         UnregisterButton(m_closeBtn, OnCloseClick);
         UnregisterButton(m_googleBindBtn, OnGoogleBindClick);
@@ -86,7 +91,7 @@ public class MPAccountBindPop : AWindow
 
     private void OnCloseClick()
     {
-        if (m_isRunning || m_isClosing)
+        if (m_isRunning || m_isClosing || m_conflictPromptShowing)
             return;
 
         m_isClosing = true;
@@ -161,7 +166,7 @@ public class MPAccountBindPop : AWindow
     /// <summary>同一时间只执行一次绑定，结束前禁止六个按钮重复触发。</summary>
     private async Task RunBindOperationAsync(Func<CancellationToken, Task<MPLoginResult>> operation)
     {
-        if (m_isRunning || m_isClosing || operation == null)
+        if (m_isRunning || m_isClosing || m_conflictPromptShowing || operation == null)
             return;
 
         CancelOperation();
@@ -184,6 +189,11 @@ public class MPAccountBindPop : AWindow
                 return;
             }
 
+            if (result?.error?.code == MPLoginErrorCodes.AccountBindingConflict)
+            {
+                ShowBindingConflict();
+                return;
+            }
             Debug.LogWarning($"[MPAccountBindPop] 账号绑定失败：{result?.errorMessage ?? "未知错误"}");
         }
         catch (OperationCanceledException)
@@ -204,7 +214,51 @@ public class MPAccountBindPop : AWindow
 
             m_isRunning = false;
             if (this != null && !IsDestoried && !m_isClosing)
+                SetInteractable(!m_conflictPromptShowing);
+        }
+    }
+
+    /// <summary>绑定冲突时让用户主动选择是否保存当前账号并前往登录已有账号。</summary>
+    private void ShowBindingConflict()
+    {
+        if (m_conflictPromptShowing || IsDestoried) return;
+        m_conflictPromptShowing = true;
+        SetInteractable(false);
+        m_conflictConfirmation = MPSecondConfirmationPop.Show(
+            "Account already linked",
+            "This sign-in method is already linked to another account. Save your current progress and go to the sign-in screen to access that account? Your saves will remain separate.",
+            "Continue",
+            async token =>
+            {
+                if (this == null || IsDestoried) return false;
+                if (!await MPCloudSaveManager.Instance.FlushAsync(token)) return false;
+                token.ThrowIfCancellationRequested();
+                await MPLoginManager.Instance.LogoutAsync(clearCredentials: false, cancellationToken: token);
+                return this != null && !IsDestoried;
+            },
+            onCancel: () =>
+            {
+                if (this == null || IsDestoried) return;
+                m_conflictPromptShowing = false;
+                m_conflictConfirmation = null;
                 SetInteractable(true);
+            },
+            onConfirmed: () =>
+            {
+                if (this == null || IsDestoried) return;
+                m_conflictConfirmation = null;
+                m_isClosing = true;
+                Action onClose = m_onClose;
+                DestroyWindow();
+                onClose?.Invoke();
+                MPLoginStartupResult startup = MPLoginStartupResult.ShowLoginSelection(
+                    null, MPLoginProvider.Unknown, "Sign in with the account you want to use.");
+                UIManager.Inst.ShowWindow<MPLoadingView>(new MPLoadingViewUIMsgData(startup), true, UILayer.Top);
+            });
+        if (m_conflictConfirmation == null)
+        {
+            m_conflictPromptShowing = false;
+            SetInteractable(true);
         }
     }
 

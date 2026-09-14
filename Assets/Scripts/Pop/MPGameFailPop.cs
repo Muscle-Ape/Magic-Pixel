@@ -1,6 +1,5 @@
 using HQ.UIManager;
 using System;
-using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -46,7 +45,6 @@ public class MPGameFailPop : AWindow
     private Func<bool> m_reviveAdAction;
 
     private MPPopScaleAnimation m_popScaleAnimation;
-    private MPSecondConfirmationPop m_exitConfirmation;
     private bool m_isClosing;
     private bool m_isAdRunning;
     private bool m_isReleased;
@@ -117,19 +115,7 @@ public class MPGameFailPop : AWindow
         if (!CanHandleClick())
             return;
 
-        m_exitConfirmation = MPSecondConfirmationPop.Show(
-            "Leave this attempt?",
-            "This attempt has no lives left. Leaving will clear only this level's unfinished progress. Your other levels and rewards will not change.",
-            "Leave level",
-            token => Task.FromResult(!token.IsCancellationRequested && this != null && !IsDestoried && !m_isClosing),
-            onCancel: () => m_exitConfirmation = null,
-            cancelText: "Stay here",
-            onConfirmed: () =>
-            {
-                m_exitConfirmation = null;
-                if (this != null && !IsDestoried)
-                    ClosePop(m_exitAction);
-            });
+        ClosePop(m_exitAction);
     }
 
     private void OnReplayClick()
@@ -205,8 +191,7 @@ public class MPGameFailPop : AWindow
     private bool CanHandleClick()
     {
         return !m_isClosing
-            && !m_isAdRunning
-            && (m_exitConfirmation == null || m_exitConfirmation.IsDestoried);
+            && !m_isAdRunning;
     }
 
     private void SetButtonsInteractable(bool interactable)
@@ -250,9 +235,6 @@ public class MPGameFailPop : AWindow
         m_isAdRunning = false;
         ++m_adOperationVersion;
 
-        if (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried)
-            m_exitConfirmation.DestroyWindow();
-        m_exitConfirmation = null;
 
         UnregisterButton(m_quitBtn, OnQuitClick);
         UnregisterButton(m_replayBtn, OnReplayClick);

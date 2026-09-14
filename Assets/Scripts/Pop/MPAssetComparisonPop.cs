@@ -238,7 +238,7 @@ public class MPAssetComparisonPop : AWindow
         }
 
         RefreshDisplay();
-        // 写锁冲突后先让用户关闭二次确认并重新查看两侧数据，再恢复选择。
+        // 写锁冲突后刷新比较内容，取消二次确认后才能重新选择存档。
         SetChoiceInteractable(false);
     }
 
@@ -259,50 +259,48 @@ public class MPAssetComparisonPop : AWindow
     private void ChooseLocal() => Choose(true);
     private void ChooseCloud() => Choose(false);
 
+    /// <summary>确认选择后才提交存档；取消时返回比较页面。</summary>
     private void Choose(bool useLocal)
     {
-        if (m_confirming || m_data?.confirmAsync == null || !HasValidSnapshots())
-        {
-            return;
-        }
-
+        if (m_confirming || m_data?.confirmAsync == null || !HasValidSnapshots()) return;
         m_data.onChoose?.Invoke();
         m_confirming = true;
         SetChoiceInteractable(false);
         m_closeBtn.interactable = false;
         string chosen = useLocal ? "local" : "cloud";
-        m_confirmation = MPSecondConfirmationPop.Show("Replace saved progress?",
-            $"Use the {chosen} save shown above. Progress, currencies, items and custom levels in the other save will be replaced. This cannot be merged or undone in-game.",
-            "Use " + chosen + " save", async token =>
+        m_confirmation = MPSecondConfirmationPop.Show(
+            "Replace saved progress?",
+            $"Use this {chosen} save? The other save's progress, currencies, items and custom levels will be replaced. The two saves cannot be merged. This cannot be undone in-game.",
+            "Confirm",
+            async token =>
             {
-                using (CancellationTokenSource linked =
-                       CancellationTokenSource.CreateLinkedTokenSource(token, m_lifetime.Token))
+                if (this == null || IsDestoried || m_lifetime == null) return false;
+                using (var linked = CancellationTokenSource.CreateLinkedTokenSource(token, m_lifetime.Token))
                 {
                     bool success = await m_data.confirmAsync(useLocal, linked.Token);
                     return this != null && !IsDestoried && success;
                 }
-            }, () =>
+            },
+            onCancel: RestoreChoice,
+            onConfirmed: () =>
             {
-                if (this == null || IsDestoried)
-                {
-                    return;
-                }
-
-                m_confirming = false;
-                SetChoiceInteractable(HasValidSnapshots());
-                m_closeBtn.interactable = true;
-            }, onConfirmed: () =>
-            {
-                if (this == null || IsDestoried)
-                {
-                    return;
-                }
-
+                if (this == null || IsDestoried) return;
+                m_confirmation = null;
                 TaskCompletionSource<bool> completion = m_data.completion;
                 m_resolved = true;
                 DestroyWindow();
                 completion.TrySetResult(true);
             });
+        if (m_confirmation == null) RestoreChoice();
+    }
+
+    private void RestoreChoice()
+    {
+        if (this == null || IsDestoried) return;
+        m_confirmation = null;
+        m_confirming = false;
+        SetChoiceInteractable(HasValidSnapshots());
+        m_closeBtn.interactable = true;
     }
 
     private void Close()
@@ -327,11 +325,6 @@ public class MPAssetComparisonPop : AWindow
 
     private void CancelPresentation()
     {
-        if (m_confirmation != null && !m_confirmation.IsDestoried)
-        {
-            m_confirmation.DestroyWindow();
-        }
-
         if (this != null && !IsDestoried)
         {
             DestroyWindow();
@@ -340,6 +333,9 @@ public class MPAssetComparisonPop : AWindow
 
     public override void OnRelease()
     {
+        if (m_confirmation != null && !m_confirmation.IsDestoried)
+            m_confirmation.DestroyWindow();
+        m_confirmation = null;
         m_lifetime?.Cancel();
         m_lifetime?.Dispose();
         m_lifetime = null;
@@ -347,11 +343,6 @@ public class MPAssetComparisonPop : AWindow
         m_localBtn?.onClick.RemoveListener(ChooseLocal);
         m_cloudBtn?.onClick.RemoveListener(ChooseCloud);
         m_closeBtn?.onClick.RemoveListener(Close);
-
-        if (m_confirmation != null && !m_confirmation.IsDestoried)
-        {
-            m_confirmation.DestroyWindow();
-        }
 
         if (m_data != null)
         {

@@ -11,9 +11,7 @@ using UnityEngine.UI;
 [Component("MPSecondConfirmationPop")]
 public sealed class MPSecondConfirmationPop : AWindow
 {
-    [TransformPath("View/Window/Title")] private TMP_Text m_title;
     [TransformPath("View/Window/Desc")] private TMP_Text m_description;
-    [TransformPath("View/Window/Status")] private TMP_Text m_status;
     [TransformPath("View/Window/CancelBtn")] private Button m_cancelButton;
     [TransformPath("View/Window/ConfirmBtn")] private Button m_confirmButton;
 
@@ -42,9 +40,7 @@ public sealed class MPSecondConfirmationPop : AWindow
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_data = uiMsg?.GetMsg<MPSecondConfirmationPopUIMsgData>();
-        m_title.text = m_data?.Title ?? "Confirm action";
         m_description.text = m_data?.Description ?? "This action cannot be undone.";
-        m_status.text = string.Empty;
         m_cancelButton.GetComponentInChildren<TMP_Text>(true).text = m_data?.CancelText ?? "Cancel";
         m_confirmButton.GetComponentInChildren<TMP_Text>(true).text = m_data?.ConfirmText ?? "Confirm";
         SetBusy(false);
@@ -62,7 +58,7 @@ public sealed class MPSecondConfirmationPop : AWindow
         var operation = new CancellationTokenSource();
         m_cancellation = operation;
         SetBusy(true);
-        m_status.text = "Processing...";
+        m_description.text = "Processing...";
         try
         {
             bool succeeded = await m_data.ConfirmAsync(operation.Token);
@@ -70,7 +66,7 @@ public sealed class MPSecondConfirmationPop : AWindow
                 return;
             if (!succeeded)
             {
-                m_status.text = "Action not completed. Retry or cancel.";
+                m_description.text = "Action not completed. Retry or cancel.";
                 return;
             }
 
@@ -80,14 +76,14 @@ public sealed class MPSecondConfirmationPop : AWindow
         catch (OperationCanceledException)
         {
             if (this != null && !IsDestoried)
-                m_status.text = "Action cancelled. You can retry.";
+                m_description.text = "Action cancelled. You can retry.";
         }
         catch (Exception exception)
         {
             // 不把账号令牌或含敏感响应的异常文本显示到 UI。
             Debug.LogWarning($"[MPSecondConfirmationPop] 操作失败：{exception.GetType().Name}");
             if (this != null && !IsDestoried)
-                m_status.text = "Action failed. Check your connection and retry, or cancel.";
+                m_description.text = "Action failed. Check your connection and retry, or cancel.";
         }
         finally
         {

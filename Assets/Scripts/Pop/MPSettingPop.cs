@@ -842,28 +842,7 @@ public class MPSettingPop : AWindow
         if (m_gameData?.replayAction == null || m_isClosing || m_isActionPromptShowing)
             return;
 
-        m_isActionPromptShowing = true;
-        MPSecondConfirmationPop.Show(
-            "Restart Level?",
-            $"Restart {m_gameData.levelTitle}? All unfinished progress in this level will be discarded. Other levels are not affected.",
-            "Restart",
-            token =>
-            {
-                token.ThrowIfCancellationRequested();
-                if (this == null || IsDestoried)
-                    return Task.FromResult(false);
-                return Task.FromResult(m_gameData?.replayAction != null);
-            },
-            OnActionPromptCancelled,
-            "Continue Playing",
-            () =>
-            {
-                if (this == null || IsDestoried || m_isClosing)
-                    return;
-                Action replay = m_gameData?.replayAction;
-                if (replay != null)
-                    CloseSettingPop(replay);
-            });
+        CloseSettingPop(m_gameData.replayAction);
     }
 
     /// <summary>

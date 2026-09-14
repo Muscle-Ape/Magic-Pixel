@@ -164,7 +164,6 @@ public abstract partial class MPGameViewBase : AWindow
     /// <summary>当前关卡是否已经完成，完成后不再保存进度。</summary>
     protected bool m_hasCompleted;
 
-    private MPSecondConfirmationPop m_exitConfirmation;
     private MPGameFailPop m_failPop;
     private bool m_isReturningToLevelList;
 
@@ -867,36 +866,17 @@ public abstract partial class MPGameViewBase : AWindow
         RestartLevel();
     }
 
-    /// <summary>先确认退出，取消时保持当前局与缓存不变。</summary>
+    /// <summary>保存当前进度后直接返回关卡列表。</summary>
     private void OnBackClick()
     {
-        if (this == null || IsDestoried || m_hasCompleted || m_isFailPopShowing || m_isReturningToLevelList
-            || (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried))
+        if (this == null || IsDestoried || m_hasCompleted || m_isFailPopShowing || m_isReturningToLevelList)
             return;
-
-        m_exitConfirmation = MPSecondConfirmationPop.Show(
-            "Leave level?",
-            $"{LevelTitle}\n{ExitProgressNotice}",
-            "Exit",
-            token =>
-            {
-                if (token.IsCancellationRequested || this == null || IsDestoried
-                    || m_hasCompleted || m_isReturningToLevelList)
-                    return Task.FromResult(false);
-
-                // 存档失败时由确认弹窗保持显示，不能先切走页面。
-                SaveProgressCache();
-                return Task.FromResult(true);
-            },
-            onCancel: () => m_exitConfirmation = null,
-            cancelText: "Continue playing",
-            onConfirmed: ReturnToLevelList);
+        SaveProgressCache();
+        ReturnToLevelList();
     }
 
-    /// <summary>确认弹窗完全关闭之后再转场，防止两个关闭动画与页面焦点冲突。</summary>
     private void ReturnToLevelList()
     {
-        m_exitConfirmation = null;
         if (this == null || IsDestoried || m_hasCompleted || m_isReturningToLevelList)
             return;
 
@@ -921,9 +901,6 @@ public abstract partial class MPGameViewBase : AWindow
         MPNoNetworkPop.DismissLevelEntry(this);
         StopGameEnterAnimation();
         m_isReturningToLevelList = true;
-        if (m_exitConfirmation != null && !m_exitConfirmation.IsDestoried)
-            m_exitConfirmation.DestroyWindow();
-        m_exitConfirmation = null;
         if (m_failPop != null && !m_failPop.IsDestoried)
             m_failPop.DestroyWindow();
         m_failPop = null;
