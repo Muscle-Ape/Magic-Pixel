@@ -16,6 +16,9 @@ public sealed class MPAccountSummary
     /// <summary>玩家等级。</summary>
     public int level;
 
+    /// <summary>累计经验，用于计算等级和级内进度；未提供时沿用 level 并展示空进度。</summary>
+    public int? totalExperience;
+
     /// <summary>账号创建时间的 UTC ticks。</summary>
     public long createdAtUtcTicks;
 

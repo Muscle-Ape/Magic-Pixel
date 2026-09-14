@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using HQ.UIManager;
@@ -18,25 +20,15 @@ public class MPAccountConflictPop : AWindow
         return false;
     }
 
-    /// <summary>弹窗标题文本。</summary>
-    [TransformPath("View/Window/Title")]
-    private TMP_Text m_titleText;
-
-    /// <summary>冲突说明文本。</summary>
-    [TransformPath("View/Window/Desc")]
-    private TMP_Text m_descText;
-
-    /// <summary>取消按钮。</summary>
-    [TransformPath("View/Window/CancelBtn")]
-    private Button m_cancelBtn;
-
-    /// <summary>确认继续处理按钮。</summary>
-    [TransformPath("View/Window/ConfirmBtn")]
-    private Button m_confirmBtn;
-
-    [TransformPath("View/Window/CurrentAccount")] private TMP_Text m_currentAccountText;
-    [TransformPath("View/Window/ExistingAccount")] private TMP_Text m_existingAccountText;
-    [TransformPath("View/Window/Status")] private TMP_Text m_statusText;
+    [TransformPath("View/Window/Desc")] private TMP_Text m_descText;
+    [TransformPath("View/Window/CancelBtn")] private Button m_cancelBtn;
+    [TransformPath("View/Window/ContinueBtn")] private Button m_confirmBtn;
+    [TransformPath("View/Window/Local")] private RectTransform m_localRoot;
+    [TransformPath("View/Window/Cloud")] private RectTransform m_cloudRoot;
+    private AccountView m_localView;
+    private AccountView m_cloudView;
+    private readonly Dictionary<string, MPAssetLoadLease<Sprite>> m_iconLeases =
+        new Dictionary<string, MPAssetLoadLease<Sprite>>();
     private CancellationTokenSource m_lifetime;
     private Func<MPAccountConflictData, CancellationToken, Task<bool>> m_confirmAsync;
     private bool m_busy;
@@ -57,6 +49,8 @@ public class MPAccountConflictPop : AWindow
     public override void OnCreate()
     {
         m_lifetime = new CancellationTokenSource();
+        m_localView = new AccountView(m_localRoot);
+        m_cloudView = new AccountView(m_cloudRoot);
         RegisterButton(m_cancelBtn, OnCancelClick);
         RegisterButton(m_confirmBtn, OnConfirmClick);
     }
@@ -67,20 +61,17 @@ public class MPAccountConflictPop : AWindow
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         MPAccountConflictPopUIMsgData data = uiMsg == null ? null : uiMsg.GetMsg<MPAccountConflictPopUIMsgData>();
-        if (data != null)
-        {
-            m_conflictData = data.ConflictData;
-            m_onCancel = data.OnCancel;
-            m_onConfirm = data.OnConfirm;
-            m_confirmAsync = data.ConfirmAsync;
-            SetTitle(data.Title);
-            SetDesc(data.Description);
-            RefreshAccounts();
-            return;
-        }
-
-        SetTitle("账号冲突");
-        SetDesc("当前第三方账号已经绑定到其他账号，请确认后再继续。");
+        m_conflictData = data?.ConflictData;
+        m_onCancel = data?.OnCancel;
+        m_onConfirm = data?.OnConfirm;
+        m_confirmAsync = data?.ConfirmAsync;
+        SetDesc(data?.Description);
+        Canvas.ForceUpdateCanvases();
+        m_localView.Refresh(m_conflictData?.currentAccount, LoadPlatformIcon);
+        m_cloudView.Refresh(m_conflictData?.existingAccount, LoadPlatformIcon);
+        m_cancelBtn.interactable = !m_busy && !m_closing;
+        m_confirmBtn.interactable = !m_busy && !m_closing && m_conflictData != null &&
+            (m_onConfirm != null || m_confirmAsync != null || MPAccountConflictService.ConfirmSwitchAsync != null);
     }
 
     /// <summary>
@@ -93,6 +84,13 @@ public class MPAccountConflictPop : AWindow
         m_lifetime = null;
         UnregisterButton(m_cancelBtn, OnCancelClick);
         UnregisterButton(m_confirmBtn, OnConfirmClick);
+        m_localView?.ClearIcon();
+        m_cloudView?.ClearIcon();
+        foreach (var lease in m_iconLeases.Values) lease?.Dispose();
+        m_iconLeases.Clear();
+        m_onCancel = null;
+        m_onConfirm = null;
+        m_confirmAsync = null;
     }
 
     /// <summary>
@@ -102,6 +100,7 @@ public class MPAccountConflictPop : AWindow
     {
         if (m_busy || m_closing) return;
         m_closing = true;
+        m_cancelBtn.interactable = m_confirmBtn.interactable = false;
         Action callback = m_onCancel;
         MPPopScaleAnimation animation = GetComponent<MPPopScaleAnimation>();
         if (animation != null) animation.Close(callback);
@@ -114,6 +113,19 @@ public class MPAccountConflictPop : AWindow
     private async void OnConfirmClick()
     {
         if (m_busy || m_closing) return;
+        // 仅提供继续回调时，由调用方在弹窗关闭后接管下一步；不在这里伪造账号切换。
+        if (m_confirmAsync == null && MPAccountConflictService.ConfirmSwitchAsync == null &&
+            m_onConfirm != null && m_conflictData != null)
+        {
+            m_closing = true;
+            m_cancelBtn.interactable = m_confirmBtn.interactable = false;
+            Action<MPAccountConflictData> onContinue = m_onConfirm;
+            MPAccountConflictData conflict = m_conflictData;
+            MPPopScaleAnimation animation = GetComponent<MPPopScaleAnimation>();
+            if (animation != null) animation.Close(() => onContinue(conflict));
+            else { DestroyWindow(); onContinue(conflict); }
+            return;
+        }
         if (m_conflictData == null || string.IsNullOrWhiteSpace(m_conflictData.conflictToken))
         {
             SetStatus("This account request expired. Cancel and sign in again.");
@@ -134,7 +146,9 @@ public class MPAccountConflictPop : AWindow
             if (success)
             {
                 m_closing = true;
-                Action callback = () => m_onConfirm?.Invoke(m_conflictData);
+                Action<MPAccountConflictData> onContinue = m_onConfirm;
+                MPAccountConflictData conflict = m_conflictData;
+                Action callback = () => onContinue?.Invoke(conflict);
                 MPPopScaleAnimation animation = GetComponent<MPPopScaleAnimation>();
                 if (animation != null) animation.Close(callback);
                 else { DestroyWindow(); callback(); }
@@ -155,43 +169,111 @@ public class MPAccountConflictPop : AWindow
         }
     }
 
-    private void RefreshAccounts()
+    private void SetStatus(string value)
     {
-        if (m_currentAccountText != null) m_currentAccountText.text = FormatAccount("Current account", m_conflictData?.currentAccount);
-        if (m_existingAccountText != null) m_existingAccountText.text = FormatAccount("Linked account", m_conflictData?.existingAccount);
-        SetStatus(string.Empty);
+        if (m_descText != null) m_descText.text = value;
     }
 
-    private static string FormatAccount(string heading, MPAccountSummary account)
+    private void SetDesc(string description)
     {
-        if (account == null) return heading + "\nAccount details unavailable";
-        string date = account.createdAtUtcTicks > 0 && account.createdAtUtcTicks <= DateTime.MaxValue.Ticks
-            ? new DateTime(account.createdAtUtcTicks, DateTimeKind.Utc).ToString("yyyy-MM-dd") : "Unknown";
-        string name = string.IsNullOrWhiteSpace(account.displayName) ? "Player" : account.displayName;
-        return $"{heading}\n{name}\nLevel {Mathf.Max(1, account.level)}\n{account.provider}\nCreated: {date}";
+        SetStatus(string.IsNullOrWhiteSpace(description)
+            ? "This sign-in method is already linked to another game account. Continue with the linked account? Your saves will remain separate."
+            : description);
     }
 
-    private void SetStatus(string value) { if (m_statusText != null) m_statusText.text = value; }
-
-    /// <summary>
-    /// 设置弹窗标题。
-    /// </summary>
-    private void SetTitle(string title)
+    private Sprite LoadPlatformIcon(MPLoginProvider provider)
     {
-        if (m_titleText != null)
+        string asset;
+        switch (provider)
         {
-            m_titleText.text = string.IsNullOrEmpty(title) ? "账号冲突" : title;
+            case MPLoginProvider.Google:
+            case MPLoginProvider.GooglePlayGames: asset = "loading_login_google_icon"; break;
+            case MPLoginProvider.Apple: asset = "loading_login_apple_icon"; break;
+            case MPLoginProvider.Facebook: asset = "loading_login_facebook_icon"; break;
+            case MPLoginProvider.Anonymous: asset = "loading_login_anonymous_icon"; break;
+            default: return null;
         }
+        if (!m_iconLeases.TryGetValue(asset, out var lease))
+        {
+            try
+            {
+                lease = MPLoad.LoadLease<Sprite>(asset);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[MPAccountConflictPop] 平台图标加载失败：{asset} ({exception.GetType().Name})");
+            }
+            m_iconLeases.Add(asset, lease);
+        }
+        return lease?.Asset;
     }
 
-    /// <summary>
-    /// 设置冲突说明。
-    /// </summary>
-    private void SetDesc(string desc)
+    /// <summary>两侧使用各自账号摘要，不从当前用户读取云端账号的等级信息。</summary>
+    private sealed class AccountView
     {
-        if (m_descText != null)
+        private readonly TMP_Text m_name, m_level, m_platform, m_createdTime;
+        private readonly RectTransform m_fill;
+        private readonly Image m_icon;
+
+        public AccountView(Transform root)
         {
-            m_descText.text = string.IsNullOrEmpty(desc) ? "当前第三方账号已经绑定到其他账号，请确认后再继续。" : desc;
+            m_name = root.Find("Name")?.GetComponent<TMP_Text>();
+            m_level = root.Find("Level/Text")?.GetComponent<TMP_Text>();
+            m_fill = root.Find("Level/Mask/Fill") as RectTransform;
+            m_platform = root.Find("Platform/Info")?.GetComponent<TMP_Text>();
+            m_icon = root.Find("Platform/Icon")?.GetComponent<Image>();
+            m_createdTime = root.Find("CuretedTime/Info")?.GetComponent<TMP_Text>();
+        }
+
+        public void Refresh(MPAccountSummary account, Func<MPLoginProvider, Sprite> loadIcon)
+        {
+            if (m_name != null) m_name.text = string.IsNullOrWhiteSpace(account?.displayName) ? "Player" : account.displayName;
+            int experience = Math.Max(0, account?.totalExperience ?? 0);
+            int level = account?.totalExperience != null
+                ? 1 + experience / MPUser.EXPERIENCE_PER_LEVEL : Math.Max(1, account?.level ?? 1);
+            if (m_level != null) m_level.text = "LEVEL " + level;
+            if (m_fill != null && m_fill.parent is RectTransform mask)
+            {
+                Vector2 position = m_fill.anchoredPosition;
+                position.x = mask.rect.width * (experience % MPUser.EXPERIENCE_PER_LEVEL) / MPUser.EXPERIENCE_PER_LEVEL;
+                m_fill.anchoredPosition = position;
+            }
+            MPLoginProvider provider = account?.provider ?? MPLoginProvider.Unknown;
+            string label;
+            switch (provider)
+            {
+                case MPLoginProvider.Anonymous: label = "Guest"; break;
+                case MPLoginProvider.UsernamePassword: label = "Username"; break;
+                case MPLoginProvider.Google: label = "Google"; break;
+                case MPLoginProvider.GooglePlayGames: label = "Google Play Games"; break;
+                case MPLoginProvider.Apple: label = "Apple"; break;
+                case MPLoginProvider.Facebook: label = "Facebook"; break;
+                default: label = "Unknown"; break;
+            }
+            if (m_platform != null)
+            {
+                m_platform.enableWordWrapping = false;
+                m_platform.text = "Sign in\n" + label;
+            }
+            if (m_icon != null)
+            {
+                m_icon.sprite = loadIcon(provider);
+                m_icon.enabled = m_icon.sprite != null;
+            }
+            long ticks = account?.createdAtUtcTicks ?? 0;
+            string date = ticks > 0 && ticks <= DateTime.MaxValue.Ticks
+                ? new DateTime(ticks, DateTimeKind.Utc).ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+                : "Unknown";
+            if (m_createdTime != null)
+            {
+                m_createdTime.enableWordWrapping = false;
+                m_createdTime.text = "Created on\n" + date;
+            }
+        }
+
+        public void ClearIcon()
+        {
+            if (m_icon != null) m_icon.sprite = null;
         }
     }
 
