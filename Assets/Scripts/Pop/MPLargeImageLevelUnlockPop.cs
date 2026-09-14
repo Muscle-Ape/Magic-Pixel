@@ -13,9 +13,9 @@ public class MPLargeImageLevelUnlockPop : AWindow
     }
 
     /// <summary>
-    /// 大图模式关卡提前解锁需要消耗的金币数量。
+    /// 大图模式关卡提前解锁需要消耗的萤石数量。
     /// </summary>
-    private const int UNLOCK_COIN_COST = 800;
+    private const int UNLOCK_FLUORITE_COST = 200;
 
     /// <summary>
     /// 关闭按钮。
@@ -24,33 +24,33 @@ public class MPLargeImageLevelUnlockPop : AWindow
     private Button m_closeBtn;
 
     /// <summary>
-    /// 金币解锁按钮。
+    /// 萤石解锁按钮。
     /// </summary>
-    [TransformPath("View/Window/CoinBtn")]
-    private Button m_coinBtn;
+    [TransformPath("View/Window/FluoriteBtn")]
+    private Button m_fluoriteBtn;
 
     /// <summary>
-    /// 广告解锁按钮，具体广告逻辑后续接入。
+    /// 广告解锁按钮。
     /// </summary>
     [TransformPath("View/Window/AdBtn")]
     private Button m_adBtn;
 
     /// <summary>
-    /// VIP解锁按钮，具体VIP逻辑后续接入。
+    /// VIP 按钮，点击后打开订阅弹窗。
     /// </summary>
     [TransformPath("View/Window/VipBtn")]
     private Button m_vipBtn;
 
     /// <summary>
-    /// 金币消耗数量文本。
+    /// 萤石消耗数量文本。
     /// </summary>
-    [TransformPath("View/Window/CoinBtn/Frame/Count")]
-    private TMP_Text m_coinCostText;
+    [TransformPath("View/Window/FluoriteBtn/Text")]
+    private TMP_Text m_fluoriteCostText;
 
     /// <summary>
     /// 大图尺寸文本。
     /// </summary>
-    [TransformPath("View/Window/Icon/Size")]
+    [TransformPath("View/Window/Size/Info")]
     private TMP_Text m_sizeText;
 
     /// <summary>
@@ -67,11 +67,23 @@ public class MPLargeImageLevelUnlockPop : AWindow
     /// 解锁成功后刷新关卡列表的回调。
     /// </summary>
     private Action m_refreshAction;
+    [TransformPath("View/Window/Fluorite/Info")] private TMP_Text m_rewardText;
+    private Action m_openSubscription;
+    private bool m_busy;
+    private bool m_closing;
+    private bool m_released;
+    private int m_operationVersion;
+
+    public override void OnCreate()
+    {
+        m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
+        RegisterUI();
+    }
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         MPLargeImageLevelUnlockPopUIMsgData data = uiMsg as MPLargeImageLevelUnlockPopUIMsgData;
-        if (data == null)
+        if (data?.levelInfo == null)
         {
             ClosePop();
             return;
@@ -80,14 +92,18 @@ public class MPLargeImageLevelUnlockPop : AWindow
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
         m_levelInfo = data.levelInfo;
         m_refreshAction = data.refresh;
+        m_openSubscription = data.openSubscription;
 
-        RegisterUI();
         RefreshUI();
     }
 
     public override void OnRelease()
     {
+        m_released = true;
+        ++m_operationVersion;
         UnregisterUI();
+        m_refreshAction = null;
+        m_openSubscription = null;
     }
 
     /// <summary>
@@ -101,10 +117,10 @@ public class MPLargeImageLevelUnlockPop : AWindow
             m_closeBtn.onClick.AddListener(OnCloseClick);
         }
 
-        if (m_coinBtn != null)
+        if (m_fluoriteBtn != null)
         {
-            m_coinBtn.onClick.RemoveListener(OnCoinClick);
-            m_coinBtn.onClick.AddListener(OnCoinClick);
+            m_fluoriteBtn.onClick.RemoveListener(OnFluoriteClick);
+            m_fluoriteBtn.onClick.AddListener(OnFluoriteClick);
         }
 
         if (m_adBtn != null)
@@ -130,9 +146,9 @@ public class MPLargeImageLevelUnlockPop : AWindow
             m_closeBtn.onClick.RemoveListener(OnCloseClick);
         }
 
-        if (m_coinBtn != null)
+        if (m_fluoriteBtn != null)
         {
-            m_coinBtn.onClick.RemoveListener(OnCoinClick);
+            m_fluoriteBtn.onClick.RemoveListener(OnFluoriteClick);
         }
 
         if (m_adBtn != null)
@@ -151,9 +167,15 @@ public class MPLargeImageLevelUnlockPop : AWindow
     /// </summary>
     private void RefreshUI()
     {
-        if (m_coinCostText != null)
+        if (m_fluoriteCostText != null)
         {
-            m_coinCostText.text = UNLOCK_COIN_COST.ToString();
+            m_fluoriteCostText.text = $"Unlock for {UNLOCK_FLUORITE_COST}";
+        }
+
+        if (m_rewardText != null)
+        {
+            m_rewardText.richText = true;
+            m_rewardText.text = $"<size=56><b>{Mathf.Max(0, m_levelInfo?.AwardCoin ?? 0)}</b></size> Coins";
         }
 
         if (m_sizeText != null && m_levelInfo != null)
@@ -164,68 +186,105 @@ public class MPLargeImageLevelUnlockPop : AWindow
     }
 
     /// <summary>
-    /// 点击金币解锁按钮，金币足够时提前解锁当前大图模式关卡。
+    /// 点击萤石解锁按钮，萤石足够时提前解锁当前大图模式关卡。
     /// </summary>
-    private void OnCoinClick()
+    private void OnFluoriteClick()
     {
-        if (m_levelInfo == null || string.IsNullOrEmpty(m_levelInfo.ID))
+        if (!CanUnlock()) return;
+        if (!MPUser.instance.UseFluorite(UNLOCK_FLUORITE_COST))
+        {
+            Debug.Log($"Not enough Fluorite. {UNLOCK_FLUORITE_COST} Fluorite is required.");
             return;
+        }
+        CompleteUnlock();
+    }
 
+    private bool CanUnlock()
+    {
+        if (m_busy || m_closing || m_released || m_levelInfo == null || string.IsNullOrEmpty(m_levelInfo.ID))
+            return false;
         if (MPUser.instance.LargeImageLevelIsUnlock(m_levelInfo.ID))
         {
             ClosePop();
-            return;
+            return false;
         }
-
-        if (MPUser.instance.GetCoins() < UNLOCK_COIN_COST)
-        {
-            Debug.Log("Coins are not enough to unlock large image level early.");
-            return;
-        }
-
-        MPUser.instance.UseCoins(UNLOCK_COIN_COST);
-        MPUser.instance.LargeImageLevelUnlock(m_levelInfo.ID);
-        m_refreshAction?.Invoke();
-        ClosePop();
+        return true;
     }
 
-    /// <summary>
-    /// 点击广告解锁按钮，广告逻辑后续接入。
-    /// </summary>
+    /// <summary>仅广告准备成功且获得奖励回调时解锁，关闭或重复回调不再处理。</summary>
     private void OnAdClick()
     {
-        Debug.Log("Ad unlock large image level is not implemented yet.");
+        if (!CanUnlock()) return;
+        SetBusy(true);
+        int version = ++m_operationVersion;
+        try
+        {
+            AOAds.CheckAndShowRewardedVideo("large_image_level_unlock", (ready, success) =>
+            {
+                if (this == null || IsDestoried || m_released || m_closing || !m_busy || version != m_operationVersion) return;
+                ++m_operationVersion;
+                SetBusy(false);
+                if (ready && success) CompleteUnlock();
+            });
+        }
+        catch (Exception exception)
+        {
+            if (this == null || IsDestoried || m_released) return;
+            ++m_operationVersion;
+            SetBusy(false);
+            Debug.LogWarning($"[MPLargeImageLevelUnlockPop] 广告播放失败：{exception.GetType().Name}");
+        }
     }
 
-    /// <summary>
-    /// 点击VIP解锁按钮，VIP逻辑后续接入。
-    /// </summary>
+    /// <summary>仅通知调用方打开订阅弹窗，订阅模块负责后续购买与权益处理。</summary>
     private void OnVipClick()
     {
-        Debug.Log("VIP unlock large image level is not implemented yet.");
+        if (m_busy || m_closing || m_released || IsDestoried || m_openSubscription == null) return;
+        SetBusy(true);
+        try
+        {
+            m_openSubscription.Invoke();
+        }
+        finally
+        {
+            if (this != null && !IsDestoried && !m_released && !m_closing) SetBusy(false);
+        }
     }
 
-    /// <summary>
-    /// 点击关闭按钮。
-    /// </summary>
+    private void CompleteUnlock()
+    {
+        if (m_closing || m_released || m_levelInfo == null) return;
+        if (!MPUser.instance.LargeImageLevelIsUnlock(m_levelInfo.ID))
+            MPUser.instance.LargeImageLevelUnlock(m_levelInfo.ID);
+        Action refresh = m_refreshAction;
+        ClosePop();
+        refresh?.Invoke();
+    }
+
+    private void SetBusy(bool busy)
+    {
+        m_busy = busy;
+        bool enabled = !busy && !m_closing && !m_released;
+        if (m_fluoriteBtn != null) m_fluoriteBtn.interactable = enabled;
+        if (m_adBtn != null) m_adBtn.interactable = enabled;
+        if (m_vipBtn != null) m_vipBtn.interactable = enabled;
+        if (m_closeBtn != null) m_closeBtn.interactable = enabled;
+    }
+
     private void OnCloseClick()
     {
-        ClosePop();
+        if (!m_busy) ClosePop();
     }
 
-    /// <summary>
-    /// 关闭当前弹窗，优先播放通用关闭动画。
-    /// </summary>
     private void ClosePop()
     {
-        if (m_popScaleAnimation != null)
-        {
-            m_popScaleAnimation.Close(null);
-            return;
-        }
-
-        DestroyWindow();
+        if (m_closing || m_released) return;
+        m_closing = true;
+        SetBusy(false);
+        if (m_popScaleAnimation != null) m_popScaleAnimation.Close(null);
+        else DestroyWindow();
     }
+
 }
 
 public class MPLargeImageLevelUnlockPopUIMsgData : UIMsgData
@@ -244,4 +303,7 @@ public class MPLargeImageLevelUnlockPopUIMsgData : UIMsgData
     /// 解锁成功后刷新关卡列表的回调。
     /// </summary>
     public Action refresh;
+
+    /// <summary>打开订阅弹窗的回调；订阅页面制作完成后由调用方传入。</summary>
+    public Action openSubscription;
 }
