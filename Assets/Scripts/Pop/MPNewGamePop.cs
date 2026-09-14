@@ -1,5 +1,5 @@
 using System;
-using System.Text;
+using System.Globalization;
 using HQ.UIManager;
 using TMPro;
 using UnityEngine;
@@ -9,9 +9,14 @@ using UnityEngine.UI;
 [Component("MPNewGamePop")]
 public sealed class MPNewGamePop : AWindow
 {
-    [TransformPath("View/Window/Title")] private TMP_Text m_title;
-    [TransformPath("View/Window/Desc")] private TMP_Text m_desc;
-    [TransformPath("View/Window/Details")] private TMP_Text m_details;
+    // 与主游戏、大图模式及缓存校验的三点生命上限一致。
+    private const int MAX_LIVES = 3;
+    [TransformPath("View/Window/Level/Text")] private TMP_Text m_levelText;
+    [TransformPath("View/Window/Items/Mode/Info")] private TMP_Text m_mode;
+    [TransformPath("View/Window/Items/Progress/Info")] private TMP_Text m_progress;
+    [TransformPath("View/Window/Items/RemainingHP/Info")] private TMP_Text m_remainingHP;
+    [TransformPath("View/Window/Items/Pey/Info")] private TMP_Text m_pet;
+    [TransformPath("View/Window/Items/SkillNumber/Info")] private TMP_Text m_skillNumber;
     [TransformPath("View/Window/ContinueBtn")] private Button m_continueBtn;
     [TransformPath("View/Window/RestartBtn")] private Button m_restartBtn;
     [TransformPath("View/Window/CloseBtn")] private Button m_closeBtn;
@@ -22,18 +27,22 @@ public sealed class MPNewGamePop : AWindow
 
     protected override bool ShouldAdaptToNotchScreen() => false;
 
+    public override void OnCreate()
+    {
+        m_continueBtn.onClick.AddListener(OnContinue);
+        m_restartBtn.onClick.AddListener(OnRestart);
+        m_closeBtn.onClick.AddListener(OnClose);
+    }
+
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_data = uiMsg as MPNewGamePopUIMsgData;
         s_active = this;
         m_resolved = false;
-        m_continueBtn.onClick.AddListener(OnContinue);
-        m_restartBtn.onClick.AddListener(OnRestart);
-        m_closeBtn.onClick.AddListener(OnClose);
-        m_title.text = "Saved Game";
-        m_desc.text = m_data == null ? "Return to the level list." : m_data.levelTitle;
-        m_details.text = BuildDetails(m_data);
+        RefreshDetails();
         SetButtons(m_data != null && m_data.cache != null);
+        m_continueBtn.interactable &= m_data?.continueAction != null;
+        m_restartBtn.interactable &= m_data?.restartAction != null;
         m_closeBtn.interactable = true;
     }
 
@@ -56,7 +65,7 @@ public sealed class MPNewGamePop : AWindow
 
         ShowChoice(new MPNewGamePopUIMsgData
         {
-            levelTitle = $"Main Level {data.index + 1}", size = size, cache = cache,
+            levelTitle = $"Level {data.index + 1}", size = size, cache = cache,
             continueAction = enter,
             restartAction = () => Enter<MPGameView>(data, sourceWindow, closeSource, () =>
             {
@@ -86,7 +95,7 @@ public sealed class MPNewGamePop : AWindow
 
         ShowChoice(new MPNewGamePopUIMsgData
         {
-            levelTitle = $"Big Level {data.index + 1}", size = size, cache = cache, isLargeImage = true,
+            levelTitle = data.blockInfo.Name, size = size, cache = cache, isLargeImage = true,
             continueAction = enter,
             restartAction = () => Enter<MPLargeImageGameView>(data, sourceWindow, closeSource, () =>
             {
@@ -162,28 +171,33 @@ public sealed class MPNewGamePop : AWindow
             });
     }
 
-    private static string BuildDetails(MPNewGamePopUIMsgData data)
+    /// <summary>显示缓存对应的模式、进度、剩余生命、宠物及剩余技能次数。</summary>
+    private void RefreshDetails()
     {
-        if (data == null || data.cache == null)
-            return string.Empty;
-
-        MPLevelProgressCacheInfo cache = data.cache;
-        MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(item => item != null && item.ID == cache.PetId);
-        float rate = cache.CompletedBlocks.Count / (float)Mathf.Max(1, data.size * data.size);
-        StringBuilder text = new StringBuilder();
-        text.AppendLine($"Progress: {rate:P0}");
-        text.AppendLine($"Lives used: {cache.UsedLoves}");
-        text.AppendLine($"Pet: {(pet == null ? "None" : pet.Name)}");
-        text.AppendLine($"Pet skills used: {cache.UsedPetSkillCount}");
-        if (data.isLargeImage)
-            text.AppendLine($"View: Row {cache.ViewX + 1}, Column {cache.ViewY + 1}");
-        if (cache.SavedAtUtc > 0)
-            text.AppendLine($"Saved: {DateTimeOffset.FromUnixTimeSeconds(cache.SavedAtUtc).LocalDateTime:yyyy-MM-dd HH:mm}");
-        return text.ToString();
+        MPLevelProgressCacheInfo cache = m_data?.cache;
+        MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+            item => item != null && item.ID == cache?.PetId);
+        float size = Mathf.Max(1, m_data?.size ?? 1);
+        float rate = Mathf.Clamp01((cache?.CompletedBlocks?.Count ?? 0) / (size * size));
+        m_levelText.text = m_data?.levelTitle ?? string.Empty;
+        m_mode.text = m_data == null ? "None" : m_data.isLargeImage ? "Big Maps" : "Main Level";
+        m_progress.text = Mathf.RoundToInt(rate * 100f).ToString(CultureInfo.InvariantCulture) + "%";
+        int remainingHP = cache == null ? 0 : MAX_LIVES - Mathf.Clamp(cache.UsedLoves, 0, MAX_LIVES);
+        m_remainingHP.text = remainingHP.ToString(CultureInfo.InvariantCulture);
+        m_pet.text = pet == null ? "None" : pet.Name;
+        int totalSkills = pet?.SkillUseCount ?? 0;
+        int remainingSkills = totalSkills - Mathf.Clamp(cache?.UsedPetSkillCount ?? 0, 0, totalSkills);
+        m_skillNumber.text = remainingSkills.ToString(CultureInfo.InvariantCulture);
     }
 
-    private void OnContinue() => Resolve(m_data?.continueAction);
-    private void OnRestart() => Resolve(m_data?.restartAction);
+    private void OnContinue()
+    {
+        if (m_data?.cache != null && m_data.continueAction != null) Resolve(m_data.continueAction);
+    }
+    private void OnRestart()
+    {
+        if (m_data?.cache != null && m_data.restartAction != null) Resolve(m_data.restartAction);
+    }
     private void OnClose() => Resolve(m_data?.cancelAction);
 
     private void Resolve(Action callback)
