@@ -39,6 +39,10 @@ public class MPAccountBindPop : AWindow
     private bool m_isClosing;
     private MPSecondConfirmationPop m_conflictConfirmation;
     private bool m_conflictPromptShowing;
+    private readonly MPAppleAuthAdapter m_appleAuthAdapter = new MPAppleAuthAdapter();
+    // 切换账号后，必须先完成存档选择；失败时仅允许原地重试，不能进入仍显示游客数据的页面。
+    private bool m_appleSignInPending;
+    private string m_pendingApplePlayerId;
 
     protected override bool ShouldAdaptToNotchScreen() => false;
 
@@ -86,12 +90,12 @@ public class MPAccountBindPop : AWindow
         SetButtonVisible(
             m_appleBindBtn,
             configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
-        SetButtonVisible(m_facebookBindBtn, configuration.EnableFacebookLogin);
+        SetButtonVisible(m_facebookBindBtn, MPReleaseFeatures.Facebook && configuration.EnableFacebookLogin);
     }
 
     private void OnCloseClick()
     {
-        if (m_isRunning || m_isClosing || m_conflictPromptShowing)
+        if (m_isRunning || m_isClosing || m_conflictPromptShowing || m_appleSignInPending)
             return;
 
         m_isClosing = true;
@@ -125,23 +129,119 @@ public class MPAccountBindPop : AWindow
         });
     }
 
-    /// <summary>拉起原生 Apple 授权并绑定到当前账号。</summary>
+    /// <summary>在设置页完成授权、绑定或已有账号登录，不再跳转 Loading 选择登录方式。</summary>
     private async void OnAppleBindClick()
     {
-        await RunBindOperationAsync(token => MPLoginManager.Instance.LinkAsync(
-            MPLoginType.Apple,
-            new MPThirdPartyLoginRequest
+        await RunBindOperationAsync(BindOrSignInAppleAsync);
+    }
+
+    private async Task<MPLoginResult> BindOrSignInAppleAsync(CancellationToken token)
+    {
+        var request = new MPThirdPartyLoginRequest
+        {
+            loginType = MPLoginType.Apple, provider = MPLoginType.Apple,
+            forceLink = false, createAccount = false
+        };
+        try
+        {
+            if (string.IsNullOrEmpty(m_pendingApplePlayerId))
             {
-                loginType = MPLoginType.Apple,
-                provider = MPLoginType.Apple,
-                forceLink = false
-            },
-            token));
+                MPThirdPartyAuthResult auth = await m_appleAuthAdapter.AuthorizeAsync(request, token);
+                token.ThrowIfCancellationRequested();
+                if (auth?.success != true) return CreateThirdPartyAuthFailure(MPLoginType.Apple, auth);
+                // 令牌只用于本次绑定和紧接着的登录，不写存档、不输出日志。
+                request.identityToken = auth.identityToken;
+                request.platformUserId = auth.platformUserId;
+                if (!m_appleSignInPending)
+                {
+                    MPLoginResult linked = await MPLoginManager.Instance.LinkAsync(MPLoginType.Apple, request, token);
+                    token.ThrowIfCancellationRequested();
+                    if (linked?.error?.code != MPLoginErrorCodes.AccountBindingConflict) return linked;
+
+                    // 必须先取得用户同意，再保存迁移意图和切换认证账号；取消仍停留在原游客。
+                    if (!await ConfirmAppleAccountConflictAsync(token))
+                        return MPLoginResult.Failed(MPLoginType.Apple,
+                            MPLoginError.Create(MPLoginErrorCodes.UserCancelled, "Account switch cancelled.", false));
+                    token.ThrowIfCancellationRequested();
+                    var profile = await MPLoginManager.Instance.LoadLocalProfileAsync(token);
+                    bool saved = profile?.IsIndependentGuest == true
+                        ? await MPCloudSaveManager.Instance.PrepareGuestSaveChoiceAsync(MPLoginType.Apple, token)
+                        : await MPCloudSaveManager.Instance.FlushAsync(token);
+                    if (!saved) return AppleFlowFailure("Current progress could not be saved. Please retry Apple sign-in.");
+                    m_appleSignInPending = true;
+                }
+
+                MPLoginStartupResult login = await MPLoginManager.Instance.LoginWithProviderAsync(MPLoginType.Apple, request, token);
+                token.ThrowIfCancellationRequested();
+                if (login?.action != MPLoginStartupAction.EnterGame || !MPLoginManager.Instance.IsLoggedIn)
+                    return MPLoginResult.Failed(MPLoginType.Apple, login?.error ??
+                        MPLoginError.Create(MPLoginErrorCodes.ServerError, login?.message ?? "Apple sign-in failed. Please retry."));
+                m_pendingApplePlayerId = MPLoginManager.Instance.PlayerId;
+            }
+
+            // 取消存档选择或网络失败后，再次点击 Apple 只重试数据，不重复授权或绑定。
+            if (MPLoginManager.Instance.PlayerId != m_pendingApplePlayerId)
+                return AppleFlowFailure("The active account changed. Please restart the game to restore your save.");
+            if (!await MPCloudSaveManager.Instance.InitializeAfterUserLoadedAsync(token))
+                return AppleFlowFailure("Save selection is incomplete. Tap Apple to retry.");
+            token.ThrowIfCancellationRequested();
+            MPVibrationManager.Instance.Initialize();
+            m_appleSignInPending = false;
+            m_pendingApplePlayerId = null;
+            return MPLoginResult.Success(MPLoginManager.Instance.CurrentSession);
+        }
+        finally
+        {
+            request.identityToken = null;
+            request.platformUserId = null;
+        }
+    }
+
+    private static MPLoginResult AppleFlowFailure(string message) => MPLoginResult.Failed(
+        MPLoginType.Apple, MPLoginError.Create(MPLoginErrorCodes.ServerError, message, true));
+
+    /// <summary>仅询问是否继续，不在确认前登录、覆盖存档或创建迁移记录。</summary>
+    private async Task<bool> ConfirmAppleAccountConflictAsync(CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        MPSecondConfirmationPop popup = null;
+        m_conflictPromptShowing = true;
+        try
+        {
+            using (token.Register(() => completion.TrySetCanceled()))
+            {
+                popup = MPSecondConfirmationPop.Show(
+                    "Account already linked",
+                    "This Apple account is already linked to another game account. Continue to sign in? You can then choose between your current guest progress and the account's saved progress. Nothing will be replaced before you confirm your save choice.",
+                    "Continue",
+                    confirmationToken =>
+                    {
+                        confirmationToken.ThrowIfCancellationRequested();
+                        token.ThrowIfCancellationRequested();
+                        return Task.FromResult(this != null && !IsDestoried);
+                    },
+                    onCancel: () => completion.TrySetResult(false),
+                    onConfirmed: () => completion.TrySetResult(true),
+                    preserveButtonText: true);
+                m_conflictConfirmation = popup;
+                if (popup == null) return false;
+                // 关闭动画完成后才继续登录，避免和后面的资产对比弹窗产生层级冲突。
+                return await completion.Task;
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(m_conflictConfirmation, popup)) m_conflictConfirmation = null;
+            m_conflictPromptShowing = false;
+            if (popup != null && !popup.IsDestoried) popup.DestroyWindow();
+        }
     }
 
     /// <summary>通过已接入 MPFacebookAuthAdapter 的平台授权回调绑定 Facebook。</summary>
     private async void OnFacebookBindClick()
     {
+        if (!MPReleaseFeatures.Facebook) return;
         await RunBindOperationAsync(token => MPLoginManager.Instance.LinkAsync(
             MPLoginType.Facebook,
             new MPThirdPartyLoginRequest
@@ -189,12 +289,36 @@ public class MPAccountBindPop : AWindow
                 return;
             }
 
-            if (result?.error?.code == MPLoginErrorCodes.AccountBindingConflict)
+            // 用户主动取消不是登录异常，保持绑定弹窗并恢复按钮即可。
+            if (result?.error?.code == MPLoginErrorCodes.UserCancelled) return;
+
+            // 首次绑定成功已在上面直接结束；仅服务端明确返回“关联了其他账号”才二次确认。
+            // 当前玩家已有同平台绑定（10004）不是切换账号的理由，不弹出这个提示。
+            if (result?.error?.code == MPLoginErrorCodes.AccountBindingConflict && result.loginType != MPLoginType.Apple)
             {
+                Debug.LogWarning($"[MPAccountBindPop] 第三方身份已关联其他账号，ServiceCode={result.error.serviceErrorCode}");
+                var profile = await MPLoginManager.Instance.LoadLocalProfileAsync(operationToken);
+                if (profile?.IsIndependentGuest == true)
+                {
+                    // 先完整保存游客，再授权读取已有账号，通过资产对比页决定使用哪一份存档。
+                    if (!await MPCloudSaveManager.Instance.PrepareGuestSaveChoiceAsync(result.loginType, operationToken))
+                        return;
+                    operationToken.ThrowIfCancellationRequested();
+                    if (this == null || IsDestoried) return;
+                    var loading = UIManager.Inst.ShowWindow<MPLoadingView>(new MPLoadingViewUIMsgData(
+                        MPLoginStartupResult.ShowLoginSelection(null, MPLoginProvider.Unknown),
+                        initialProvider: result.loginType), true, UILayer.Top);
+                    if (loading == null) return;
+                    m_isClosing = true;
+                    Action onClose = m_onClose;
+                    DestroyWindow();
+                    onClose?.Invoke();
+                    return;
+                }
                 ShowBindingConflict();
                 return;
             }
-            Debug.LogWarning($"[MPAccountBindPop] 账号绑定失败：{result?.errorMessage ?? "未知错误"}");
+            Debug.LogWarning($"[MPAccountBindPop] 账号绑定/登录未完成，Provider={result?.loginType}, Code={result?.error?.code}, ServiceCode={result?.error?.serviceErrorCode}");
         }
         catch (OperationCanceledException)
         {
@@ -202,7 +326,8 @@ public class MPAccountBindPop : AWindow
         }
         catch (Exception exception)
         {
-            Debug.LogError($"[MPAccountBindPop] 绑定操作异常：{exception}");
+            // 授权异常正文可能包含敏感信息，只记录类型；结构化失败另行记录错误码。
+            Debug.LogError($"[MPAccountBindPop] 绑定/登录操作异常：{exception.GetType().Name}");
         }
         finally
         {
@@ -275,10 +400,10 @@ public class MPAccountBindPop : AWindow
 
     private void SetInteractable(bool interactable)
     {
-        SetButtonInteractable(m_closeBtn, interactable);
-        SetButtonInteractable(m_googleBindBtn, interactable);
+        SetButtonInteractable(m_closeBtn, interactable && !m_appleSignInPending);
+        SetButtonInteractable(m_googleBindBtn, interactable && !m_appleSignInPending);
         SetButtonInteractable(m_appleBindBtn, interactable);
-        SetButtonInteractable(m_facebookBindBtn, interactable);
+        SetButtonInteractable(m_facebookBindBtn, interactable && !m_appleSignInPending);
         SetButtonInteractable(m_privacyPolicyBtn, interactable);
         SetButtonInteractable(m_termsOfServiceBtn, interactable);
     }

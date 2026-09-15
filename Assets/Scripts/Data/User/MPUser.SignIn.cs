@@ -21,12 +21,14 @@ public partial class MPUser
 
     public MPSignInStatus GetSignInStatus()
     {
+        if (!MPReleaseFeatures.SignIn) return new MPSignInStatus();
         MPSignInConfigService.TryLoad(out MPSignInConfig config);
         return GetSignInStatus(config);
     }
 
     public MPSignInStatus GetSignInStatus(MPSignInConfig config)
     {
+        if (!MPReleaseFeatures.SignIn) return new MPSignInStatus();
         MPRewardProgressSnapshot progress = CreateRewardProgressSnapshot();
         bool changed = MPSignInConfigService.MigrateLegacyProgress(progress, config);
         long now = DateTime.UtcNow.Ticks;
@@ -66,6 +68,7 @@ public partial class MPUser
         out MPRewardReceipt receipt)
     {
         receipt = null;
+        if (!MPReleaseFeatures.SignIn || (multiplier == 2 && !MPReleaseFeatures.Ads)) return false;
         if (string.IsNullOrEmpty(entryId) || (multiplier != 1 && multiplier != 2)
             || !MPSignInConfigService.TryLoad(out MPSignInConfig config))
             return false;

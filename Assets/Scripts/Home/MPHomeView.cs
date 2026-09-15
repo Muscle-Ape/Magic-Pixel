@@ -11,6 +11,7 @@ public partial class MPHomeView : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        MPReleaseFeatures.ApplyHome(transform);
         InitializeTabs();
         RegisterListeners();
 
@@ -40,9 +41,10 @@ public partial class MPHomeView : AWindow
         RefreshCurrency();
         RefreshHomePage();
         RefreshCustomEditorFocus();
-        RefreshLargerPage();
         RefreshResponsiveLayout();
         ApplyTabState(false);
+        // 先恢复页面尺寸与位置，再让虚拟列表计算可见项。
+        RefreshLargerPage();
     }
 
     private void OnRectTransformDimensionsChange()

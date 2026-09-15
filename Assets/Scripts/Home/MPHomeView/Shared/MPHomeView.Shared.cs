@@ -220,6 +220,11 @@ public partial class MPHomeView
             new Vector2(m_tabs[m_selectedTabIndex].Item.anchoredPosition.x, SELECT_Y),
             SWITCH_DURATION).SetEase(Ease.OutCubic));
         m_switchSequence.OnKill(() => m_switchSequence = null);
+        m_switchSequence.OnComplete(() =>
+        {
+            if (m_selectedTabIndex == LARGER_TAB_INDEX)
+                RebuildLargerListLayout();
+        });
     }
 
     private void ApplyPagePosition(bool animated)

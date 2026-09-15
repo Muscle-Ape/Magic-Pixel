@@ -18,6 +18,9 @@ public class MPFacebookAuthAdapter : IMPThirdPartyAuthAdapter
     public async Task<MPThirdPartyAuthResult> AuthorizeAsync(MPThirdPartyLoginRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!MPReleaseFeatures.Facebook)
+            return MPThirdPartyAuthResult.Failed(MPLoginErrorCodes.PlatformSdkNotReady,
+                "Facebook sign-in is not available in this version.");
         if (!string.IsNullOrWhiteSpace(request?.accessToken))
             return MPThirdPartyAuthResult.Success(accessToken: request.accessToken, platformUserId: request.platformUserId);
 

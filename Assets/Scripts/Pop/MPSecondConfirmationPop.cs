@@ -24,10 +24,10 @@ public sealed class MPSecondConfirmationPop : AWindow
 
     public static MPSecondConfirmationPop Show(string title, string description, string confirmText,
         Func<CancellationToken, Task<bool>> confirmAsync, Action onCancel = null, string cancelText = "Cancel",
-        Action onConfirmed = null)
+        Action onConfirmed = null, bool preserveButtonText = false)
     {
         return UIManager.Inst.ShowWindow<MPSecondConfirmationPop>(
-            new MPSecondConfirmationPopUIMsgData(title, description, confirmText, confirmAsync, onCancel, cancelText, onConfirmed),
+            new MPSecondConfirmationPopUIMsgData(title, description, confirmText, confirmAsync, onCancel, cancelText, onConfirmed, preserveButtonText),
             true, UILayer.Top);
     }
 
@@ -41,8 +41,11 @@ public sealed class MPSecondConfirmationPop : AWindow
     {
         m_data = uiMsg?.GetMsg<MPSecondConfirmationPopUIMsgData>();
         m_description.text = m_data?.Description ?? "This action cannot be undone.";
-        m_cancelButton.GetComponentInChildren<TMP_Text>(true).text = m_data?.CancelText ?? "Cancel";
-        m_confirmButton.GetComponentInChildren<TMP_Text>(true).text = m_data?.ConfirmText ?? "Confirm";
+        if (m_data?.PreserveButtonText != true)
+        {
+            m_cancelButton.GetComponentInChildren<TMP_Text>(true).text = m_data?.CancelText ?? "Cancel";
+            m_confirmButton.GetComponentInChildren<TMP_Text>(true).text = m_data?.ConfirmText ?? "Confirm";
+        }
         SetBusy(false);
         // 键盘/手柄的默认选项始终是安全操作。
         if (EventSystem.current != null)
@@ -139,12 +142,14 @@ public sealed class MPSecondConfirmationPopUIMsgData : UIMsgData
     public Func<CancellationToken, Task<bool>> ConfirmAsync { get; }
     public Action OnCancel { get; }
     public Action OnConfirmed { get; }
+    /// <summary>保留预制体中两颗按钮的文案，只更新描述。</summary>
+    public bool PreserveButtonText { get; }
     public string ActionType { get; set; }
     public string AffectedData { get; set; }
 
     public MPSecondConfirmationPopUIMsgData(string title, string description, string confirmText,
         Func<CancellationToken, Task<bool>> confirmAsync, Action onCancel = null, string cancelText = "Cancel",
-        Action onConfirmed = null)
+        Action onConfirmed = null, bool preserveButtonText = false)
     {
         Title = title;
         Description = description;
@@ -153,5 +158,6 @@ public sealed class MPSecondConfirmationPopUIMsgData : UIMsgData
         ConfirmAsync = confirmAsync;
         OnCancel = onCancel;
         OnConfirmed = onConfirmed;
+        PreserveButtonText = preserveButtonText;
     }
 }

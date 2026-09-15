@@ -110,6 +110,12 @@ public abstract partial class MPGameViewBase : AWindow
     [TransformPath("View/Loves")]
     protected RectTransform m_lovesNode;
 
+    /// <summary>
+    /// 跳过关卡测试按钮
+    /// </summary>
+    [TransformPath("View/NextBtn")]
+    protected Button m_textNextBtn;
+
     /// <summary>生命图标列表。</summary>
     protected List<GameObject> m_loves;
 
@@ -317,6 +323,18 @@ public abstract partial class MPGameViewBase : AWindow
         MPAudioManager.Instance.StopBGM(MPMusic.MPBGMMain);
         if (UsesLives && m_lovesCount <= 0)
             OpenFailPop();
+
+        bool isDebug = false;
+#if UNITY_EDITOR
+        isDebug = true;
+#elif DEVELOPMENT_BUILD
+        isDebug = Debug.isDebugBuild;
+#endif
+        if (isDebug)
+        {
+            m_textNextBtn.gameObject.SetActive(true);
+        }
+
     }
 
     /// <summary>新关卡开始或页面释放时清理完成框动画，并恢复为隐藏状态。</summary>
@@ -508,7 +526,7 @@ public abstract partial class MPGameViewBase : AWindow
 
         m_petSkillBtn.interactable = !m_hasCompleted
             && m_petSkillRemainingUses > 0
-            && CanExecutePetSkill();
+            && CanInteractWithPetSkill();
         // 新预制体使用按钮自身的固定技能图片，不再查找或覆盖旧的 Icon 子节点。
     }
 
@@ -524,7 +542,7 @@ public abstract partial class MPGameViewBase : AWindow
         return true;
     }
 
-    private bool CanExecutePetSkill()
+    private bool CanInteractWithPetSkill()
     {
         if (m_activePetConfig == null)
             return false;
@@ -534,7 +552,8 @@ public abstract partial class MPGameViewBase : AWindow
             case MPPetSkillOption.Hint:
                 return HasHintTarget();
             case MPPetSkillOption.RecoverLife:
-                return UsesLives && m_loves != null && m_lovesCount < m_loves.Count;
+                // 满血时仍允许点击，由点击回调提示原因，不消耗技能次数。
+                return UsesLives && m_loves != null && m_loves.Count > 0;
             default:
                 return false;
         }
@@ -667,8 +686,20 @@ public abstract partial class MPGameViewBase : AWindow
             case MPPetSkillOption.RecoverLife:
                 if (!UsesLives
                     || m_loves == null
-                    || m_lovesCount >= m_loves.Count
-                    || !TryConsumePetSkill())
+                    || m_loves.Count == 0)
+                {
+                    RefreshPropButtons();
+                    return;
+                }
+
+                if (m_lovesCount >= m_loves.Count)
+                {
+                    UnityToast.Instance.ShowToast("Health is already full.");
+                    RefreshPropButtons();
+                    return;
+                }
+
+                if (!TryConsumePetSkill())
                 {
                     RefreshPropButtons();
                     return;

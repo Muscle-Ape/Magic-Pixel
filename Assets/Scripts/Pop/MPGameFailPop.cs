@@ -50,6 +50,11 @@ public class MPGameFailPop : AWindow
     private bool m_isReleased;
     private int m_adOperationVersion;
 
+    public override void OnCreate()
+    {
+        MPReleaseFeatures.ApplyGameFail(transform);
+    }
+
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
@@ -145,6 +150,7 @@ public class MPGameFailPop : AWindow
 
     private void OnReviveAdClick()
     {
+        if (!MPReleaseFeatures.Ads) return;
         if (!CanHandleClick())
             return;
 

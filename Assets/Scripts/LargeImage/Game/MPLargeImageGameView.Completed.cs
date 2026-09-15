@@ -43,7 +43,7 @@ public partial class MPLargeImageGameView
         // 1、记录当前已通关关卡
         MPUser.instance.LargeImageLevelPass(m_blockInfo.ID, m_lovesCount);
         MPUser.instance.AddPlayerExperience(MPUser.LARGE_IMAGE_COMPLETION_EXPERIENCE);
-        MPUser.instance.TryClaimLargeImageLevelCoinAward(m_blockInfo, out m_completedRewardReceipt);
+        MPUser.instance.TryClaimLargeImageLevelBoxAward(m_blockInfo, out m_completedRewardReceipt);
         if (firstCompletion
             && MPUser.instance.TryGrantPetCompletionReward(
                 m_activePetConfig,
@@ -247,6 +247,7 @@ public partial class MPLargeImageGameView
     /// </summary>
     private void FadeSettlementUI()
     {
+        FadeGraphics(m_gamePetImage == null ? null : m_gamePetImage.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_titleText.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_backgroundFloor == null ? null : m_backgroundFloor.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);

@@ -1,6 +1,7 @@
 using HQ.UIManager;
 using SuperScrollView;
 using UnityEngine;
+using UnityEngine.UI;
 
 public partial class MPHomeView
 {
@@ -39,6 +40,7 @@ public partial class MPHomeView
         initParam.mItemDefaultWithPaddingSize = m_largerItemHeight + m_largerItemPadding;
         m_largerLevels.InitListView(GetLargerListCount(), GetLargerItemByIndex, initParam, GetLargerItemSizeByIndex);
         m_largerListInitialized = true;
+        RebuildLargerListLayout();
     }
 
     private int GetLargerListCount()
@@ -92,7 +94,26 @@ public partial class MPHomeView
         m_largerLevelModel = MPDataManager.Instance.m_largeImageModel;
         m_largerLevels.SetListItemCount(GetLargerListCount(), false);
         m_largerLevels.RefreshAllShownItem();
+        RebuildLargerListLayout();
         RefreshCurrency();
+    }
+
+    /// <summary>
+    /// 页面恢复或切换完成后重新计算可见区域，并主动补齐可见项。
+    /// InitListView 只登记数据；RefreshAllShownItem 对空列表会直接返回，不能代替生成。
+    /// </summary>
+    private void RebuildLargerListLayout()
+    {
+        if (!m_initialized || IsDestoried || !m_largerListInitialized ||
+            m_largerLevels == null || !m_largerLevels.isActiveAndEnabled)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)m_largerLevels.transform);
+        // 同步插件缓存的 viewport 边界，但不重置玩家已有的滚动位置。
+        m_largerLevels.ResetListView(false);
+        m_largerLevels.UpdateListViewContent();
+        Canvas.ForceUpdateCanvases();
     }
 
     private void ReleaseLargerPage()

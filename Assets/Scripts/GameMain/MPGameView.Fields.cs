@@ -131,6 +131,21 @@ public partial class MPGameView : MPGameViewBase
         m_refreshAction = data.refresh;
         m_isFillMode = true;
         m_isRuntimePixelTexture = false;
+
+
+        m_textNextBtn.onClick.AddListener(() =>
+        {
+            StopLineCompleteAnimations();
+            UpdateData();
+            StartCoroutine(PlayCompletedAnimation());
+        });
+    }
+
+    /// <summary>网格创建成功后记录实际进入的主关卡，排除自定义与社区关卡。</summary>
+    protected override void RegisterModeSpecificUI()
+    {
+        if (!m_isCustomLevel)
+            MPUser.instance.SetLastPlayedMainLevelId(m_blockInfo.ID);
     }
 
     /// <summary>加载主游戏方块预制体和当前关卡像素图。</summary>

@@ -122,6 +122,13 @@ public partial class MPLargeImageGameView : MPGameViewBase
         m_index = data.index;
         m_refreshAction = data.refresh;
         m_isFill = true;
+
+        m_textNextBtn.onClick.AddListener(() =>
+        {
+            StopLineCompleteAnimations();
+            UpdateData();
+            StartCoroutine(PlayCompletedAnimation());
+        });
     }
 
     /// <summary>

@@ -147,7 +147,7 @@ public class MPLauncher : MonoBehaviour
         }
 
         // 广告预热仍为非阻塞服务：广告 SDK 未回调不能阻止玩家进入游戏。
-        if (!MPAdsManager.Instance.IsConfigured)
+        if (MPReleaseFeatures.Ads && !MPAdsManager.Instance.IsConfigured)
             MPAdsManager.Instance.Initialize(userId: MPLoginManager.Instance.PlayerId);
 
         yield return null;

@@ -28,9 +28,9 @@ public class MPMainLevelView : AWindow
     private const float LEVEL_LINE_CONTROL_RATIO = 0.38f;
 
     /// <summary>
-    /// 每次启动游戏只自动定位一次；返回主页时保留用户当前的滚动位置。
+    /// 页面重新显示时定位；仅关闭覆盖弹窗恢复焦点时保留滚动位置。
     /// </summary>
-    private static bool s_hasLocatedLatestLevelOnLaunch;
+    private bool m_locateOnNextFocus;
 
     [TransformPath("View/Head")]
     private MPHead m_head;
@@ -113,10 +113,9 @@ public class MPMainLevelView : AWindow
         public Vector2 Position;
     }
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetLaunchState()
+    private void OnEnable()
     {
-        s_hasLocatedLatestLevelOnLaunch = false;
+        m_locateOnNextFocus = true;
     }
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
@@ -138,10 +137,7 @@ public class MPMainLevelView : AWindow
 
         InitializeTrackButton();
 
-        if (!s_hasLocatedLatestLevelOnLaunch && LocateLatestLevelAtCenter())
-        {
-            s_hasLocatedLatestLevelOnLaunch = true;
-        }
+        LocateLastPlayedLevelAtCenter();
 
         InitializeLevelLine();
         InitializeCloudParallax();
@@ -169,6 +165,11 @@ public class MPMainLevelView : AWindow
             }
 
             RefreshLevels();
+            if (m_locateOnNextFocus)
+            {
+                LocateLastPlayedLevelAtCenter();
+                RefreshLevelLine();
+            }
             RefreshCloudParallax();
             StartFlashEffects();
             RefreshTrackButtonVisibility();
@@ -257,10 +258,11 @@ public class MPMainLevelView : AWindow
     }
 
     /// <summary>
-    /// 将当前主线进度对应的最新关卡定位到列表视口中心。
+    /// 打开列表时居中上次游玩的关卡；记录缺失、关卡移除或未解锁时回退到最新关卡。
     /// </summary>
-    private bool LocateLatestLevelAtCenter()
+    private bool LocateLastPlayedLevelAtCenter()
     {
+        Canvas.ForceUpdateCanvases();
         if (!TryGetLatestLevelTarget(
             out _,
             out int targetListIndex,
@@ -269,8 +271,22 @@ public class MPMainLevelView : AWindow
             return false;
         }
 
-        Canvas.ForceUpdateCanvases();
+        string lastPlayedId = MPUser.instance.GetLastPlayedMainLevelId();
+        int lastPlayedIndex = string.IsNullOrEmpty(lastPlayedId) ? -1
+            : m_levelModel.blockInfos.FindIndex(level => level != null && level.ID == lastPlayedId);
+        if (lastPlayedIndex >= 0 && (MPUser.instance.MainLevelIsUnlock(lastPlayedId)
+            || MPUser.instance.MainLevelIsPass(lastPlayedId)))
+        {
+            targetListIndex = lastPlayedIndex + 1;
+            targetOffset = GetCenterOffset()
+                - MPMainLevelItem.GetLevelVerticalOffset(lastPlayedIndex);
+        }
+
+        m_loopList.ClearAutoMoveToItemData();
+        m_loopList.ScrollRect.StopMovement();
+        m_isTrackingLatestLevel = false;
         m_loopList.MovePanelToItemIndexImmediately(targetListIndex, targetOffset);
+        m_locateOnNextFocus = false;
         return true;
     }
 
@@ -770,7 +786,7 @@ public class MPMainLevelView : AWindow
     }
 
     /// <summary>
-    /// 只在用户向上离开最新关卡超过两个关卡高度后显示追踪按钮。
+    /// 与最新关卡的纵向距离超过阈值时显示追踪按钮，不区分上下方向。
     /// </summary>
     private void RefreshTrackButtonVisibility()
     {
@@ -801,7 +817,7 @@ public class MPMainLevelView : AWindow
         }
 
         float viewportCenterY = m_loopList.ViewPortTrans.rect.center.y;
-        bool shouldShow = viewportCenterY - latestLevelViewportY
+        bool shouldShow = Mathf.Abs(viewportCenterY - latestLevelViewportY)
             > TRACK_BUTTON_SHOW_DISTANCE;
         SetTrackButtonVisible(shouldShow);
     }

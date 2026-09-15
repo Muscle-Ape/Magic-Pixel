@@ -208,6 +208,26 @@ public partial class MPUser
 
 public static class MPRewardPresentation
 {
+    /// <summary>非资产类型必须匹配宠物配置 ID，不能把任意未知类型当成宠物。</summary>
+    public static MPPetConfig RewardPet(string type)
+    {
+        if (string.IsNullOrWhiteSpace(type) || NormalizeType(type) != null) return null;
+        return MPDataManager.Instance.m_petsModel?.petConfigs?.Find(pet => pet != null && pet.ID == type.Trim());
+    }
+
+    /// <summary>数量后使用的英文单位。</summary>
+    public static string CountUnit(string type)
+    {
+        switch (NormalizeType(type))
+        {
+            case "coin": return "coins";
+            case "fluorite": return "fluorite";
+            case "hint": return "hints";
+            case "life": return "life refills";
+            default: return "rewards";
+        }
+    }
+
     public static string NormalizeType(string type)
     {
         switch ((type ?? string.Empty).Trim().ToLowerInvariant())

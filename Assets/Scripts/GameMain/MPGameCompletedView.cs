@@ -235,6 +235,7 @@ public class MPGameCompletedView : AWindow
     /// 页面入场动画序列，关闭页面时需要主动清理。
     /// </summary>
     private Sequence m_enterSequence;
+    private bool m_enterAnimationFinished;
 
     // 无限旋转单独持有，不放入入场 Sequence，避免阻塞后续星星动画。
     private Tween m_lightFadeTween;
@@ -513,6 +514,7 @@ public class MPGameCompletedView : AWindow
         if (focus)
         {
             m_head?.Refresh();
+            TryShowLargeImageRewardPetNotification();
         }
     }
 
@@ -829,6 +831,7 @@ public class MPGameCompletedView : AWindow
     private void PlayEnterAnimation()
     {
         KillAnimations();
+        m_enterAnimationFinished = false;
         m_enterSequence = DOTween.Sequence()
             .SetLink(gameObject, LinkBehaviour.PauseOnDisablePlayOnEnable);
         bool hasPictureMoveAnimation = false;
@@ -864,7 +867,24 @@ public class MPGameCompletedView : AWindow
         if (starDropTween != null)
             m_enterSequence.Append(starDropTween);
 
+        m_enterSequence.OnComplete(() =>
+        {
+            m_enterAnimationFinished = true;
+            TryShowLargeImageRewardPetNotification();
+        });
+
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
+    }
+
+    private void TryShowLargeImageRewardPetNotification()
+    {
+        // 若普通奖励弹窗仍在前台，等重新获得焦点再展示，不叠加两个领取弹窗。
+        if (!m_enterAnimationFinished || !m_isLargeImageLevel || !IsFocus || IsDestoried) return;
+        if (m_largeImageBlockInfo?.BoxAward?.IsValid != true ||
+            !MPUser.instance.RewardTransactionIsCommitted("large_completed:" + m_largeImageBlockInfo.ID)) return;
+        // 配置中的宠物奖励在通关时已入账；普通奖励弹窗不展示宠物，改用宠物领取弹窗。
+        MPPetConfig rewardPet = MPRewardPresentation.RewardPet(m_largeImageBlockInfo?.BoxAward?.Type);
+        if (rewardPet != null) MPPetClaimPop.ShowMilestoneNotification(rewardPet.ID, this);
     }
 
     private void PlayLightReveal()

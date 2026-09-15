@@ -21,6 +21,8 @@ public class MPLargeImageLevelItem : MonoBehaviour
     private TMP_Text m_sizeText;
     private GameObject m_award;
     private TMP_Text m_awardCount;
+    private Image m_awardIcon;
+    private string m_awardIconLocation;
     private GameObject m_stars;
     private GameObject[] m_starObj;
     private MPLargeImageBlockInfo m_data;
@@ -48,6 +50,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
         m_sizeText = FindComponent<TMP_Text>("Size");
         m_award = FindGameObject("Award");
         m_awardCount = FindComponent<TMP_Text>("Award/Count");
+        m_awardIcon = FindComponent<Image>("Award/Icon");
         m_stars = FindGameObject("Stars");
         CacheStarNodes();
 
@@ -81,6 +84,8 @@ public class MPLargeImageLevelItem : MonoBehaviour
             if (m_nameText != null) m_nameText.text = string.Empty;
             if (m_sizeText != null) m_sizeText.text = string.Empty;
             if (m_awardCount != null) m_awardCount.text = string.Empty;
+            ApplySprite(m_awardIcon, null);
+            m_awardIconLocation = null;
             if (m_buttonText != null) m_buttonText.text = string.Empty;
             return;
         }
@@ -101,9 +106,19 @@ public class MPLargeImageLevelItem : MonoBehaviour
             }
         }
 
-        // 保留 AwardText 的预制体文案，仅更新金币数量。
+        // 保留 AwardText 文案，奖励类型与数量都来自配置，复用 Item 时同步替换图标。
+        MPMainLevelBoxAward award = data.BoxAward;
+        string rewardType = MPRewardPresentation.NormalizeType(award?.Type);
+        MPPetConfig rewardPet = MPRewardPresentation.RewardPet(award?.Type);
+        bool hasAward = award?.IsValid == true && (rewardType != null || rewardPet != null);
         if (m_awardCount != null)
-            m_awardCount.text = $"<b>{Mathf.Max(0, data.AwardCoin)}</b> coins";
+        {
+            m_awardCount.richText = true;
+            m_awardCount.text = !hasAward ? string.Empty : rewardPet != null
+                ? rewardPet.Name
+                : $"<b>{award.Count}</b> {MPRewardPresentation.CountUnit(award.Type)}";
+        }
+        RefreshAwardIcon(hasAward ? "large_item_award_icon_" + (rewardPet != null ? "pet" : rewardType) : null);
 
         MPLargeImageLevelState state = MPLargeImageLevelModel.GetLevelState(data);
         // 每次状态刷新都同步文字颜色，避免解锁或列表复用后残留旧颜色。
@@ -112,7 +127,7 @@ public class MPLargeImageLevelItem : MonoBehaviour
             m_nameText.color = textColor;
         if (m_sizeText != null)
             m_sizeText.color = textColor;
-        SetActive(m_award, state == MPLargeImageLevelState.Locked);
+        SetActive(m_award, state == MPLargeImageLevelState.Locked && hasAward);
         switch (state)
         {
             case MPLargeImageLevelState.Locked:
@@ -144,6 +159,14 @@ public class MPLargeImageLevelItem : MonoBehaviour
         ApplySprite(m_buttonImage, LoadSprite(buttonLocation, this));
         if (m_buttonText != null)
             m_buttonText.text = text;
+    }
+
+    private void RefreshAwardIcon(string location)
+    {
+        if (m_awardIcon == null) return;
+        if (m_awardIconLocation == location && m_awardIcon.sprite != null) return;
+        ApplySprite(m_awardIcon, string.IsNullOrEmpty(location) ? null : LoadSprite(location, this));
+        m_awardIconLocation = location;
     }
 
     private static Sprite LoadSprite(string location, UnityEngine.Object owner)
@@ -283,6 +306,8 @@ public class MPLargeImageLevelItem : MonoBehaviour
         ClearCompletedPixel();
         ApplySprite(m_frame, null);
         ApplySprite(m_buttonImage, null);
+        ApplySprite(m_awardIcon, null);
+        m_awardIconLocation = null;
         MPLoad.ReleaseAll(this);
         m_refresh = null;
         m_data = null;

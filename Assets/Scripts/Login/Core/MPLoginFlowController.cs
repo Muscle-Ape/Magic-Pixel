@@ -445,7 +445,7 @@ public class MPLoginFlowController : IMPLoginFlowController
             case MPLoginType.Apple:
                 return m_configuration.EnableAppleLogin;
             case MPLoginType.Facebook:
-                return m_configuration.EnableFacebookLogin;
+                return MPReleaseFeatures.Facebook && m_configuration.EnableFacebookLogin;
             default:
                 return true;
         }

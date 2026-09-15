@@ -54,6 +54,8 @@ public partial class MPCloudSaveManager
     /// 当前玩家的本地云同步元数据。
     /// </summary>
     private MPCloudSaveLocalMeta m_meta;
+    // 旧快照上传完成不能清掉上传期间新产生的宝箱、资产等变更。
+    private long m_userSnapshotChangeVersion;
 
     /// <summary>
     /// 生命周期钩子。
@@ -199,6 +201,10 @@ public partial class MPCloudSaveManager
             bool accountSwitched = !string.IsNullOrEmpty(previousPlayerId) && previousPlayerId != playerId;
             MPLocalLoginProfile profile = await LoadLocalLoginProfileSafeAsync(cancellationToken);
 
+            // 读取远端失败时也必须保持选择保护，避免暂停/后台自动上传绕过游客存档选择。
+            if (GetGuestSaveChoice(profile) != null)
+                m_assetComparisonNeedsResolution = true;
+
             MPCloudSaveLoadResult<MPUserCloudSnapshot> userCloudResult = await LoadUserSnapshotSafeAsync(cancellationToken);
             if (userCloudResult == null)
             {
@@ -303,11 +309,13 @@ public partial class MPCloudSaveManager
         }
         else if (reason == MPCloudSaveDirtyReason.Unknown)
         {
+            ++m_userSnapshotChangeVersion;
             m_meta.hasUserSnapshotDirtyData = true;
             m_meta.hasCustomLevelDirtyData = true;
         }
         else
         {
+            ++m_userSnapshotChangeVersion;
             m_meta.hasUserSnapshotDirtyData = true;
         }
 
@@ -495,7 +503,23 @@ public partial class MPCloudSaveManager
             return await ResolveDirtyLocalUserSnapshotAsync(cloudResult.value, profile, cancellationToken);
         }
 
+        // 同一账号的旧云存档不能使已领取宝箱重新变为可领取。
+        // accountSwitched 已在上面单独处理，不会把 A 账号的领取记录带给 B。
+        MPUserCloudSnapshot localChestSnapshot = MPUser.instance.CreateCloudSnapshot();
+        // CreateCloudSnapshot 只收集业务数据，账号元数据需由同步层填写。
+        ApplyLoginMetadata(localChestSnapshot, profile);
+        bool preservedClaims = MPCloudSaveConflictResolver.PreserveMainLevelChestClaims(
+            cloudResult.value, localChestSnapshot);
         ApplyUserSnapshot(cloudResult.value);
+        if (preservedClaims)
+        {
+            m_meta.hasUserSnapshotDirtyData = true;
+            m_meta.lastDirtyAtUtcTicks = DateTime.UtcNow.Ticks;
+            cloudResult.value.updatedAtUtcTicks = m_meta.lastDirtyAtUtcTicks;
+            RefreshGlobalDirtyFlag();
+            m_metaRepository.Save(m_meta);
+            return await UploadUserSnapshotAsync(cloudResult.value, true, true, cancellationToken);
+        }
         MarkUserSnapshotClean(cloudResult.writeLock);
         await m_metaRepository.SaveAsync(m_meta, cancellationToken);
         Debug.Log($"[MPCloudSave] Applied user cloud snapshot. PlayerId: {m_playerId}");
@@ -710,6 +734,9 @@ public partial class MPCloudSaveManager
     /// </summary>
     private async Task<bool> UploadUserSnapshotAsync(MPUserCloudSnapshot snapshot, bool useWriteLock, bool allowConflictResolve, CancellationToken cancellationToken)
     {
+        MPCloudSaveLocalMeta uploadMeta = m_meta;
+        long uploadedVersion = m_userSnapshotChangeVersion;
+        string uploadPlayerId = m_playerId;
         try
         {
             string writeLock = useWriteLock ? m_meta.snapshotWriteLock : null;
@@ -720,14 +747,29 @@ public partial class MPCloudSaveManager
                 useWriteLock && !string.IsNullOrEmpty(writeLock),
                 cancellationToken);
 
-            MarkUserSnapshotClean(newWriteLock);
+            if (!ReferenceEquals(uploadMeta, m_meta) || m_playerId != uploadPlayerId ||
+                MPLoginManager.Instance.PlayerId != uploadPlayerId)
+                return false;
+
+            if (uploadedVersion == m_userSnapshotChangeVersion)
+                MarkUserSnapshotClean(newWriteLock);
+            else
+            {
+                // 更新写锁供下一次上传使用，但保留新变更的 dirty 状态与时间。
+                m_meta.snapshotWriteLock = newWriteLock;
+                m_meta.hasUserSnapshotDirtyData = true;
+                m_meta.lastSyncedAtUtcTicks = snapshot.updatedAtUtcTicks;
+                RefreshGlobalDirtyFlag();
+            }
             await m_metaRepository.SaveAsync(m_meta, cancellationToken);
             m_metaRepository.SaveActivePlayerId(m_playerId);
             m_initialized = true;
-            return true;
+            return !m_meta.hasUserSnapshotDirtyData;
         }
         catch (CloudSaveConflictException exception)
         {
+            if (!ReferenceEquals(uploadMeta, m_meta) || MPLoginManager.Instance.PlayerId != uploadPlayerId)
+                return false;
             if (!allowConflictResolve)
             {
                 RememberError(exception.Message);
@@ -804,11 +846,19 @@ public partial class MPCloudSaveManager
     /// </summary>
     private async Task<bool> ResolveUserWriteConflictAsync(MPUserCloudSnapshot localSnapshot, CancellationToken cancellationToken)
     {
+        string conflictPlayerId = localSnapshot.playerId;
         MPCloudSaveLoadResult<MPUserCloudSnapshot> cloudResult = await LoadUserSnapshotSafeAsync(cancellationToken);
-        if (cloudResult == null)
+        if (cloudResult == null || m_playerId != conflictPlayerId || MPLoginManager.Instance.PlayerId != conflictPlayerId)
         {
             return false;
         }
+
+        MPLocalLoginProfile profile = await LoadLocalLoginProfileSafeAsync(cancellationToken);
+        if (m_playerId != conflictPlayerId || MPLoginManager.Instance.PlayerId != conflictPlayerId) return false;
+        // 等待云端期间仍可能领取宝箱；不能拿发请求前的旧快照覆盖当前用户数据。
+        localSnapshot = MPUser.instance.CreateCloudSnapshot();
+        ApplyLoginMetadata(localSnapshot, profile);
+        localSnapshot.updatedAtUtcTicks = m_meta.lastDirtyAtUtcTicks;
 
         if (!cloudResult.exists || cloudResult.value == null)
         {
@@ -816,9 +866,9 @@ public partial class MPCloudSaveManager
             return await UploadUserSnapshotAsync(localSnapshot, false, false, cancellationToken);
         }
 
+        if (!ValidateUserSnapshot(cloudResult.value, conflictPlayerId)) return false;
         m_meta.snapshotWriteLock = cloudResult.writeLock;
         MPUserCloudSnapshot mergedSnapshot = m_conflictResolver.Resolve(localSnapshot, cloudResult.value);
-        MPLocalLoginProfile profile = await LoadLocalLoginProfileSafeAsync(cancellationToken);
         ApplyLoginMetadata(mergedSnapshot, profile);
         ApplyUserSnapshot(mergedSnapshot);
 

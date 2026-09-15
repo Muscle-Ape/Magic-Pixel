@@ -197,7 +197,7 @@ public class MPLoginView : AWindow
             m_googlePlayGamesBtn,
             visible && configuration.EnableGooglePlayGamesLogin && MPGooglePlayGamesAuthService.IsCurrentPlatformSupported);
         SetButtonVisible(m_appleBtn, visible && configuration.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
-        SetButtonVisible(m_facebookBtn, visible && configuration.EnableFacebookLogin);
+        SetButtonVisible(m_facebookBtn, visible && MPReleaseFeatures.Facebook && configuration.EnableFacebookLogin);
         SetButtonVisible(m_guestBtn, visible && configuration.EnableAnonymousLogin && CanCreateGuest());
     }
 
@@ -284,6 +284,7 @@ public class MPLoginView : AWindow
     /// </summary>
     private void OnFacebookClick()
     {
+        if (!MPReleaseFeatures.Facebook) return;
         SetStatus("Facebook 登录页面已预留。接入 Facebook Access Token Adapter 后，可从这里调用 Unity Authentication 登录。");
     }
 

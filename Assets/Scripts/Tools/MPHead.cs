@@ -45,6 +45,7 @@ public sealed class MPHead : MonoBehaviour
         m_onCoin = onCoin;
         m_onFluorite = onFluorite;
         m_initialized = true;
+        MPReleaseFeatures.ApplyHead(transform);
         SetInteractable(true);
         if (isActiveAndEnabled)
             SetListeners(true);
@@ -124,8 +125,8 @@ public sealed class MPHead : MonoBehaviour
     {
         SetButtonInteractable(m_backButton, interactable);
         SetButtonInteractable(m_settingButton, interactable);
-        SetButtonInteractable(m_coinButton, interactable);
-        SetButtonInteractable(m_fluoriteButton, interactable);
+        SetButtonInteractable(m_coinButton, interactable && MPReleaseFeatures.Shop && MPReleaseFeatures.InAppPurchases);
+        SetButtonInteractable(m_fluoriteButton, interactable && MPReleaseFeatures.Shop && MPReleaseFeatures.InAppPurchases);
         if (m_openButtons != null)
             foreach (Button button in m_openButtons)
                 SetButtonInteractable(button, interactable);

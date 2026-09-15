@@ -1832,7 +1832,7 @@ GameObject:
   - component: {fileID: 4386848961007256973}
   - component: {fileID: 5128252650358714093}
   m_Layer: 5
-  m_Name: Fluorite
+  m_Name: Award
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -9,6 +9,48 @@ using UnityEngine;
 public class MPCloudSaveConflictResolver
 {
     /// <summary>
+    /// 同账号宝箱领取不可回退。领取列表与 main_chest 事务互相补齐，均不重新发奖。
+    /// 仅合并宝箱凭据，不合并金币，也不跨账号迁移记录。
+    /// </summary>
+    public static bool PreserveMainLevelChestClaims(MPUserCloudSnapshot target, MPUserCloudSnapshot other)
+    {
+        if (target == null || other == null || string.IsNullOrEmpty(target.playerId) ||
+            target.playerId != other.playerId) return false;
+        const string prefix = "main_chest:";
+        var claims = new HashSet<string>(StringComparer.Ordinal);
+        foreach (MPUserCloudSnapshot snapshot in new[] { target, other })
+        {
+            if (snapshot.mainLevel?.boxAwardClaimedList != null)
+                foreach (string id in snapshot.mainLevel.boxAwardClaimedList)
+                    if (!string.IsNullOrEmpty(id)) claims.Add(id);
+            if (snapshot.rewardProgress?.transactionIds != null)
+                foreach (string transaction in snapshot.rewardProgress.transactionIds)
+                    if (transaction != null && transaction.StartsWith(prefix, StringComparison.Ordinal) && transaction.Length > prefix.Length)
+                        claims.Add(transaction.Substring(prefix.Length));
+        }
+        if (claims.Count == 0) return false;
+        target.mainLevel = target.mainLevel ?? new MPUserMainLevelSnapshot();
+        target.mainLevel.boxAwardClaimedList = target.mainLevel.boxAwardClaimedList ?? new List<string>();
+        target.rewardProgress = target.rewardProgress ?? new MPRewardProgressSnapshot();
+        target.rewardProgress.transactionIds = target.rewardProgress.transactionIds ?? new List<string>();
+        bool changed = false;
+        foreach (string id in claims)
+        {
+            if (!target.mainLevel.boxAwardClaimedList.Contains(id))
+            {
+                target.mainLevel.boxAwardClaimedList.Add(id);
+                changed = true;
+            }
+            if (!target.rewardProgress.transactionIds.Contains(prefix + id))
+            {
+                target.rewardProgress.transactionIds.Add(prefix + id);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>
     /// 合并本地快照和云端快照。
     /// </summary>
     /// <param name="local">本地快照。</param>

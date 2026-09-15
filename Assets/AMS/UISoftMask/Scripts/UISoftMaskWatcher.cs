@@ -74,8 +74,8 @@ namespace AMS.UI.SoftMask
                 return;
             }
 
-            if (m_ExternalMaterial)
-                m_SoftMask?.UnregisterExternalMaterial(this, m_ExternalMaterial);
+            if (m_SoftMask)
+                m_SoftMask.UnregisterExternalMaterial(this, m_ExternalMaterial);
         }
 
         public Material GetModifiedMaterial(Material baseMaterial)
@@ -149,6 +149,9 @@ namespace AMS.UI.SoftMask
             }
 
             selectedMask.RegisterExternalMaterial(m_ExternalMaterial);
+            // 更换外部材质会注销旧记录，需要重新登记，否则共享副本可能被其他 Item 提前释放。
+            if (!selectedMask.maskableGraphicObjects.Contains(this))
+                selectedMask.maskableGraphicObjects.Add(this);
         }
 
         internal void SafeDestroy()

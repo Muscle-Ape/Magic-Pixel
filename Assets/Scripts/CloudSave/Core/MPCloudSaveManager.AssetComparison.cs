@@ -23,32 +23,43 @@ public partial class MPCloudSaveManager
         MPCloudSaveLoadResult<MPCustomLevelCloudSnapshot> customResult, bool accountSwitched,
         MPLocalLoginProfile profile, CancellationToken token)
     {
-        // 不把其他账号的资产带入新账号；只有同一账号双端都发生修改才需要人工决定。
-        if (accountSwitched || !HasAnyDirtyData() || !userResult.exists || userResult.value == null ||
-            !ValidateUserSnapshot(userResult.value, m_playerId)) return null;
-        MPUserCloudSnapshot localUser = MPUser.instance.CreateCloudSnapshot();
-        MPCustomLevelCloudSnapshot localCustom = MPUser.instance.CreateCustomLevelCloudSnapshot();
+        GuestSaveChoice guestChoice = GetGuestSaveChoice(profile);
+        // 跨账号仅允许明确从游客绑定冲突创建的存档选择，不做自动合并。
+        if (guestChoice == null && (accountSwitched || !HasAnyDirtyData())) return null;
+        if (userResult.value == null && !userResult.exists && guestChoice != null)
+            userResult.value = MPUserCloudSnapshot.CreateDefault(m_playerId, GetUnityEnvironmentName(),
+                ResolveLastLoginProvider(profile), ResolveHasBoundIdentity(profile));
+        if (userResult.value == null || !ValidateUserSnapshot(userResult.value, m_playerId))
+            return guestChoice == null ? (bool?)null : false;
+        // 已存在但无法读取的自定义存档不能当作空存档参与覆盖。
+        if (guestChoice != null && customResult.exists && customResult.value == null) return false;
+        MPUserCloudSnapshot localUser = guestChoice == null ? MPUser.instance.CreateCloudSnapshot() : CopySnapshot(guestChoice.user);
+        MPCustomLevelCloudSnapshot localCustom = guestChoice == null ? MPUser.instance.CreateCustomLevelCloudSnapshot() : CopySnapshot(guestChoice.custom);
         MPCustomLevelCloudSnapshot cloudCustom = customResult.value ?? MPCustomLevelCloudSnapshot.CreateDefault(
             m_playerId, GetUnityEnvironmentName(), ResolveLastLoginProvider(profile), ResolveHasBoundIdentity(profile));
         if (localUser.schemaVersion != userResult.value.schemaVersion || localCustom.schemaVersion != cloudCustom.schemaVersion)
-            return null;
+            return guestChoice == null ? (bool?)null : false;
         bool userConflict = m_meta.hasUserSnapshotDirtyData && userResult.value.updatedAtUtcTicks > m_meta.lastSyncedAtUtcTicks &&
             HasHighRiskUserDifference(localUser, userResult.value);
         bool customConflict = m_meta.hasCustomLevelDirtyData && cloudCustom.updatedAtUtcTicks > m_meta.lastSyncedAtUtcTicks &&
             HasCustomContentConflict(localCustom, cloudCustom);
-        if (!userConflict && !customConflict) return null;
+        if (guestChoice == null && !userConflict && !customConflict) return null;
         if (!string.IsNullOrEmpty(cloudCustom.playerId) && cloudCustom.playerId != m_playerId) return false;
         m_assetComparisonPending = true;
         m_assetComparisonNeedsResolution = true;
 
-        localUser.updatedAtUtcTicks = m_meta.lastDirtyAtUtcTicks;
-        localCustom.updatedAtUtcTicks = m_meta.lastDirtyAtUtcTicks;
-        ApplyLoginMetadata(localUser, profile);
-        ApplyLoginMetadata(localCustom, profile);
+        if (guestChoice == null)
+        {
+            localUser.updatedAtUtcTicks = m_meta.lastDirtyAtUtcTicks;
+            localCustom.updatedAtUtcTicks = m_meta.lastDirtyAtUtcTicks;
+            ApplyLoginMetadata(localUser, profile);
+            ApplyLoginMetadata(localCustom, profile);
+        }
         MPAssetComparisonPopUIMsgData data = new MPAssetComparisonPopUIMsgData
         {
             localUser = CopySnapshot(localUser), cloudUser = CopySnapshot(userResult.value),
-            localCustom = CopySnapshot(localCustom), cloudCustom = CopySnapshot(cloudCustom)
+            localCustom = CopySnapshot(localCustom), cloudCustom = CopySnapshot(cloudCustom),
+            isGuestAccountChoice = guestChoice != null
         };
         string originalPlayerId = m_playerId;
         bool alreadyCommitted = false;
@@ -73,8 +84,15 @@ public partial class MPCloudSaveManager
                 candidateUser = CopySnapshot(useLocal ? data.localUser : data.cloudUser);
                 candidateCustom = CopySnapshot(useLocal ? data.localCustom : data.cloudCustom);
                 ApplyLoginMetadata(candidateUser, profile);
+                // 选择某侧资产也不能重新领取同账号已经领取过的宝箱。
+                if (guestChoice == null)
+                {
+                    MPCloudSaveConflictResolver.PreserveMainLevelChestClaims(candidateUser, data.localUser);
+                    MPCloudSaveConflictResolver.PreserveMainLevelChestClaims(candidateUser, data.cloudUser);
+                }
                 ApplyLoginMetadata(candidateCustom, profile);
-                candidateUser.updatedAtUtcTicks = candidateCustom.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
+                if (guestChoice == null || useLocal)
+                    candidateUser.updatedAtUtcTicks = candidateCustom.updatedAtUtcTicks = DateTime.UtcNow.Ticks;
             }
 
             // 单条备份保留两侧原件，网络失败、写锁冲突和本地写失败都不会丢弃它们。
@@ -93,8 +111,18 @@ public partial class MPCloudSaveManager
                         committedLocks.TryGetValue(MPCloudSaveConstants.USER_SNAPSHOT_KEY, out userWriteLock);
                         committedLocks.TryGetValue(MPCloudSaveConstants.CUSTOM_LEVEL_SNAPSHOT_KEY, out customWriteLock);
                     }
-                    committedLocks = await m_cloudSaveApi.SaveSnapshotPairAsync(candidateUser, userWriteLock,
-                        candidateCustom, customWriteLock, confirmationToken);
+                    if (guestChoice != null && !useLocal)
+                    {
+                        // 选择已有账号只读取应用，不用游客数据写回服务器。
+                        committedLocks = new Dictionary<string, string>
+                        {
+                            [MPCloudSaveConstants.USER_SNAPSHOT_KEY] = userWriteLock,
+                            [MPCloudSaveConstants.CUSTOM_LEVEL_SNAPSHOT_KEY] = customWriteLock
+                        };
+                    }
+                    else
+                        committedLocks = await m_cloudSaveApi.SaveSnapshotPairAsync(candidateUser, userWriteLock,
+                            candidateCustom, customWriteLock, confirmationToken);
                     pendingUser = candidateUser;
                     pendingCustom = candidateCustom;
                     committedUseLocal = useLocal;
@@ -107,6 +135,7 @@ public partial class MPCloudSaveManager
                 MarkUserSnapshotClean(userLock);
                 MarkCustomLevelSnapshotClean(customLock);
                 await m_metaRepository.SaveAsync(m_meta, CancellationToken.None);
+                CompleteGuestSaveChoice(guestChoice);
                 alreadyCommitted = true;
                 m_assetComparisonPending = false;
                 m_assetComparisonNeedsResolution = false;
@@ -118,6 +147,10 @@ public partial class MPCloudSaveManager
                 if (MPLoginManager.Instance.PlayerId != originalPlayerId) return false;
                 MPCloudSaveLoadResult<MPUserCloudSnapshot> refreshedUser = await LoadUserSnapshotSafeAsync(confirmationToken);
                 MPCloudSaveLoadResult<MPCustomLevelCloudSnapshot> refreshedCustom = await LoadCustomLevelSnapshotSafeAsync(confirmationToken);
+                // 尚未创建自定义关卡的账号可能没有独立存档键，这不属于读取失败。
+                if (refreshedCustom != null && !refreshedCustom.exists && refreshedCustom.value == null)
+                    refreshedCustom.value = MPCustomLevelCloudSnapshot.CreateDefault(originalPlayerId,
+                        GetUnityEnvironmentName(), ResolveLastLoginProvider(profile), ResolveHasBoundIdentity(profile));
                 if (refreshedUser?.value != null && refreshedCustom?.value != null &&
                     refreshedUser.value.schemaVersion == data.localUser.schemaVersion &&
                     refreshedCustom.value.schemaVersion == data.localCustom.schemaVersion &&

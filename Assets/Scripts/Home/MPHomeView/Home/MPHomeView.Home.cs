@@ -253,7 +253,7 @@ public partial class MPHomeView
         for (int i = 0; i < source.Count; i++)
         {
             MPPetConfig config = source[i];
-            if (config == null)
+            if (config == null || !MPReleaseFeatures.IsHomePetVisible(config.ID))
                 continue;
 
             if (MPUser.instance.PetIsUnlock(config.ID))
@@ -500,6 +500,8 @@ public partial class MPHomeView
     private void StartHomeRewardCountdown()
     {
         StopHomeRewardCountdown();
+        // 入口关闭时不启动每秒刷新，也不触发奖励计时初始化。
+        if (!MPReleaseFeatures.HomeReward) return;
         RefreshHomeRewardButton();
         m_rewardCountdownCoroutine = StartCoroutine(HomeRewardCountdownRoutine());
     }
@@ -548,6 +550,7 @@ public partial class MPHomeView
 
     private void OnHomeRewardClick()
     {
+        if (!MPReleaseFeatures.HomeReward) return;
         if (!MPUser.instance.TryClaimHomeReward(out MPRewardReceipt receipt))
         {
             RefreshHomeRewardButton();
@@ -561,6 +564,8 @@ public partial class MPHomeView
 
     private void OnSignInClick()
     {
+        // 首发暂不开放签到，保留原流程供后续恢复。
+        if (!MPReleaseFeatures.SignIn) return;
         // 主动查看不受可领取条件限制；空配置、今日已领、全部领完都允许打开。
         // 记录本次已查看，关闭后不会立刻被首页的自动提示再次打断。
         try
@@ -595,6 +600,9 @@ public partial class MPHomeView
         yield return null;
         m_homePopupCoroutine = null;
         if (!IsFocus || IsDestoried || !m_initialized) yield break;
+        if (MPPetClaimPop.ShowMilestoneNotification(MPUser.LEVEL_50_PET_ID, this, RefreshHomePets))
+            yield break;
+        if (!MPReleaseFeatures.SignIn) yield break;
         try
         {
             MPSignInStatus signIn = MPUser.instance.GetSignInStatus();

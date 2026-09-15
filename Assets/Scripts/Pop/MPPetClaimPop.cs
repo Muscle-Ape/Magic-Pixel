@@ -44,6 +44,28 @@ public sealed class MPPetClaimPop : AWindow
 
     protected override bool ShouldAdaptToNotchScreen() => false;
 
+    /// <summary>里程碑奖励已经入账：Later 只关闭，Use Now 只切换宠物，不再次发奖。</summary>
+    public static bool ShowMilestoneNotification(string petId, AWindow source, Action onSelected = null)
+    {
+        if (source == null || source.IsDestoried || !source.IsFocus) return false;
+        MPUser user = MPUser.instance;
+        MPPetConfig pet = user.GetPendingMilestonePet(petId);
+        if (pet == null) return false;
+        string owner = user.GetRewardProgressOwner();
+        MPPetClaimPop pop = Show(pet,
+            () => user.GetRewardProgressOwner() == owner && user.PetIsUnlock(petId),
+            () =>
+            {
+                if (user.GetRewardProgressOwner() != owner) return;
+                user.SetSelectedPet(petId);
+                onSelected?.Invoke();
+            }, pet.UnlockText, source);
+        if (pop == null || pop.IsDestoried) return false;
+        // 创建成功才标记已展示；重进主页或重复通关不会再次弹出。
+        user.MarkPetUnlockNotificationSeen(petId);
+        return true;
+    }
+
     /// <summary>标准宠物奖励领取入口。只在点击 Collect 确认时提交领取记录。</summary>
     public static MPPetClaimPop Show(MPPetConfig pet, Action onClaimed = null,
         string sourceName = null, AWindow sourceWindow = null)

@@ -174,6 +174,8 @@ public partial class MPGameView
     /// </summary>
     private void FadeSettlementUI()
     {
+        // 宠物和数字框在同一阶段、以相同时长淡出。
+        FadeGraphics(m_gamePetImage == null ? null : m_gamePetImage.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_titleText.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_lovesNode, SETTLEMENT_NUMBER_FADE_DURATION);
         FadeGraphics(m_backgroundFloor == null ? null : m_backgroundFloor.rectTransform, SETTLEMENT_NUMBER_FADE_DURATION);

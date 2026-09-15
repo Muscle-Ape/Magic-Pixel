@@ -457,8 +457,11 @@ namespace AMS.UI.SoftMask
                 return;
 
             // TODO: Check impact of have instance external material per mask group
-            if (!material || ExternalMaterialData.FindData(m_ExternalMaterialsData, material, out _))
-                return;
+            if (ExternalMaterialData.FindData(m_ExternalMaterialsData, material, out var existingData))
+            {
+                if (existingData.instanceMaterial) return;
+                m_ExternalMaterialsData.Remove(existingData);
+            }
 
             var mewInstance = new Material(material)
             {
@@ -472,22 +475,24 @@ namespace AMS.UI.SoftMask
 
         public void UnregisterExternalMaterial(UISoftMaskWatcher watcher, Material material)
         {
+            // 即使 UGUI 已销毁源材质，也必须移除失效的 Watcher 引用。
+            maskableGraphicObjects.Remove(watcher);
             if (!material)
                 return;
 
-            maskableGraphicObjects.Remove(watcher);
-
             for (var i = 0; i < maskableGraphicObjects.Count; i++)
             {
-                if (maskableGraphicObjects[i].maskableObject is { } maskableGraphic &&
-                    maskableGraphic.material == material)
+                var otherWatcher = maskableGraphicObjects[i];
+                // 外部源可能是 StencilMaterial，不等于 Graphic.material，按实际注册的材质判断共享。
+                if (otherWatcher && otherWatcher.isActiveAndEnabled && otherWatcher.externalMaterial == material)
                     return;
             }
 
             if (!ExternalMaterialData.FindData(m_ExternalMaterialsData, material, out var foundData))
                 return;
 
-            if (foundData.instanceMaterial is { } instanceMat)
+            var instanceMat = foundData.instanceMaterial;
+            if (instanceMat)
                 SafeDestroyMaterial(instanceMat);
 
             m_ExternalMaterialsData.Remove(foundData);
@@ -525,11 +530,28 @@ namespace AMS.UI.SoftMask
 
         private void UpdateExternalMaterials()
         {
-            for (var i = 0; i < m_ExternalMaterialsData.Count; i++)
+            bool cacheChanged = false;
+            for (var i = m_ExternalMaterialsData.Count - 1; i >= 0; i--)
             {
-                if (m_ExternalMaterialsData[i] is not
-                    { instanceMaterial: { } instanceMaterial, keyMaterial: { } keyMaterial } externalMaterialData)
+                var externalMaterialData = m_ExternalMaterialsData[i];
+                if (externalMaterialData == null)
+                {
+                    m_ExternalMaterialsData.RemoveAt(i);
+                    cacheChanged = true;
                     continue;
+                }
+
+                var instanceMaterial = externalMaterialData.instanceMaterial;
+                var keyMaterial = externalMaterialData.keyMaterial;
+                // Unity 对象销毁后仍有 C# 包装引用，必须使用 Unity 的有效性判断，不能用 is { }。
+                if (!keyMaterial || !instanceMaterial)
+                {
+                    m_ExternalMaterialsData.RemoveAt(i);
+                    cacheChanged = true;
+                    // 只释放 SoftMask 自建的副本，不销毁 UGUI/TMP 或资源系统管理的源材质。
+                    if (instanceMaterial) SafeDestroyMaterial(instanceMaterial);
+                    continue;
+                }
 
                 if (keyMaterial.shader != instanceMaterial.shader)
                     instanceMaterial.shader = keyMaterial.shader;
@@ -538,6 +560,8 @@ namespace AMS.UI.SoftMask
 
                 UpdateMaterial(externalMaterialData.instanceMaterial);
             }
+            // 仅在缓存失效时请求重建，让仍显示的 Graphic 获取有效副本。
+            if (cacheChanged) SetMaskableMaterialDirty();
         }
 
         private void UpdateFontMaterials()
@@ -549,10 +573,12 @@ namespace AMS.UI.SoftMask
 
                 foreach (var pair in fontData.Instances)
                 {
-                    if (pair.Value is not { } instanceFontMaterial)
+                    var instanceFontMaterial = pair.Value;
+                    if (!instanceFontMaterial)
                         continue;
 
-                    if (fontData.GetRelativeKeyMaterial(pair.Key) is { } fontMaterial)
+                    var fontMaterial = fontData.GetRelativeKeyMaterial(pair.Key);
+                    if (fontMaterial)
                     {
                         if (fontMaterial.shader != instanceFontMaterial.shader)
                             instanceFontMaterial.shader = fontMaterial.shader;
@@ -621,6 +647,7 @@ namespace AMS.UI.SoftMask
 
         internal void SafeDestroyMaterial(Material target)
         {
+            if (!target) return;
 #if UNITY_EDITOR
             if (Application.isPlaying)
                 Destroy(target);
@@ -681,8 +708,11 @@ namespace AMS.UI.SoftMask
                 m_TempMaterial.SetInt(s_WORLDCANVAS, value);
 
             for (var i = 0; i < m_ExternalMaterialsData.Count; i++)
-                if (m_ExternalMaterialsData[i].instanceMaterial is { } externalMat)
+            {
+                var externalMat = m_ExternalMaterialsData[i]?.instanceMaterial;
+                if (externalMat)
                     externalMat.SetInt(s_WORLDCANVAS, value);
+            }
 
             for (var i = 0; i < TMPFontMaterialData.Count; i++)
             {
@@ -690,7 +720,7 @@ namespace AMS.UI.SoftMask
                     continue;
 
                 foreach (var pair in instances)
-                    pair.Value?.SetInt(s_WORLDCANVAS, value);
+                    if (pair.Value) pair.Value.SetInt(s_WORLDCANVAS, value);
             }
         }
 
@@ -1018,8 +1048,8 @@ namespace AMS.UI.SoftMask
             for (var i = 0; i < maskableGraphicObjects.Count; i++)
             {
                 var watcher = maskableGraphicObjects[i];
-                if (watcher)
-                    watcher.maskableObject?.SetMaterialDirty();
+                if (watcher && watcher.maskableObject)
+                    watcher.maskableObject.SetMaterialDirty();
             }
         }
 

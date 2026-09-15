@@ -168,19 +168,22 @@ public partial class MPUser
     }
 
     /// <summary>
-    /// 尝试领取大图模式关卡通关金币奖励，每个关卡只允许领取一次。
+    /// 尝试领取大图模式配置的通关奖励，每个关卡只允许领取一次。
     /// </summary>
     /// <param name="levelInfo">大图模式关卡配置。</param>
     /// <returns>本次是否成功领取奖励。</returns>
-    public bool TryClaimLargeImageLevelCoinAward(MPLargeImageBlockInfo levelInfo)
+    public bool TryClaimLargeImageLevelBoxAward(MPLargeImageBlockInfo levelInfo)
     {
-        return TryClaimLargeImageLevelCoinAward(levelInfo, out _);
+        return TryClaimLargeImageLevelBoxAward(levelInfo, out _);
     }
 
-    public bool TryClaimLargeImageLevelCoinAward(MPLargeImageBlockInfo levelInfo, out MPRewardReceipt receipt)
+    public bool TryClaimLargeImageLevelBoxAward(MPLargeImageBlockInfo levelInfo, out MPRewardReceipt receipt)
     {
         receipt = null;
-        if (levelInfo == null || string.IsNullOrEmpty(levelInfo.ID) || levelInfo.AwardCoin <= 0)
+        MPMainLevelBoxAward award = levelInfo?.BoxAward;
+        string rewardType = MPRewardPresentation.NormalizeType(award?.Type);
+        MPPetConfig rewardPet = MPRewardPresentation.RewardPet(award?.Type);
+        if (levelInfo == null || string.IsNullOrEmpty(levelInfo.ID) || award?.IsValid != true || (rewardType == null && rewardPet == null))
         {
             return false;
         }
@@ -196,8 +199,10 @@ public partial class MPUser
             sourceId = levelInfo.ID,
             sourceName = "Large image completed",
             transactionId = "large_completed:" + levelInfo.ID,
-            rewards = new List<MPRewardItem> { new MPRewardItem("coin", levelInfo.AwardCoin) }
+            // 和主关卡一致：type 可直接填写宠物 ID，宠物只记拥有状态，不累计数量。
+            rewards = new List<MPRewardItem> { new MPRewardItem(rewardPet != null ? rewardPet.ID : rewardType, rewardPet != null ? 1 : award.Count) }
         };
+        // 沿用已有领取 Key 和事务 ID，配置更换奖励类型不会让同一关卡重复发奖。
         if (!TryCommitReward(result, null,
             file => file.Save(m_key_largeimagelevel_coin_award_claimed, claimed),
             () => m_largeimagelevel_coin_award_claimed = claimed, MPCloudSaveDirtyReason.LargeImageLevel))

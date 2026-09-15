@@ -67,7 +67,10 @@ public class MPLargeImageLevelUnlockPop : AWindow
     /// 解锁成功后刷新关卡列表的回调。
     /// </summary>
     private Action m_refreshAction;
-    [TransformPath("View/Window/Fluorite/Info")] private TMP_Text m_rewardText;
+    [TransformPath("View/Window/Award/Name")] private TMP_Text m_rewardName;
+    [TransformPath("View/Window/Award/Info")] private TMP_Text m_rewardText;
+    [TransformPath("View/Window/Award/Icon")] private Image m_rewardIcon;
+    private string m_rewardIconLocation;
     private Action m_openSubscription;
     private bool m_busy;
     private bool m_closing;
@@ -76,6 +79,7 @@ public class MPLargeImageLevelUnlockPop : AWindow
 
     public override void OnCreate()
     {
+        MPReleaseFeatures.ApplyUnlock(transform);
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
         RegisterUI();
     }
@@ -102,6 +106,7 @@ public class MPLargeImageLevelUnlockPop : AWindow
         m_released = true;
         ++m_operationVersion;
         UnregisterUI();
+        ClearRewardIcon();
         m_refreshAction = null;
         m_openSubscription = null;
     }
@@ -172,10 +177,19 @@ public class MPLargeImageLevelUnlockPop : AWindow
             m_fluoriteCostText.text = $"Unlock for {UNLOCK_FLUORITE_COST}";
         }
 
+        MPMainLevelBoxAward award = m_levelInfo?.BoxAward;
+        MPPetConfig rewardPet = MPRewardPresentation.RewardPet(award?.Type);
+        string rewardType = rewardPet != null ? "pet" : MPRewardPresentation.NormalizeType(award?.Type);
+        bool hasAward = award?.IsValid == true && rewardType != null;
+        if (m_rewardName != null)
+            m_rewardName.text = !hasAward ? string.Empty : rewardPet != null ? "Pet" : MPRewardPresentation.Name(rewardType);
+        RefreshRewardIcon(hasAward ? "large_item_award_icon_" + rewardType : null);
         if (m_rewardText != null)
         {
             m_rewardText.richText = true;
-            m_rewardText.text = $"<size=56><b>{Mathf.Max(0, m_levelInfo?.AwardCoin ?? 0)}</b></size> Coins";
+            m_rewardText.text = !hasAward ? string.Empty : rewardPet != null
+                ? rewardPet.Name
+                : $"<size=56><b>{award.Count}</b></size> {MPRewardPresentation.CountUnit(award.Type)}";
         }
 
         if (m_sizeText != null && m_levelInfo != null)
@@ -183,6 +197,35 @@ public class MPLargeImageLevelUnlockPop : AWindow
             Vector2Int size = MPLargeImageLevelModel.GetLevelSize(m_levelInfo);
             m_sizeText.text = $"{size.x}x{size.y}";
         }
+    }
+
+    /// <summary>奖励图标与大图列表使用相同资源，未改变类型时不重复加载。</summary>
+    private void RefreshRewardIcon(string location)
+    {
+        if (m_rewardIcon == null) return;
+        if (m_rewardIconLocation == location && m_rewardIcon.sprite != null) return;
+        ClearRewardIcon();
+        if (string.IsNullOrEmpty(location)) return;
+        try
+        {
+            m_rewardIcon.sprite = MPLoad.Load<Sprite>(location, m_rewardIcon);
+            m_rewardIcon.enabled = m_rewardIcon.sprite != null;
+            m_rewardIconLocation = location;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPLargeImageLevelUnlockPop] 奖励图标加载失败：{location}，{exception.Message}");
+        }
+    }
+
+    /// <summary>切换奖励和关闭弹窗时释放图标，资源缺失时不残留旧图或显示白块。</summary>
+    private void ClearRewardIcon()
+    {
+        m_rewardIconLocation = null;
+        if (m_rewardIcon == null) return;
+        m_rewardIcon.sprite = null;
+        m_rewardIcon.enabled = false;
+        MPLoad.ReleaseAll(m_rewardIcon);
     }
 
     /// <summary>
@@ -214,6 +257,7 @@ public class MPLargeImageLevelUnlockPop : AWindow
     /// <summary>仅广告准备成功且获得奖励回调时解锁，关闭或重复回调不再处理。</summary>
     private void OnAdClick()
     {
+        if (!MPReleaseFeatures.Ads) return;
         if (!CanUnlock()) return;
         SetBusy(true);
         int version = ++m_operationVersion;
@@ -239,6 +283,7 @@ public class MPLargeImageLevelUnlockPop : AWindow
     /// <summary>仅通知调用方打开订阅弹窗，订阅模块负责后续购买与权益处理。</summary>
     private void OnVipClick()
     {
+        if (!MPReleaseFeatures.Vip || !MPReleaseFeatures.InAppPurchases) return;
         if (m_busy || m_closing || m_released || IsDestoried || m_openSubscription == null) return;
         SetBusy(true);
         try

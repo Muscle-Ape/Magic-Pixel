@@ -76,6 +76,7 @@ public class MPLevelUnlockPop : AWindow
 
     public override void OnCreate()
     {
+        MPReleaseFeatures.ApplyUnlock(transform);
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
         RegisterUI();
     }
@@ -206,6 +207,7 @@ public class MPLevelUnlockPop : AWindow
     /// <summary>仅广告准备成功且获得奖励回调时解锁，关闭或重复回调不再处理。</summary>
     private void OnAdClick()
     {
+        if (!MPReleaseFeatures.Ads) return;
         if (!CanUnlock()) return;
         SetBusy(true);
         int version = ++m_operationVersion;
@@ -231,6 +233,7 @@ public class MPLevelUnlockPop : AWindow
     /// <summary>仅通知调用方打开订阅弹窗，订阅模块负责后续购买与权益处理。</summary>
     private void OnVipClick()
     {
+        if (!MPReleaseFeatures.Vip || !MPReleaseFeatures.InAppPurchases) return;
         if (m_busy || m_closing || m_released || IsDestoried || m_openSubscription == null) return;
         SetBusy(true);
         try

@@ -21,8 +21,11 @@ public static class MPLoginErrorCodes
     /// <summary>账号被禁用、删除或暂不可用。</summary>
     public const string AccountDisabled = "ACCOUNT_DISABLED";
 
-    /// <summary>账号绑定冲突。</summary>
+    /// <summary>第三方身份已经关联到另一个游戏账号，才允许提示切换账号。</summary>
     public const string AccountBindingConflict = "ACCOUNT_BINDING_CONFLICT";
+
+    /// <summary>当前游戏账号已有同类型绑定，不等于第三方身份关联了其他游戏账号。</summary>
+    public const string AccountProviderAlreadyLinked = "ACCOUNT_PROVIDER_ALREADY_LINKED";
 
     /// <summary>第三方平台 SDK 尚未接入或未初始化。</summary>
     public const string PlatformSdkNotReady = "PLATFORM_SDK_NOT_READY";

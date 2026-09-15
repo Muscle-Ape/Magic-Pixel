@@ -92,8 +92,25 @@ public sealed class MPLoadingView : AWindow
             return;
         m_loginSucceeded = data.OnLoginSucceeded;
         m_retry = RetryLogin;
+        if (data.InitialProvider != MPLoginType.None)
+        {
+            m_retry = () => _ = BeginConflictAccountLoginAsync(data.InitialProvider);
+            _ = BeginConflictAccountLoginAsync(data.InitialProvider);
+            return;
+        }
         // 主动打开登录选择页不是异常，不显示“已登出/请选择登录方式”等常规状态。
         ShowLogin(data.StartupResult, data.StartupResult?.action != MPLoginStartupAction.ShowLoginSelection);
+    }
+
+    /// <summary>绑定冲突后读取已有第三方账号；不创建新账号，加载页一直遮住尚未选定的游客数据。</summary>
+    private async Task BeginConflictAccountLoginAsync(MPLoginType provider)
+    {
+        // 等 UIManager 完成本页历史栈登记，避免在 LoadUIMsgData 内嵌套打开资产选择弹窗。
+        await Task.Yield();
+        if (this == null || IsDestoried || m_lifetime == null || m_lifetime.IsCancellationRequested || m_busy) return;
+        m_stage = Stage.Login;
+        await RunLoginAsync(token => MPLoginManager.Instance.LoginWithProviderAsync(provider,
+            new MPThirdPartyLoginRequest { loginType = provider, provider = provider, createAccount = false }, token));
     }
 
     /// <summary>进入不可交互的加载阶段，并启动不受 Time.timeScale 影响的假进度动画。</summary>
@@ -224,7 +241,7 @@ public sealed class MPLoadingView : AWindow
         m_anonymousButton.gameObject.SetActive(config.EnableAnonymousLogin);
         m_googleButton.gameObject.SetActive(config.EnableGooglePlayGamesLogin && MPGooglePlayGamesAuthService.IsCurrentPlatformSupported);
         m_appleButton.gameObject.SetActive(config.EnableAppleLogin && MPAppleAuthAdapter.IsCurrentPlatformSupported);
-        m_facebookButton.gameObject.SetActive(config.EnableFacebookLogin);
+        m_facebookButton.gameObject.SetActive(MPReleaseFeatures.Facebook && config.EnableFacebookLogin);
         RefreshLoginHeight();
     }
 
@@ -318,6 +335,7 @@ public sealed class MPLoadingView : AWindow
     /// <summary>选择 Facebook 登录；具体授权能力由项目中的 Facebook 适配器提供。</summary>
     private void OnFacebookClick()
     {
+        if (!MPReleaseFeatures.Facebook) return;
         _ = RunLoginAsync(token => MPLoginManager.Instance.LoginWithProviderAsync(MPLoginType.Facebook,
             new MPThirdPartyLoginRequest { createAccount = true }, token));
     }
@@ -359,6 +377,8 @@ public sealed class MPLoadingView : AWindow
             }
 
             BeginLoading();
+            // 已授权后重试只处理存档选择/同步，不重复拉起 Apple 授权。
+            m_retry = RetryLogin;
             if (m_startupLoginSucceeded != null)
             {
                 // 启动器仍需完成资源、用户数据等步骤，此处不能直接填满进度或关闭页面。
@@ -452,11 +472,14 @@ public sealed class MPLoadingViewUIMsgData : UIMsgData
     public MPLoginStartupResult StartupResult { get; }
     /// <summary>账号登录、数据同步与窗口收尾全部完成后的通知回调。</summary>
     public Action<MPLoginResult> OnLoginSucceeded { get; }
+    public MPLoginType InitialProvider { get; }
 
     /// <summary>封装页面初始状态和可选的成功回调。</summary>
-    public MPLoadingViewUIMsgData(MPLoginStartupResult startupResult, Action<MPLoginResult> onLoginSucceeded = null)
+    public MPLoadingViewUIMsgData(MPLoginStartupResult startupResult, Action<MPLoginResult> onLoginSucceeded = null,
+        MPLoginType initialProvider = MPLoginType.None)
     {
         StartupResult = startupResult;
         OnLoginSucceeded = onLoginSucceeded;
+        InitialProvider = initialProvider;
     }
 }

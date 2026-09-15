@@ -27,7 +27,8 @@ internal sealed class MPLevelEditorData
     public bool IsExisting;
     public string ID;
     public string Name;
-    public int AwardCoin;
+    public string AwardType = "fluorite";
+    public int AwardCount;
     public int Size;
     public Color[] Colors;
     public bool[] ColorAssigned;
@@ -190,7 +191,8 @@ internal static class MPLevelEditorStorage
         List<int> blockIndexes;
         List<int> defaultBlankIndexes = new List<int>();
         string levelName = string.Empty;
-        int awardCoin = 0;
+        string awardType = "fluorite";
+        int awardCount = 0;
         if (mode == MPLevelEditorMode.Main)
         {
             List<MPMainLevelEditorJsonRecord> records = LoadMainRecords()
@@ -219,7 +221,8 @@ internal static class MPLevelEditorStorage
 
             MPLargeImageLevelEditorJsonRecord record = records[0];
             levelName = record.name ?? string.Empty;
-            awardCoin = record.awardCoin;
+            awardType = record.boxAward?.type ?? "fluorite";
+            awardCount = record.boxAward?.count ?? 0;
             blockIndexes = record.block ?? new List<int>();
         }
 
@@ -262,7 +265,8 @@ internal static class MPLevelEditorStorage
             IsExisting = true,
             ID = id,
             Name = levelName,
-            AwardCoin = awardCoin,
+            AwardType = awardType,
+            AwardCount = awardCount,
             Size = size,
             Colors = colors,
             ColorAssigned = Enumerable.Repeat(true, cellCount).ToArray(),
@@ -402,7 +406,7 @@ internal static class MPLevelEditorStorage
 
             updatedRecord = matchedRecords[0];
             updatedRecord.name = data.Name;
-            updatedRecord.awardCoin = data.AwardCoin;
+            updatedRecord.boxAward = new MPMainLevelEditorBoxAwardJsonRecord { type = data.AwardType, count = data.AwardCount };
             updatedRecord.block = blockIndexes;
         }
         else
@@ -416,7 +420,7 @@ internal static class MPLevelEditorStorage
             {
                 id = data.ID,
                 name = data.Name,
-                awardCoin = data.AwardCoin,
+                boxAward = new MPMainLevelEditorBoxAwardJsonRecord { type = data.AwardType, count = data.AwardCount },
                 block = blockIndexes,
             };
         }
@@ -1170,10 +1174,25 @@ internal static class MPLevelEditorStorage
         public List<int> block = new List<int>();
     }
 
-    /// <summary>
-    /// 编辑器程序集专用的宝箱奖励 JSON 结构。
-    /// MagicPixel.Editor 不能直接引用 Assembly-CSharp 中的运行时数据类型。
-    /// </summary>
+    /// <summary>编辑器不能依赖运行时程序集，直接用配置校验宠物奖励 ID。</summary>
+    public static bool IsPetRewardType(string type)
+    {
+        if (string.IsNullOrWhiteSpace(type)) return false;
+        try
+        {
+            var pets = ReadJson<List<MPPetRewardEditorJsonRecord>>("Assets/YooRes/Config/pets_config.json");
+            return pets != null && pets.Any(pet => pet != null && pet.id == type.Trim());
+        }
+        catch (Exception) { return false; }
+    }
+
+    private sealed class MPPetRewardEditorJsonRecord
+    {
+        [JsonProperty("id")]
+        public string id;
+    }
+
+    /// <summary>编辑器程序集专用的宝箱奖励 JSON 结构，不引用运行时程序集。</summary>
     [Serializable]
     private sealed class MPMainLevelEditorBoxAwardJsonRecord
     {
@@ -1193,8 +1212,8 @@ internal static class MPLevelEditorStorage
         [JsonProperty(Order = 1)]
         public string name;
 
-        [JsonProperty("award_coin", Order = 2)]
-        public int awardCoin;
+        [JsonProperty("box_award", Order = 2)]
+        public MPMainLevelEditorBoxAwardJsonRecord boxAward;
 
         [JsonProperty(Order = 3)]
         public List<int> block = new List<int>();

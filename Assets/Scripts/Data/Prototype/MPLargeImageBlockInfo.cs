@@ -17,10 +17,10 @@ public class MPLargeImageBlockInfo
     private string name;
 
     /// <summary>
-    /// 通关奖励金币数量。
+    /// 通关奖励，与主关卡宝箱使用相同的类型和数量结构。
     /// </summary>
-    [JsonProperty("award_coin")]
-    private int awardCoin;
+    [JsonProperty("box_award")]
+    private MPMainLevelBoxAward boxAward;
 
     /// <summary>
     /// 方块位置信息
@@ -33,7 +33,7 @@ public class MPLargeImageBlockInfo
 
     public string Name { get => name; }
 
-    public int AwardCoin { get => awardCoin; }
+    public MPMainLevelBoxAward BoxAward => boxAward;
 
     public List<int> Block { get => block; }
 }

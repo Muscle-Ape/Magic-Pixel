@@ -45,9 +45,13 @@ public partial class MPUser
         if (total == m_playerExperience)
             return;
 
+        bool reachedLevel50 = 1 + m_playerExperience / EXPERIENCE_PER_LEVEL < 50
+            && 1 + total / EXPERIENCE_PER_LEVEL >= 50;
         ES3.Save(PLAYER_EXPERIENCE_KEY_PREFIX + m_experienceOwner, total);
         m_playerExperience = total;
         NotifyCloudSaveDirty(MPCloudSaveDirtyReason.PlayerExperience);
+        if (reachedLevel50)
+            GrantLevel50Pet();
         NotifyExperienceChanged();
     }
 

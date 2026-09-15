@@ -13,6 +13,7 @@ public sealed class MPAssetComparisonPopUIMsgData : UIMsgData
 {
     public MPUserCloudSnapshot localUser, cloudUser;
     public MPCustomLevelCloudSnapshot localCustom, cloudCustom;
+    public bool isGuestAccountChoice;
 
     // VIP 与 No Ads 目前还没有接入用户存档，先由弹窗数据提供扩展入口。
     // 未赋值时默认按未拥有展示，不会影响现有云存档结构。
@@ -68,6 +69,7 @@ public class MPAssetComparisonPop : AWindow
     {
         m_lifetime = new CancellationTokenSource();
         BuildItemViews();
+        MPReleaseFeatures.ApplyAssetComparison(transform);
 
         m_localBtn.onClick.RemoveListener(ChooseLocal);
         m_cloudBtn.onClick.RemoveListener(ChooseCloud);
@@ -87,6 +89,12 @@ public class MPAssetComparisonPop : AWindow
         }
 
         RefreshDisplay();
+        if (m_data?.isGuestAccountChoice == true)
+        {
+            TMP_Text desc = transform.Find("View/Window/Desc")?.GetComponent<TMP_Text>();
+            if (desc != null)
+                desc.text = "Local: current guest progress. Cloud: existing account progress. Your guest save will be kept separately.";
+        }
     }
 
     /// <summary>按 Content 中的预制顺序缓存十个对比 Item，不在运行时创建 UI。</summary>
@@ -155,7 +163,7 @@ public class MPAssetComparisonPop : AWindow
         MPUserAssetsSnapshot localAssets = localUser?.assets ?? new MPUserAssetsSnapshot();
         MPUserAssetsSnapshot cloudAssets = cloudUser?.assets ?? new MPUserAssetsSnapshot();
 
-        return new List<ComparisonItemData>(COMPARISON_ITEM_COUNT)
+        var items = new List<ComparisonItemData>(COMPARISON_ITEM_COUNT)
         {
             ComparisonItemData.Number("Main Level", localUser?.mainLevel?.passIndex ?? 0,
                 cloudUser?.mainLevel?.passIndex ?? 0),
@@ -167,10 +175,14 @@ public class MPAssetComparisonPop : AWindow
                 cloudCustom?.customLevel?.levels?.Count ?? 0),
             ComparisonItemData.Number("Pets", CountOwnedPets(localUser), CountOwnedPets(cloudUser)),
             ComparisonItemData.Number("Hints", localAssets.hintProps, cloudAssets.hintProps),
-            ComparisonItemData.Number("Life Refills", localAssets.loveRecoverProps, cloudAssets.loveRecoverProps),
-            ComparisonItemData.Boolean("VIP", m_data?.localVipOwned ?? false, m_data?.cloudVipOwned ?? false),
-            ComparisonItemData.Boolean("No Ads", m_data?.localNoAdsOwned ?? false, m_data?.cloudNoAdsOwned ?? false)
+            ComparisonItemData.Number("Life Refills", localAssets.loveRecoverProps, cloudAssets.loveRecoverProps)
         };
+        // 未开放的付费权益不参与首发版本的资产对比展示。
+        if (MPReleaseFeatures.Vip && MPReleaseFeatures.InAppPurchases)
+            items.Add(ComparisonItemData.Boolean("VIP", m_data?.localVipOwned ?? false, m_data?.cloudVipOwned ?? false));
+        if (MPReleaseFeatures.Ads && MPReleaseFeatures.InAppPurchases)
+            items.Add(ComparisonItemData.Boolean("No Ads", m_data?.localNoAdsOwned ?? false, m_data?.cloudNoAdsOwned ?? false));
+        return items;
     }
 
     /// <summary>宠物数量包含默认宠物以及用户已经主动领取的宠物。</summary>
@@ -270,7 +282,11 @@ public class MPAssetComparisonPop : AWindow
         string chosen = useLocal ? "local" : "cloud";
         m_confirmation = MPSecondConfirmationPop.Show(
             "Replace saved progress?",
-            $"Use this {chosen} save? The other save's progress, currencies, items and custom levels will be replaced. The two saves cannot be merged. This cannot be undone in-game.",
+            m_data.isGuestAccountChoice
+                ? (useLocal
+                    ? "Use your guest progress for this account? The account's existing progress, currencies, items and custom levels will be replaced. Your original guest save will remain separate."
+                    : "Use this account's existing progress? Your guest progress will remain saved separately and will be available when you return to guest mode.")
+                : $"Use this {chosen} save? The other save's progress, currencies, items and custom levels will be replaced. The two saves cannot be merged. This cannot be undone in-game.",
             "Confirm",
             async token =>
             {

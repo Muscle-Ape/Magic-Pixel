@@ -1,10 +1,10 @@
 [
   {
-    "id": "pet_shiba",
-    "name": "Shiba",
-    "icon": "pet_shiba",
+    "id": "pet_cat_siamese",
+    "name": "Siamese",
+    "icon": "pet_cat_siamese",
     "option": "hint",
-    "optionText": "Woof woof woof, have a pleasant experience!",
+    "optionText": "Meow meow meow, have a pleasant experience!",
     "skillUseCount": 0,
     "unlock": "default",
     "unlockText": "Unlocked",
@@ -34,8 +34,8 @@
     "option": "recover_life",
     "optionText": "Restore some health, then go all out!",
     "skillUseCount": 1,
-    "unlock": "large level 1",
-    "unlockText": "Complete Large Image Level 1",
+    "unlock": "large level 3",
+    "unlockText": "Complete Large Image Level 3",
     "position": {
       "x": 380,
       "y": 612.5

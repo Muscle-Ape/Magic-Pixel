@@ -69,7 +69,7 @@ public static class MPLoginExceptionMapper
             if (authenticationException.ErrorCode == AuthenticationErrorCodes.AccountLinkLimitExceeded)
             {
                 return MPLoginError.Create(
-                    MPLoginErrorCodes.AccountBindingConflict,
+                    MPLoginErrorCodes.AccountProviderAlreadyLinked,
                     "当前游戏账号已经绑定了同类型的第三方账号。",
                     false,
                     authenticationException.ErrorCode,

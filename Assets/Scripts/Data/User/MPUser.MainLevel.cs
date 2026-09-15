@@ -7,6 +7,7 @@ using UnityEngine;
 public partial class MPUser
 {
     #region Key
+    private const string LAST_PLAYED_MAIN_LEVEL_KEY_PREFIX = "MPUser.MainLevel.LastPlayed.v1.";
     private string m_key_mainlevel_pass_index = "key_mainlevel_pass_index";
     private string m_key_mainlevel_unlocklist = "key_mainlevel_unlocklist";
     private string m_key_mainlevel_passlist = "key_mainlevel_passlist";
@@ -42,6 +43,42 @@ public partial class MPUser
     #endregion
 
     #region Method
+    /// <summary>本机按账号记录上次实际进入的主关卡 ID，不参与云端资产同步。</summary>
+    public void SetLastPlayedMainLevelId(string levelId)
+    {
+        string playerId = MPLoginManager.Instance.PlayerId;
+        if (string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(levelId))
+            return;
+
+        try
+        {
+            ES3.Save(LAST_PLAYED_MAIN_LEVEL_KEY_PREFIX + playerId, levelId);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning($"[MPUser] 保存上次游玩主关卡失败：{exception.Message}");
+        }
+    }
+
+    /// <summary>没有游玩记录时返回空，由列表回退到最新主关卡。</summary>
+    public string GetLastPlayedMainLevelId()
+    {
+        string playerId = MPLoginManager.Instance.PlayerId;
+        if (string.IsNullOrEmpty(playerId))
+            return string.Empty;
+
+        try
+        {
+            return ES3.Load<string>(LAST_PLAYED_MAIN_LEVEL_KEY_PREFIX + playerId,
+                defaultValue: string.Empty);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning($"[MPUser] 读取上次游玩主关卡失败：{exception.Message}");
+            return string.Empty;
+        }
+    }
+
     /// <summary>
     /// 初始化主线关卡存档。
     /// </summary>

@@ -30,6 +30,12 @@ public sealed class MPSignInPop : AWindow
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
+        if (!MPReleaseFeatures.SignIn)
+        {
+            DestroyWindow();
+            return;
+        }
+        m_doubleBtn.gameObject.SetActive(MPReleaseFeatures.Ads);
         RegisterButtons();
         try
         {
@@ -104,7 +110,7 @@ public sealed class MPSignInPop : AWindow
         bool awaitingNewRewards = status.dayIndex < 0;
         // 全部领完仍允许手动查看；底部领取区改为版本更新提示，不再保留无效按钮。
         m_claimBtn.gameObject.SetActive(!awaitingNewRewards);
-        m_doubleBtn.gameObject.SetActive(!awaitingNewRewards);
+        m_doubleBtn.gameObject.SetActive(!awaitingNewRewards && MPReleaseFeatures.Ads);
         m_status.rectTransform.anchoredPosition = awaitingNewRewards
             ? new Vector2(m_statusDefaultPosition.x, ((RectTransform)m_claimBtn.transform).anchoredPosition.y)
             : m_statusDefaultPosition;
@@ -135,6 +141,7 @@ public sealed class MPSignInPop : AWindow
 
     private void OnDouble()
     {
+        if (!MPReleaseFeatures.SignIn || !MPReleaseFeatures.Ads) return;
         if (m_busy || m_closing || m_config == null) return;
         MPSignInStatus status = MPUser.instance.GetSignInStatus(m_config);
         if (!status.CanClaim) { RefreshDays(); return; }

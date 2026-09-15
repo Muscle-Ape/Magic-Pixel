@@ -13,6 +13,7 @@ public static class MPThreeDIntegration
 
     public static void Open()
     {
+        if (!MPReleaseFeatures.ThreeD) return;
         MPThreeDModuleServices.Storage = s_storage;
         UIManager.Inst.ShowWindow<MPThreeDView>();
     }

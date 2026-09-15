@@ -197,6 +197,9 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// </summary>
     public Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default, string expectedPlayerId = null)
     {
+        // 同时拦住直接 Token 登录，避免绕过页面和 Adapter 的首发开关。
+        if (loginType == MPLoginType.Facebook && !MPReleaseFeatures.Facebook)
+            return Task.FromException<MPUserSession>(new System.InvalidOperationException("Facebook is unavailable in this version."));
         SignInOptions options = new SignInOptions { CreateAccount = createAccount };
         // 第三方登录不能覆盖游客槽的 SessionToken；绑定接口则继续使用当前槽。
         return SignInOnProfileAsync("login_" + loginType.ToString().ToLowerInvariant(), loginType, async () =>
@@ -236,6 +239,8 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// </summary>
     public async Task<MPUserSession> LinkThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool forceLink, CancellationToken cancellationToken = default)
     {
+        if (loginType == MPLoginType.Facebook && !MPReleaseFeatures.Facebook)
+            throw new System.InvalidOperationException("Facebook is unavailable in this version.");
         await InitializeAsync(cancellationToken);
         LinkOptions options = new LinkOptions { ForceLink = forceLink };
 

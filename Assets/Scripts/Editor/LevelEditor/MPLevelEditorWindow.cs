@@ -43,7 +43,10 @@ public sealed class MPLevelEditorWindow : EditorWindow
     private bool m_newIdExists;
     private string m_id = string.Empty;
     private string m_levelName = string.Empty;
-    private int m_awardCoin = 300;
+    private static readonly string[] AwardTypes = { "coin", "fluorite", "hint", "life", "pet" };
+    private static readonly string[] AwardTypeLabels = { "金币（coin）", "萤石（fluorite）", "提示（hint）", "生命恢复（life）", "宠物（填写 ID）" };
+    private string m_awardType = "fluorite";
+    private int m_awardCount = 500;
     private int m_gridSize = 5;
     private int m_requestedGridSize = 5;
     private Texture2D m_sourceTexture;
@@ -194,10 +197,27 @@ public sealed class MPLevelEditorWindow : EditorWindow
                 MarkDirty();
             }
 
-            int newAwardCoin = EditorGUILayout.IntField("通关金币", m_awardCoin);
-            if (newAwardCoin != m_awardCoin)
+            int currentAwardType = Array.IndexOf(AwardTypes, m_awardType);
+            if (currentAwardType < 0) currentAwardType = AwardTypes.Length - 1;
+            int selectedAwardType = EditorGUILayout.Popup("奖励类型", currentAwardType, AwardTypeLabels);
+            if (selectedAwardType >= 0 && selectedAwardType != currentAwardType)
             {
-                m_awardCoin = Mathf.Max(0, newAwardCoin);
+                m_awardType = selectedAwardType == AwardTypes.Length - 1 ? string.Empty : AwardTypes[selectedAwardType];
+                MarkDirty();
+            }
+            if (selectedAwardType == AwardTypes.Length - 1)
+            {
+                string petId = EditorGUILayout.TextField("宠物 ID", m_awardType).Trim();
+                if (petId != m_awardType) { m_awardType = petId; MarkDirty(); }
+                if (m_awardCount != 1) { m_awardCount = 1; MarkDirty(); }
+                EditorGUILayout.HelpBox("直接填写 pets_config 中的宠物 ID，宠物奖励数量固定为 1。", MessageType.Info);
+            }
+            EditorGUI.BeginDisabledGroup(selectedAwardType == AwardTypes.Length - 1);
+            int newAwardCount = EditorGUILayout.IntField("奖励数量", m_awardCount);
+            EditorGUI.EndDisabledGroup();
+            if (newAwardCount != m_awardCount)
+            {
+                m_awardCount = Mathf.Max(0, newAwardCount);
                 MarkDirty();
             }
         }
@@ -660,7 +680,8 @@ public sealed class MPLevelEditorWindow : EditorWindow
         m_newIdExists = false;
         string idSuffix = m_id.Substring(MPLevelEditorStorage.GetIdPrefix(mode).Length);
         m_levelName = mode == MPLevelEditorMode.LargeImage ? $"Large Image {idSuffix}" : string.Empty;
-        m_awardCoin = mode == MPLevelEditorMode.LargeImage ? 300 : 0;
+        m_awardType = "fluorite";
+        m_awardCount = mode == MPLevelEditorMode.LargeImage ? 500 : 0;
         m_gridSize = mode == MPLevelEditorMode.Main ? 5 : 20;
         m_requestedGridSize = m_gridSize;
         CreateEmptyGrid(m_gridSize);
@@ -718,7 +739,8 @@ public sealed class MPLevelEditorWindow : EditorWindow
         m_id = data.ID;
         m_newIdExists = false;
         m_levelName = data.Name;
-        m_awardCoin = data.AwardCoin;
+        m_awardType = data.AwardType;
+        m_awardCount = data.AwardCount;
         m_gridSize = data.Size;
         m_requestedGridSize = data.Size;
         m_colors = (Color[])data.Colors.Clone();
@@ -905,9 +927,16 @@ public sealed class MPLevelEditorWindow : EditorWindow
             return false;
         }
 
-        if (m_awardCoin < 0)
+        if (m_awardCount < 0)
         {
-            message = "通关金币不能小于 0。";
+            message = "奖励数量不能小于 0。";
+            return false;
+        }
+        if (m_mode == MPLevelEditorMode.LargeImage &&
+            !(Array.IndexOf(AwardTypes, m_awardType) >= 0 && m_awardType != "pet") &&
+            !MPLevelEditorStorage.IsPetRewardType(m_awardType))
+        {
+            message = "请选择有效的奖励类型，或填写 pets_config 中存在的宠物 ID。";
             return false;
         }
 
@@ -953,7 +982,8 @@ public sealed class MPLevelEditorWindow : EditorWindow
             IsExisting = m_isExisting,
             ID = m_id,
             Name = m_levelName == null ? string.Empty : m_levelName.Trim(),
-            AwardCoin = m_awardCoin,
+            AwardType = m_awardType,
+            AwardCount = m_awardCount,
             Size = m_gridSize,
             Colors = (Color[])m_colors.Clone(),
             ColorAssigned = (bool[])m_colorAssigned.Clone(),
