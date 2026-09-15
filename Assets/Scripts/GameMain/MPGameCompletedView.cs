@@ -51,6 +51,9 @@ public class MPGameCompletedView : AWindow
     [TransformPath("View/NextBtn")]
     private Button m_nextBtn;
 
+    [TransformPath("View/BackBtn")]
+    private Button m_backBtn;
+
     /// <summary>
     /// 完成图片所在节点，用于从游戏页结算框位置移动到当前页面初始位置。
     /// </summary>
@@ -221,6 +224,8 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private Vector3 m_nextOriginalScale;
 
+    private Vector3 m_backOriginalScale;
+
     /// <summary>
     /// 标题在预制体中的原始缩放。
     /// </summary>
@@ -300,6 +305,7 @@ public class MPGameCompletedView : AWindow
 
         m_replayOriginalScale = m_replayBtn == null ? Vector3.one : m_replayBtn.transform.localScale;
         m_nextOriginalScale = m_nextBtn == null ? Vector3.one : m_nextBtn.transform.localScale;
+        m_backOriginalScale = m_backBtn == null ? Vector3.one : m_backBtn.transform.localScale;
         m_titleOriginalScale = m_title == null ? Vector3.one : m_title.localScale;
         m_starsOriginalScale = m_stars == null ? Vector3.one : m_stars.localScale;
 
@@ -422,17 +428,19 @@ public class MPGameCompletedView : AWindow
     }
 
     /// <summary>
-    /// 自定义关卡和设置页重看的引导没有下一关按钮，重玩按钮居中显示。
+    /// 首次引导保留下一关，主动重看引导显示返回；自定义关卡仅显示居中的重玩按钮。
     /// </summary>
     private void RefreshCustomModeLayout()
     {
-        if (!m_isCustomLevel && !m_isGuideReplay)
-            return;
-
+        if (m_backBtn != null)
+            m_backBtn.gameObject.SetActive(m_isGuideReplay);
         if (m_nextBtn != null)
         {
-            m_nextBtn.gameObject.SetActive(false);
+            m_nextBtn.gameObject.SetActive(!m_isCustomLevel && !m_isGuideReplay);
         }
+
+        if (!m_isCustomLevel || m_isGuide)
+            return;
 
         if (m_replayBtn != null)
         {
@@ -480,6 +488,12 @@ public class MPGameCompletedView : AWindow
     private void RegisterUI()
     {
         m_head.Init(ReturnHome, OnSettingClick, MPUserPop.Show);
+
+        if (m_backBtn != null)
+        {
+            m_backBtn.onClick.RemoveListener(ReturnHome);
+            m_backBtn.onClick.AddListener(ReturnHome);
+        }
 
         if (m_replayBtn != null)
         {
@@ -771,6 +785,9 @@ public class MPGameCompletedView : AWindow
             m_replayBtn.transform.localScale = Vector3.zero;
         }
 
+        if (m_backBtn != null)
+            m_backBtn.transform.localScale = Vector3.zero;
+
         if (m_nextBtn != null)
         {
             m_nextBtn.transform.localScale = Vector3.zero;
@@ -918,6 +935,12 @@ public class MPGameCompletedView : AWindow
     private Tween CreateElementShowTween()
     {
         Sequence sequence = DOTween.Sequence();
+
+        if (m_backBtn != null && m_backBtn.gameObject.activeSelf)
+        {
+            m_backBtn.transform.DOKill();
+            sequence.Join(m_backBtn.transform.DOScale(m_backOriginalScale, ELEMENT_SHOW_DURATION).SetEase(Ease.OutBack));
+        }
 
         if (m_replayBtn != null)
         {
@@ -1092,6 +1115,9 @@ public class MPGameCompletedView : AWindow
     private void UnregisterUI()
     {
         m_head?.Release();
+
+        if (m_backBtn != null)
+            m_backBtn.onClick.RemoveListener(ReturnHome);
 
         if (m_replayBtn != null)
         {

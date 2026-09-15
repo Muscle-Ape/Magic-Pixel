@@ -18,6 +18,7 @@ public sealed partial class MPGuideView : AWindow
     private bool m_preview, m_released, m_settling, m_hintDismissed, m_isReplay;
     private Sequence m_handTween;
     private Tween m_feedbackTween;
+    private Tween m_modeSwitchTween;
     private readonly List<Tween> m_settlementTweens = new List<Tween>();
     private Coroutine m_settlementRoutine;
 
@@ -69,6 +70,9 @@ public sealed partial class MPGuideView : AWindow
         if (s_current != null && !s_current.IsDestoried) return s_current;
         try
         {
+            // ShowWindow 会同步完成页面初始化，主页和关卡列表就绪后才创建首次引导。
+            // 重玩引导沿用现有页面历史，不额外打开导航页面。
+            if (!isReplay) EnsureLevelNavigation();
             return UIManager.Inst.ShowWindow<MPGuideView>(new MPGuideViewUIMsgData { isReplay = isReplay });
         }
         catch
@@ -93,22 +97,29 @@ public sealed partial class MPGuideView : AWindow
 
     private void OnNext()
     {
-        if (!m_settling && m_lesson.Advance()) RefreshLesson();
+        if (m_settling || !m_lesson.Advance()) return;
+        PlayButtonSound(m_next);
+        RefreshLesson();
     }
 
     private void OnSwitch()
     {
         if (m_settling || !m_lesson.SwitchMode()) return;
+        PlayButtonSound(m_switch);
         StopHandHint();
-        RefreshLesson();
+        RefreshLesson(animateModeSwitch: true);
     }
 
     private void OnCell(int index)
     {
         if (m_settling || m_lesson.IsMarked(index)) return;
+        if (index < 0 || index >= m_blocks.Length) return;
+        bool rowWasFilled = m_lesson.LineFilled(false, index / MPGuideLesson.Size);
+        bool columnWasFilled = m_lesson.LineFilled(true, index % MPGuideLesson.Size);
         if (!m_lesson.TryMark(index))
         {
             if (m_lesson.FirstTarget() < 0) return;
+            PlayGuideSound(MPSound.MPSoundWrong);
             m_feedback.text = "Try a highlighted square. No lives are lost in this tutorial.";
             m_feedbackTween?.Kill();
             if (!m_preview)
@@ -119,6 +130,12 @@ public sealed partial class MPGuideView : AWindow
         m_hintDismissed = true;
         StopHandHint();
         ShowMark(index, !m_preview);
+        PlayGuideSound(MPSound.MPSoundFill);
+        // 与游戏一致：新完成一行/列只播放一次完成音，最后一格交给结算音效。
+        if (m_lesson.Current != MPGuideLesson.Stage.LastCell &&
+            ((!rowWasFilled && m_lesson.LineFilled(false, index / MPGuideLesson.Size)) ||
+             (!columnWasFilled && m_lesson.LineFilled(true, index % MPGuideLesson.Size))))
+            PlayGuideSound(MPSound.MPSoundBlockFinish);
         RefreshBoard();
         if (m_lesson.FirstTarget() < 0)
         {
@@ -128,7 +145,7 @@ public sealed partial class MPGuideView : AWindow
         }
     }
 
-    private void RefreshLesson()
+    private void RefreshLesson(bool animateModeSwitch = false)
     {
         m_feedbackTween?.Kill();
         m_feedbackTween = null;
@@ -139,9 +156,7 @@ public sealed partial class MPGuideView : AWindow
         m_next.gameObject.SetActive(next);
         m_nextText.text = m_lesson.Current == MPGuideLesson.Stage.Welcome ? "Let's Play" : "Got It";
         m_switch.interactable = m_lesson.CanSwitch;
-        m_switchTab.anchoredPosition = new Vector2(m_lesson.FillMode ? 78f : -78f, 0);
-        m_switchFill.gameObject.SetActive(m_lesson.FillMode);
-        m_switchBlank.gameObject.SetActive(!m_lesson.FillMode);
+        RefreshModeSwitch(animateModeSwitch);
         RefreshBoard();
         // 输入区域和游戏页相同，始终为 800×800；尚未介绍的行由步骤校验拦截。
         m_input.Initialize(5, OnCell);
@@ -185,6 +200,7 @@ public sealed partial class MPGuideView : AWindow
     private void Skip()
     {
         if (m_preview || m_settling) return;
+        PlayButtonSound(m_skip);
         m_settling = true;
         StopHandHint();
         MPTransitionView.Play(() =>
@@ -192,7 +208,8 @@ public sealed partial class MPGuideView : AWindow
             if (this == null || IsDestoried) return;
             if (!m_isReplay)
             {
-                if (UIManager.Inst.ShowWindow<MPHomeView>() == null) { m_settling = false; return; }
+                // 首页已在引导前创建；跳过时移除预先建立的关卡列表，返回现有首页。
+                UIManager.Inst.DestroyWindow<MPMainLevelView>();
                 SaveFlag(DISMISSED_KEY);
             }
             DestroyWindow();
@@ -209,16 +226,17 @@ public sealed partial class MPGuideView : AWindow
     {
         if (m_lesson == null || m_hand == null) return;
         if (focus && !m_settling) StartHandHint();
-        else { StopHandHint(); m_input?.CancelGesture(); }
+        else { StopHandHint(); StopModeSwitchAnimation(); m_input?.CancelGesture(); }
     }
 
-    private void OnDisable() { StopHandHint(); m_feedbackTween?.Kill(); m_input?.CancelGesture(); }
+    private void OnDisable() { StopHandHint(); StopModeSwitchAnimation(); m_feedbackTween?.Kill(); m_input?.CancelGesture(); }
 
     public override void OnRelease()
     {
         if (m_released) return;
         m_released = true;
         StopHandHint();
+        StopModeSwitchAnimation();
         m_feedbackTween?.Kill();
         if (m_settlementRoutine != null) StopCoroutine(m_settlementRoutine);
         foreach (Tween tween in m_settlementTweens) tween?.Kill();
@@ -235,7 +253,22 @@ public sealed partial class MPGuideView : AWindow
 
     private void OnDestroy() { OnRelease(); }
 
+    private void PlayButtonSound(Button button)
+    {
+        // MPButton 自带点击音；保留原生 Button 时在此补齐，避免更换控件后重复播放。
+        if (!(button is MPButton)) PlayGuideSound(MPSound.MPSoundClickUI);
+    }
+
+    private void PlayGuideSound(MPSound sound)
+    {
 #if UNITY_EDITOR
+        PreviewSoundPlayed?.Invoke(sound);
+#endif
+        if (!m_preview) MPAudioManager.Instance.PlaySound(sound, replay: true);
+    }
+
+#if UNITY_EDITOR
+    public Action<MPSound> PreviewSoundPlayed { get; set; }
     public MPGuideLesson.Stage PreviewStage => m_lesson.Current;
     public bool PreviewHintVisible => m_hand.gameObject.activeSelf;
     public int PreviewHighlightCount => Array.FindAll(m_highlights, image => image != null && image.gameObject.activeSelf).Length;

@@ -1,82 +1,143 @@
 using HQ.UIManager;
 using System;
+using System.Collections.Generic;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>只展示已入账奖励，点击 Collect 不会重复发奖。</summary>
 [Component("MPRewardsClaimPop")]
 public sealed class MPRewardsClaimPop : AWindow
 {
-    [TransformPath("View/Window/Source")] private TMP_Text m_source;
+    private const float OPEN_DURATION = 0.3f;
+    private const float CLOSE_DURATION = 0.2f;
+    [TransformPath("View/Window")] private RectTransform m_window;
+    [TransformPath("View/Window")] private CanvasGroup m_windowGroup;
     [TransformPath("View/Window/Rewards")] private RectTransform m_rewards;
+    [TransformPath("View/Window/Rewards/Item")] private RectTransform m_itemTemplate;
     [TransformPath("View/Window/CollectBtn")] private Button m_collectBtn;
+    private readonly List<RectTransform> m_items = new List<RectTransform>();
+    private Vector2 m_windowPosition;
+    private Sequence m_animation;
     private bool m_closing;
 
     protected override bool ShouldAdaptToNotchScreen() => false;
 
     public static void Show(MPRewardReceipt receipt)
     {
-        if (receipt == null || receipt.rewards == null || receipt.rewards.Count == 0)
-            return;
-        // 只有已经成功入账的结果才展示；重新展示不会再次调用任何加资产接口。
-        if (!MPUser.instance.RewardTransactionIsCommitted(receipt.transactionId))
-            return;
+        if (receipt?.rewards == null || !receipt.rewards.Exists(IsDisplayable)) return;
+        if (!MPUser.instance.RewardTransactionIsCommitted(receipt.transactionId)) return;
         UIManager.Inst.ShowWindow<MPRewardsClaimPop>(
             new MPRewardsClaimPopUIMsgData { receipt = receipt }, true, UILayer.Top);
+    }
+
+    public override void OnCreate()
+    {
+        m_windowPosition = m_window.anchoredPosition;
+        m_items.Add(m_itemTemplate);
+        m_itemTemplate.gameObject.SetActive(false);
+        m_collectBtn.onClick.AddListener(OnCollect);
     }
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         MPRewardReceipt receipt = (uiMsg as MPRewardsClaimPopUIMsgData)?.receipt;
-        if (receipt == null)
+        if (m_closing) return;
+        if (receipt?.rewards == null || !receipt.rewards.Exists(IsDisplayable))
         {
             DestroyWindow();
             return;
         }
-        m_source.text = receipt.sourceName ?? "Reward";
-        foreach (Transform row in m_rewards)
-            row.gameObject.SetActive(false);
 
+        foreach (RectTransform item in m_items) item.gameObject.SetActive(false);
+        int count = 0;
         foreach (MPRewardItem reward in receipt.rewards)
         {
-            if (reward == null || reward.amount <= 0)
-                continue;
-            string rowName;
-            switch (MPRewardPresentation.NormalizeType(reward.type))
+            if (!IsDisplayable(reward)) continue;
+            if (count == m_items.Count)
             {
-                case "coin": rowName = "Coin"; break;
-                case "fluorite": rowName = "Fluorite"; break;
-                case "hint": rowName = "Hint"; break;
-                case "life": rowName = "Life"; break;
-                default: continue;
+                RectTransform item = Instantiate(m_itemTemplate, m_rewards, false);
+                item.name = "Item";
+                m_items.Add(item);
             }
-            Transform row = m_rewards.Find(rowName);
-            if (row == null)
-                continue;
+            RectTransform row = m_items[count++];
+            row.Find("Count").GetComponent<TMP_Text>().text = "x" + reward.amount;
+            MPRewardPopupIcons.Load(row.Find("Icon").GetComponent<Image>(), IconFor(reward.type), this);
             row.gameObject.SetActive(true);
-            row.Find("Name").GetComponent<TMP_Text>().text = MPRewardPresentation.Name(reward.type);
-            row.Find("Amount").GetComponent<TMP_Text>().text = "+" + reward.amount;
-            MPRewardPopupIcons.Load(row.Find("Icon").GetComponent<Image>(),
-                string.IsNullOrEmpty(reward.icon) ? MPRewardPresentation.Icon(reward.type) : reward.icon, this);
         }
-        m_collectBtn.onClick.RemoveListener(OnCollect);
-        m_collectBtn.onClick.AddListener(OnCollect);
+        LayoutRebuilder.ForceRebuildLayoutImmediate(m_rewards);
+        PlayOpenAnimation();
+    }
+
+    private static bool IsDisplayable(MPRewardItem reward)
+    {
+        return reward != null && reward.amount > 0 && IconFor(reward.type) != null;
+    }
+
+    private static string IconFor(string type)
+    {
+        switch (MPRewardPresentation.NormalizeType(type))
+        {
+            case "fluorite": return "pop_reward_icon_fluorite";
+            case "hint": return "pop_reward_icon_hint";
+            case "life": return "pop_reward_icon_love";
+            default: return null;
+        }
+    }
+
+    /// <summary>始终以预制体初始位置为终点，避免重复打开时累计偏移。</summary>
+    private void PlayOpenAnimation()
+    {
+        KillAnimation();
+        m_window.anchoredPosition = m_windowPosition + Vector2.down * 100f;
+        m_windowGroup.alpha = 0f;
+        m_windowGroup.interactable = false;
+        m_windowGroup.blocksRaycasts = true;
+        m_collectBtn.interactable = false;
+        m_animation = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
+        m_animation.Join(m_window.DOAnchorPos(m_windowPosition, OPEN_DURATION).SetEase(Ease.OutCubic));
+        m_animation.Join(m_windowGroup.DOFade(1f, OPEN_DURATION).SetEase(Ease.Linear));
+        m_animation.OnComplete(() =>
+        {
+            if (this == null || IsDestoried || m_closing) return;
+            m_windowGroup.interactable = true;
+            m_collectBtn.interactable = true;
+        });
     }
 
     private void OnCollect()
     {
-        if (m_closing)
-            return;
+        if (m_closing || IsDestoried) return;
         m_closing = true;
+        KillAnimation();
         m_collectBtn.interactable = false;
-        MPPopScaleAnimation animation = GetComponent<MPPopScaleAnimation>();
-        if (animation != null) animation.Close(null);
-        else DestroyWindow();
+        m_windowGroup.interactable = false;
+        // 保持射线阻挡直到销毁，避免淡出时误点底层页面。
+        m_animation = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
+        m_animation.Append(m_windowGroup.DOFade(0f, CLOSE_DURATION).SetEase(Ease.Linear));
+        m_animation.OnComplete(() =>
+        {
+            if (this != null && !IsDestoried) DestroyWindow();
+        });
+    }
+
+    private void KillAnimation()
+    {
+        m_animation?.Kill();
+        m_animation = null;
     }
 
     public override void OnRelease()
     {
+        m_closing = true;
+        KillAnimation();
         if (m_collectBtn != null) m_collectBtn.onClick.RemoveListener(OnCollect);
+        foreach (RectTransform item in m_items)
+        {
+            if (item != null) item.Find("Icon").GetComponent<Image>().sprite = null;
+        }
+        m_items.Clear();
         MPLoad.ReleaseAll(this);
     }
 }

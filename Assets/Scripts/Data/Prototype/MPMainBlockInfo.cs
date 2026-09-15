@@ -41,7 +41,7 @@ public class MPMainBlockInfo
     /// <summary>
     /// 可选宝箱奖励。配置为空或奖励无效时不显示宝箱。
     /// </summary>
-    [JsonProperty("box_award")]
+    // [JsonProperty("box_award")]
     private MPMainLevelBoxAward boxAward;
 
     public string ID { get => id; }
@@ -50,7 +50,7 @@ public class MPMainBlockInfo
 
     public List<int> Blank { get => blank; }
 
-    public MPMainLevelBoxAward BoxAward { get => boxAward; }
+    public MPMainLevelBoxAward BoxAward { get => boxAward; set => boxAward = value; }
 }
 
 /// <summary>
@@ -69,4 +69,17 @@ public sealed class MPMainLevelBoxAward
     public int Count { get => count; }
 
     public bool IsValid => !string.IsNullOrWhiteSpace(type) && count > 0;
+}
+
+public sealed class MPMainLevelSort
+{
+    [JsonProperty("id")]
+    private string id;
+
+    [JsonProperty("box_award")]
+    private MPMainLevelBoxAward box_award;
+
+    public string ID => id;
+
+    public MPMainLevelBoxAward BoxAward => box_award;
 }

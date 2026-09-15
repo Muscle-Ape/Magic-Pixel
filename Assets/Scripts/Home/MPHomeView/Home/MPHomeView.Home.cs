@@ -3,6 +3,7 @@ using HQ.UIManager;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -615,5 +616,17 @@ public partial class MPHomeView
     private void OnThreeDClick()
     {
         MPThreeDIntegration.Open();
+    }
+
+    public class Configs
+    {
+        public string id;
+        public MPMainLevelBoxAward box_award;
+
+        public Configs(string id, MPMainLevelBoxAward boxAward)
+        {
+            this.id = id;
+            this.box_award = boxAward;
+        }
     }
 }

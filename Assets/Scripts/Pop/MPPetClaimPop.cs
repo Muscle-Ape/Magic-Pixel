@@ -7,13 +7,37 @@ using UnityEngine.UI;
 [Component("MPPetClaimPop")]
 public sealed class MPPetClaimPop : AWindow
 {
-    [TransformPath("View/Window/Icon")] private Image m_icon;
+    /// <summary>
+    /// 宠物图片
+    /// </summary>
+    [TransformPath("View/Window/Pet")] private Image m_pet;
+    /// <summary>
+    /// 宠物名称
+    /// </summary>
     [TransformPath("View/Window/Name")] private TMP_Text m_name;
-    [TransformPath("View/Window/Tag")] private TMP_Text m_tag;
-    [TransformPath("View/Window/Skill")] private TMP_Text m_skill;
-    [TransformPath("View/Window/Source")] private TMP_Text m_source;
-    [TransformPath("View/Window/CollectBtn")] private Button m_collectBtn;
-    [TransformPath("View/Window/CloseBtn")] private Button m_closeBtn;
+    /// <summary>
+    /// 宠物技能描述
+    /// </summary>
+    [TransformPath("View/Window/Infos/SkillDesc/Desc/Text")] private TMP_Text m_skillDesc;
+    /// <summary>
+    /// 宠物解锁来源
+    /// </summary>
+    [TransformPath("View/Window/Infos/UnlockSource/Desc/Text")] private TMP_Text m_unlockSource;
+    /// <summary>
+    /// 宠物技能次数
+    /// </summary>
+    [TransformPath("View/Window/Infos/SkillUses/Desc/Text")] private TMP_Text m_skillUses;
+    /// <summary>
+    /// 关闭按钮
+    /// </summary>
+    [TransformPath("View/Window/LaterBtn")] private Button m_laterBtn;
+    /// <summary>
+    /// 应用宠物按钮
+    /// </summary>
+    [TransformPath("View/Window/UseNowBtn")] private Button m_useNowBtn;
+    /// <summary>
+    /// 页面传入数据
+    /// </summary>
     private MPPetClaimPopUIMsgData m_data;
     private bool m_claiming;
     private bool m_closing;
@@ -41,8 +65,11 @@ public sealed class MPPetClaimPop : AWindow
         if (tryClaim == null) throw new ArgumentNullException(nameof(tryClaim));
         return UIManager.Inst.ShowWindow<MPPetClaimPop>(new MPPetClaimPopUIMsgData
         {
-            pet = pet, tryClaim = tryClaim, onClaimed = onClaimed,
-            sourceName = sourceName, sourceWindow = sourceWindow
+            pet = pet,
+            tryClaim = tryClaim,
+            onClaimed = onClaimed,
+            sourceName = sourceName,
+            sourceWindow = sourceWindow
         }, true, UILayer.Top);
     }
 
@@ -56,14 +83,15 @@ public sealed class MPPetClaimPop : AWindow
         }
         MPPetConfig pet = m_data.pet;
         m_name.text = pet.Name;
-        m_tag.text = pet.Tag;
-        m_skill.text = pet.ClaimSkillText;
-        m_source.text = m_data.sourceName ?? "Pet reward";
-        MPRewardPopupIcons.Load(m_icon, pet.Icon, this, "popup_pet_placeholder");
-        m_collectBtn.onClick.RemoveListener(OnCollect);
-        m_closeBtn.onClick.RemoveListener(OnClose);
-        m_collectBtn.onClick.AddListener(OnCollect);
-        m_closeBtn.onClick.AddListener(OnClose);
+        m_skillDesc.text = pet.ClaimSkillText;
+        m_unlockSource.text = pet.UnlockText;
+        m_skillUses.text = "x" + pet.SkillUseCount.ToString();
+        MPRewardPopupIcons.Load(m_pet, pet.Icon + "_main", this, "popup_pet_placeholder");
+        m_pet.SetNativeSize();
+        m_useNowBtn.onClick.RemoveListener(OnCollect);
+        m_laterBtn.onClick.RemoveListener(OnLater);
+        m_useNowBtn.onClick.AddListener(OnCollect);
+        m_laterBtn.onClick.AddListener(OnLater);
     }
 
     private void OnCollect()
@@ -71,12 +99,11 @@ public sealed class MPPetClaimPop : AWindow
         if (m_closing || m_claiming || m_data == null) return;
         if (!SourceIsAlive(m_data.sourceWindow))
         {
-            m_source.text = "This reward is no longer available. Please return and try again.";
-            m_collectBtn.interactable = false;
+            m_useNowBtn.interactable = false;
             return;
         }
         m_claiming = true;
-        m_collectBtn.interactable = m_closeBtn.interactable = false;
+        m_useNowBtn.interactable = m_laterBtn.interactable = false;
         MPPetClaimPopUIMsgData request = m_data;
         try
         {
@@ -84,7 +111,6 @@ public sealed class MPPetClaimPop : AWindow
             if (this == null || IsDestoried) return;
             if (!claimed)
             {
-                m_source.text = "Could not claim this pet reward. Please try again.";
                 return;
             }
             // 只有确认并提交成功才关闭；打开或取消弹窗不会发奖、标记已领或自动选中宠物。
@@ -92,21 +118,19 @@ public sealed class MPPetClaimPop : AWindow
             Action onClaimed = request.onClaimed;
             Close(() => { if (SourceIsAlive(source)) onClaimed?.Invoke(); });
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            Debug.LogWarning($"[MPPetClaimPop] 领取失败：{exception.GetType().Name}");
-            if (this != null && !IsDestoried)
-                m_source.text = "Could not claim this pet reward. Please try again.";
+
         }
         finally
         {
             m_claiming = false;
             if (this != null && !IsDestoried && !m_closing)
-                m_collectBtn.interactable = m_closeBtn.interactable = true;
+                m_useNowBtn.interactable = m_laterBtn.interactable = true;
         }
     }
 
-    private void OnClose()
+    private void OnLater()
     {
         if (!m_closing && !m_claiming) Close(null);
     }
@@ -116,7 +140,7 @@ public sealed class MPPetClaimPop : AWindow
     private void Close(Action onClosed)
     {
         m_closing = true;
-        m_collectBtn.interactable = m_closeBtn.interactable = false;
+        m_useNowBtn.interactable = m_laterBtn.interactable = false;
         MPPopScaleAnimation animation = GetComponent<MPPopScaleAnimation>();
         if (animation != null) animation.Close(onClosed);
         else { DestroyWindow(); onClosed?.Invoke(); }
@@ -124,8 +148,8 @@ public sealed class MPPetClaimPop : AWindow
 
     public override void OnRelease()
     {
-        if (m_collectBtn != null) m_collectBtn.onClick.RemoveListener(OnCollect);
-        if (m_closeBtn != null) m_closeBtn.onClick.RemoveListener(OnClose);
+        if (m_useNowBtn != null) m_useNowBtn.onClick.RemoveListener(OnCollect);
+        if (m_laterBtn != null) m_laterBtn.onClick.RemoveListener(OnLater);
         m_data = null;
         MPLoad.ReleaseAll(this);
     }

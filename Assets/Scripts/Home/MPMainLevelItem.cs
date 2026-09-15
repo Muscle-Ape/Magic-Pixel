@@ -357,6 +357,9 @@ public class MPMainLevelItem : MonoBehaviour
         string rewardType = award.Type.Trim().ToLowerInvariant();
         string state = isClaimed ? "open" : "close";
         string spriteLocation = $"box_{rewardType}_{state}";
+        // 优先使用奖励专属宝箱；暂未提供对应图片时沿用已有通用外观。
+        if (!YooAssets.CheckLocationValid(spriteLocation))
+            spriteLocation = $"box_coin_{state}";
         if (!YooAssets.CheckLocationValid(spriteLocation))
         {
             Debug.LogWarning(
@@ -431,13 +434,27 @@ public class MPMainLevelItem : MonoBehaviour
             return;
         }
 
+        MPPetConfig rewardPet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+            pet => pet != null && pet.ID == award.Type.Trim());
         if (!MPUser.instance.TryClaimMainLevelBoxAward(m_data, out MPRewardReceipt receipt))
             return;
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundOpenBox, replay: true);
         RefreshBox(m_index);
         m_refresh?.Invoke();
-        MPRewardsClaimPop.Show(receipt);
+        if (rewardPet != null)
+        {
+            // 宝箱点击时已原子提交领取；Later 保留宠物，Use Now 仅负责选中。
+            string owner = MPUser.instance.GetRewardProgressOwner();
+            MPPetClaimPop.Show(rewardPet,
+                () => owner == MPUser.instance.GetRewardProgressOwner() && MPUser.instance.PetIsUnlock(rewardPet.ID),
+                () =>
+                {
+                    if (owner == MPUser.instance.GetRewardProgressOwner())
+                        MPUser.instance.SetSelectedPet(rewardPet.ID);
+                }, receipt.sourceName);
+        }
+        else MPRewardsClaimPop.Show(receipt);
     }
 
     private void PlayBoxClaimedShake()

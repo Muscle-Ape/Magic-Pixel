@@ -296,8 +296,11 @@ public partial class MPUser
 
         var claimed = new List<string>(m_mainlevel_box_award_claimed) { levelInfo.ID };
         int rewardCount = award.Count;
+        MPPetConfig rewardPet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+            pet => pet != null && pet.ID == award.Type.Trim());
+        if (rewardPet != null) rewardCount = 1;
         MPPetConfig selectedPet = GetSelectedPetConfig();
-        if (selectedPet != null && selectedPet.BoxRewardBonusPercent > 0f)
+        if (rewardPet == null && selectedPet != null && selectedPet.BoxRewardBonusPercent > 0f)
         {
             int bonus = Mathf.RoundToInt(rewardCount * selectedPet.BoxRewardBonusPercent * 0.01f);
             rewardCount = checked(rewardCount + Mathf.Max(0, bonus));

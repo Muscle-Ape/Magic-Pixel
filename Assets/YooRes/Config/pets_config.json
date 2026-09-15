@@ -20,8 +20,8 @@
     "option": "hint",
     "optionText": "Complete an unfinished block",
     "skillUseCount": 1,
-    "unlock": "level 10",
-    "unlockText": "Complete Main Level 10",
+    "unlock": "level 20",
+    "unlockText": "Complete Main Level 20",
     "position": {
       "x": 385,
       "y": 606.5
@@ -67,7 +67,7 @@
       "type": "fluorite",
       "count": 10
     },
-    "unlock": "default",
+    "unlock": "coin",
     "unlockText": "This needs to be purchased with gold coins in the store",
     "position": {
       "x": 395,
@@ -85,7 +85,7 @@
       "type": "fluorite",
       "count": 10
     },
-    "unlock": "default",
+    "unlock": "vip",
     "unlockText": "Get it for free after becoming a VIP",
     "position": {
       "x": 377,

@@ -148,7 +148,17 @@ public partial class MPUser
                     continue;
                 string type = MPRewardPresentation.NormalizeType(reward.type);
                 if (string.IsNullOrEmpty(type))
-                    return false;
+                {
+                    // 非资产类型只有匹配到真实宠物 ID 才允许发放。
+                    MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+                        item => item != null && item.ID == reward.type?.Trim());
+                    if (pet == null) return false;
+                    type = pet.ID;
+                    if (!state.claimedPetIds.Contains(pet.ID)) state.claimedPetIds.Add(pet.ID);
+                    // 宠物为拥有状态，同一宠物不累计数量。
+                    totals[type] = new MPRewardItem(type, 1, pet.Icon);
+                    continue;
+                }
                 if (!totals.TryGetValue(type, out MPRewardItem total))
                     totals.Add(type, total = new MPRewardItem(type, 0, reward.icon));
                 total.amount = checked(total.amount + reward.amount);
@@ -177,6 +187,7 @@ public partial class MPUser
             m_fluorite = fluorite;
             m_hintProps = hints;
             m_loveRecoverProps = lives;
+            SetClaimedPetsInMemory(state, GetRewardProgressOwner());
             applySourceState?.Invoke();
             receipt.rewards = new List<MPRewardItem>(totals.Values);
             NotifyCloudSaveDirty(reason);

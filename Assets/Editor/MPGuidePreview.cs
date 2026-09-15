@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using DG.Tweening;
 using HQ.UIManager;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -35,6 +36,92 @@ public sealed partial class MPGuidePreview : EditorWindow
     public static void ExportValidationImages()
     {
         GetWindow<MPGuidePreview>("玩法教学预览").Export();
+    }
+
+    [MenuItem("MagicPixel/Guide/Validate switch animation and sounds")]
+    public static void ValidateInteractionEffects()
+    {
+        var window = GetWindow<MPGuidePreview>("玩法教学预览");
+        int original = window.m_stage;
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        MethodInfo switchMode = typeof(MPGuideView).GetMethod("OnSwitch", flags);
+        MethodInfo markCell = typeof(MPGuideView).GetMethod("OnCell", flags);
+        DG.DOTweenEditor.DOTweenEditorPreview.Start();
+        try
+        {
+            foreach (int stage in new[] { 1, 7, 9 })
+            {
+                window.m_stage = stage;
+                window.Rebuild();
+                MPGuideView view = window.m_root.GetComponentInChildren<MPGuideView>();
+                var sounds = new System.Collections.Generic.List<MPSound>();
+                view.PreviewSoundPlayed = sounds.Add;
+                RectTransform tab = (RectTransform)view.transform.Find("View/Btns/ModeSwitch/Btn");
+                float startX = tab.anchoredPosition.x;
+                switchMode.Invoke(view, null);
+                Tween tween = (Tween)typeof(MPGuideView).GetField("m_modeSwitchTween", flags).GetValue(view);
+                Check(tween != null && Mathf.Approximately(tween.Duration(), 0.1f), "模式切换必须播放 0.1 秒动画");
+                bool killed = false;
+                tween.OnKill(() => killed = true);
+                DG.DOTweenEditor.DOTweenEditorPreview.PrepareTweenForPreview(tween, false, false, true);
+                DOTween.ManualUpdate(0f, 0f);
+                Check(Mathf.Approximately(tab.anchoredPosition.x, startX), "切换不能瞬移到终点");
+                tween.Goto(0.05f);
+                Check(Mathf.Abs(tab.anchoredPosition.x) < 0.01f, "半程应位于中点，使用线性动画");
+                Check(tab.Find("Fill").gameObject.activeSelf == (startX < 0), "切换图标应立即更新");
+                Check(sounds.SequenceEqual(new[] { MPSound.MPSoundClickUI }), "切换音效只能播放一次");
+                view.gameObject.SetActive(false);
+                // 普通 MonoBehaviour 在编辑预览中不接收运行时 OnDisable，显式模拟关闭。
+                typeof(MPGuideView).GetMethod("OnDisable", flags).Invoke(view, null);
+                DOTween.ManualUpdate(0f, 0f);
+                Check(typeof(MPGuideView).GetField("m_modeSwitchTween", flags).GetValue(view) == null &&
+                    Mathf.Approximately(tab.anchoredPosition.x, -startX),
+                    "关闭时应清空动画引用并恢复目标位置");
+                if (!killed)
+                {
+                    // 此版本 DOTween.Kill 在编辑态 initialized=false 时直接返回。
+                    // 仅释放本次验证拥有的 Tween，避免编辑预览遗留；运行时仍使用正常 Kill。
+                    typeof(DOTween).Assembly.GetType("DG.Tweening.Core.TweenManager")
+                        .GetMethod("Despawn", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            null, new[] { typeof(Tween), typeof(bool) }, null)
+                        .Invoke(null, new object[] { tween, true });
+                }
+            }
+            window.m_stage = 2;
+            window.Rebuild();
+            MPGuideView board = window.m_root.GetComponentInChildren<MPGuideView>();
+            var events = new System.Collections.Generic.List<MPSound>();
+            board.PreviewSoundPlayed = events.Add;
+            markCell.Invoke(board, new object[] { 5 });
+            Check(events.SequenceEqual(new[] { MPSound.MPSoundWrong }), "误触应使用游戏错误音效");
+            events.Clear();
+            for (int i = 0; i < 5; i++) markCell.Invoke(board, new object[] { i });
+            Check(events.Count(sound => sound == MPSound.MPSoundFill) == 5 &&
+                events.Count(sound => sound == MPSound.MPSoundBlockFinish) == 1, "滑动逐格发声，完成一行只响一次");
+            events.Clear();
+            markCell.Invoke(board, new object[] { 0 });
+            Check(events.Count == 0, "重复操作不能重复播放音效");
+            window.m_stage = 8;
+            window.Rebuild();
+            board = window.m_root.GetComponentInChildren<MPGuideView>();
+            board.PreviewSoundPlayed = events.Add;
+            markCell.Invoke(board, new object[] { 9 });
+            Check(events.SequenceEqual(new[] { MPSound.MPSoundFill }), "手动标 X 与游戏使用相同落格音效");
+            window.m_stage = 0;
+            window.Rebuild();
+            board = window.m_root.GetComponentInChildren<MPGuideView>();
+            events.Clear();
+            board.PreviewSoundPlayed = events.Add;
+            typeof(MPGuideView).GetMethod("OnNext", flags).Invoke(board, null);
+            Check(events.SequenceEqual(new[] { MPSound.MPSoundClickUI }), "下一步按钮应有点击音效");
+            Debug.Log("引导的 3 次模式滑动、关闭状态复位、点击/填格/标 X/完成/误触音效事件检查通过（静音预览）。");
+        }
+        finally
+        {
+            window.m_stage = original;
+            window.Rebuild();
+            DG.DOTweenEditor.DOTweenEditorPreview.Stop(false, true);
+        }
     }
 
     private void OnGUI()
@@ -188,8 +275,12 @@ public sealed partial class MPGuidePreview : EditorWindow
             typeof(MPGameCompletedView).GetMethod("RefreshPicture", flags).Invoke(completed, null);
             Button next = (Button)typeof(MPGameCompletedView).GetField("m_nextBtn", flags).GetValue(completed);
             Button again = (Button)typeof(MPGameCompletedView).GetField("m_replayBtn", flags).GetValue(completed);
+            Button back = (Button)typeof(MPGameCompletedView).GetField("m_backBtn", flags).GetValue(completed);
             Check(next.gameObject.activeSelf == !replay, "只有首次引导结算可以进入下一关");
-            Check(!replay || Mathf.Approximately(((RectTransform)again.transform).anchoredPosition.x, 0), "重看引导的 Replay 必须居中");
+            Check(back == null || back.gameObject.activeSelf == replay, "重看引导应显示当前结算页的返回按钮");
+            // 结算页现已提供返回按钮；只有单独显示 Replay 的布局需要居中。
+            Check(!replay || (back != null && back.gameObject.activeSelf) ||
+                Mathf.Approximately(((RectTransform)again.transform).anchoredPosition.x, 0), "单独显示的 Replay 必须居中");
             SavePreview(Path.Combine(directory, replay ? "completed-replay.png" : "completed-first.png"));
             // 预览场景使用立即销毁，避免运行时代码的延迟 Destroy 进入编辑器日志。
             foreach (Transform pixel in page.GetComponentsInChildren<Transform>(true).Where(node => node.name.StartsWith("Pixel_")))
@@ -291,6 +382,8 @@ public sealed partial class MPGuidePreview : EditorWindow
     private void OnDisable() { Release(); }
     private void Release()
     {
+        if (m_root != null)
+            foreach (MPGuideView view in m_root.GetComponentsInChildren<MPGuideView>(true)) view.OnRelease();
         if (m_camera != null) m_camera.targetTexture = null;
         if (m_texture != null) { m_texture.Release(); DestroyImmediate(m_texture); }
         if (m_scene.IsValid()) EditorSceneManager.ClosePreviewScene(m_scene);

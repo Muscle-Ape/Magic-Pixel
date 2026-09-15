@@ -6,6 +6,30 @@ using UnityEngine.UI;
 
 public sealed partial class MPGuideView
 {
+    private void RefreshModeSwitch(bool animate)
+    {
+        m_modeSwitchTween?.Kill();
+        m_modeSwitchTween = null;
+        float targetX = m_lesson.FillMode ? 78f : -78f;
+        if (animate)
+        {
+            // 与 MPGameViewBase 的开关一致：0.1 秒线性滑动，同时切换图标。
+            m_modeSwitchTween = m_switchTab.DOAnchorPosX(targetX, 0.1f)
+                .SetEase(Ease.Linear).SetLink(gameObject);
+        }
+        else m_switchTab.anchoredPosition = new Vector2(targetX, 0f);
+        m_switchFill.gameObject.SetActive(m_lesson.FillMode);
+        m_switchBlank.gameObject.SetActive(!m_lesson.FillMode);
+    }
+
+    private void StopModeSwitchAnimation()
+    {
+        m_modeSwitchTween?.Kill();
+        m_modeSwitchTween = null;
+        if (m_switchTab != null && m_lesson != null)
+            m_switchTab.anchoredPosition = new Vector2(m_lesson.FillMode ? 78f : -78f, 0f);
+    }
+
     private void BuildBoard(Func<string, GameObject> loadPrefab, Func<string, Sprite> loadSprite)
     {
         GameObject blockPrefab = loadPrefab("MPGameBlock");
@@ -46,7 +70,8 @@ public sealed partial class MPGuideView
             image.sprite = highlight;
             image.type = Image.Type.Sliced;
             image.fillCenter = false;
-            image.pixelsPerUnitMultiplier = 2f;
+            image.pixelsPerUnitMultiplier = 8f;
+            image.color = new Color32(255, 196, 61, 255);
             image.raycastTarget = false;
             m_highlights[i] = image;
         }
@@ -90,7 +115,7 @@ public sealed partial class MPGuideView
         Vector2 start = m_highlightRoot.InverseTransformPoint(m_blocks[first].transform.position);
         Vector2 end = m_highlightRoot.InverseTransformPoint(m_blocks[last].transform.position);
         image.rectTransform.anchoredPosition = (start + end) * 0.5f;
-        image.rectTransform.sizeDelta = new Vector2(Mathf.Abs(end.x - start.x) + 224, Mathf.Abs(end.y - start.y) + 224);
+        image.rectTransform.sizeDelta = new Vector2(Mathf.Abs(end.x - start.x) + 192, Mathf.Abs(end.y - start.y) + 192);
         image.gameObject.SetActive(true);
     }
 

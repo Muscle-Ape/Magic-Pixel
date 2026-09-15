@@ -1,0 +1,378 @@
+[
+  {
+    "id": "level_main_10",
+    "box_award": null
+  },
+  {
+    "id": "level_main_4",
+    "box_award": null
+  },
+  {
+    "id": "level_main_8",
+    "box_award": null
+  },
+  {
+    "id": "level_main_12",
+    "box_award": null
+  },
+  {
+    "id": "level_main_109",
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
+  },
+  {
+    "id": "level_main_110",
+    "box_award": null
+  },
+  {
+    "id": "level_main_111",
+    "box_award": null
+  },
+  {
+    "id": "level_main_112",
+    "box_award": null
+  },
+  {
+    "id": "level_main_113",
+    "box_award": null
+  },
+  {
+    "id": "level_main_19",
+    "box_award": null
+  },
+  {
+    "id": "level_main_114",
+    "box_award": {
+      "type": "life",
+      "count": 1
+    }
+  },
+  {
+    "id": "level_main_115",
+    "box_award": null
+  },
+  {
+    "id": "level_main_116",
+    "box_award": null
+  },
+  {
+    "id": "level_main_117",
+    "box_award": null
+  },
+  {
+    "id": "level_main_29",
+    "box_award": null
+  },
+  {
+    "id": "level_main_118",
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
+  },
+  {
+    "id": "level_main_119",
+    "box_award": null
+  },
+  {
+    "id": "level_main_120",
+    "box_award": null
+  },
+  {
+    "id": "level_main_121",
+    "box_award": null
+  },
+  {
+    "id": "level_main_31",
+    "box_award": null
+  },
+  {
+    "id": "level_main_122",
+    "box_award": {
+      "type": "pet_red_panda",
+      "count": 1
+    }
+  },
+  {
+    "id": "level_main_123",
+    "box_award": null
+  },
+  {
+    "id": "level_main_124",
+    "box_award": null
+  },
+  {
+    "id": "level_main_125",
+    "box_award": null
+  },
+  {
+    "id": "level_main_39",
+    "box_award": null
+  },
+  {
+    "id": "level_main_126",
+    "box_award": null
+  },
+  {
+    "id": "level_main_127",
+    "box_award": null
+  },
+  {
+    "id": "level_main_128",
+    "box_award": null
+  },
+  {
+    "id": "level_main_40",
+    "box_award": null
+  },
+  {
+    "id": "level_main_42",
+    "box_award": null
+  },
+  {
+    "id": "level_main_129",
+    "box_award": null
+  },
+  {
+    "id": "level_main_130",
+    "box_award": null
+  },
+  {
+    "id": "level_main_131",
+    "box_award": null
+  },
+  {
+    "id": "level_main_43",
+    "box_award": null
+  },
+  {
+    "id": "level_main_48",
+    "box_award": null
+  },
+  {
+    "id": "level_main_132",
+    "box_award": null
+  },
+  {
+    "id": "level_main_133",
+    "box_award": null
+  },
+  {
+    "id": "level_main_134",
+    "box_award": null
+  },
+  {
+    "id": "level_main_50",
+    "box_award": null
+  },
+  {
+    "id": "level_main_51",
+    "box_award": null
+  },
+  {
+    "id": "level_main_135",
+    "box_award": null
+  },
+  {
+    "id": "level_main_136",
+    "box_award": null
+  },
+  {
+    "id": "level_main_52",
+    "box_award": null
+  },
+  {
+    "id": "level_main_53",
+    "box_award": null
+  },
+  {
+    "id": "level_main_137",
+    "box_award": null
+  },
+  {
+    "id": "level_main_138",
+    "box_award": null
+  },
+  {
+    "id": "level_main_139",
+    "box_award": null
+  },
+  {
+    "id": "level_main_54",
+    "box_award": null
+  },
+  {
+    "id": "level_main_55",
+    "box_award": null
+  },
+  {
+    "id": "level_main_56",
+    "box_award": null
+  },
+  {
+    "id": "level_main_57",
+    "box_award": null
+  },
+  {
+    "id": "level_main_58",
+    "box_award": null
+  },
+  {
+    "id": "level_main_60",
+    "box_award": null
+  },
+  {
+    "id": "level_main_62",
+    "box_award": null
+  },
+  {
+    "id": "level_main_63",
+    "box_award": null
+  },
+  {
+    "id": "level_main_64",
+    "box_award": null
+  },
+  {
+    "id": "level_main_65",
+    "box_award": null
+  },
+  {
+    "id": "level_main_69",
+    "box_award": null
+  },
+  {
+    "id": "level_main_71",
+    "box_award": null
+  },
+  {
+    "id": "level_main_76",
+    "box_award": null
+  },
+  {
+    "id": "level_main_78",
+    "box_award": null
+  },
+  {
+    "id": "level_main_85",
+    "box_award": null
+  },
+  {
+    "id": "level_main_88",
+    "box_award": null
+  },
+  {
+    "id": "level_main_92",
+    "box_award": null
+  },
+  {
+    "id": "level_main_93",
+    "box_award": null
+  },
+  {
+    "id": "level_main_97",
+    "box_award": null
+  },
+  {
+    "id": "level_main_99",
+    "box_award": null
+  },
+  {
+    "id": "level_main_100",
+    "box_award": null
+  },
+  {
+    "id": "level_main_101",
+    "box_award": null
+  },
+  {
+    "id": "level_main_103",
+    "box_award": null
+  },
+  {
+    "id": "level_main_108",
+    "box_award": null
+  },
+  {
+    "id": "level_main_140",
+    "box_award": null
+  },
+  {
+    "id": "level_main_141",
+    "box_award": null
+  },
+  {
+    "id": "level_main_142",
+    "box_award": null
+  },
+  {
+    "id": "level_main_143",
+    "box_award": null
+  },
+  {
+    "id": "level_main_144",
+    "box_award": null
+  },
+  {
+    "id": "level_main_145",
+    "box_award": null
+  },
+  {
+    "id": "level_main_146",
+    "box_award": null
+  },
+  {
+    "id": "level_main_147",
+    "box_award": null
+  },
+  {
+    "id": "level_main_148",
+    "box_award": null
+  },
+  {
+    "id": "level_main_149",
+    "box_award": null
+  },
+  {
+    "id": "level_main_150",
+    "box_award": null
+  },
+  {
+    "id": "level_main_151",
+    "box_award": null
+  },
+  {
+    "id": "level_main_152",
+    "box_award": null
+  },
+  {
+    "id": "level_main_153",
+    "box_award": null
+  },
+  {
+    "id": "level_main_154",
+    "box_award": null
+  },
+  {
+    "id": "level_main_155",
+    "box_award": null
+  },
+  {
+    "id": "level_main_156",
+    "box_award": null
+  },
+  {
+    "id": "level_main_157",
+    "box_award": null
+  },
+  {
+    "id": "level_main_158",
+    "box_award": null
+  },
+  {
+    "id": "level_main_159",
+    "box_award": null
+  }
+]

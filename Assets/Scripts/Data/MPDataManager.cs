@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -54,8 +55,30 @@ public class MPDataManager
             mainBlockInfo = JsonConvert.DeserializeObject<List<MPMainBlockInfo>>(lease.Asset.text);
         }
 
+        List<MPMainLevelSort> sorts;
+        using (MPAssetLoadLease<TextAsset> sort = MPLoad.LoadLease<TextAsset>("block_sort_main_config"))
+        {
+            sorts = JsonConvert.DeserializeObject<List<MPMainLevelSort>>(sort.Asset.text);
+        }
+
         m_mainLevelModel = new MPMainLevelModel();
-        m_mainLevelModel.blockInfos = mainBlockInfo;
+        // m_mainLevelModel.blockInfos = mainBlockInfo;
+        m_mainLevelModel.blockInfos = new List<MPMainBlockInfo>();
+
+        for (int i = 0; i < sorts.Count; i++)
+        {
+            MPMainBlockInfo info = mainBlockInfo.FirstOrDefault(c => c.ID == sorts[i].ID);
+
+            if (info != null)
+            {
+                if (sorts[i].BoxAward != null)
+                {
+                    info.BoxAward = sorts[i].BoxAward;
+                }
+
+                m_mainLevelModel.blockInfos.Add(info);
+            }
+        }
     }
 
     private void LargeImageLevel()

@@ -179,7 +179,7 @@ public class MPLauncher : MonoBehaviour
     {
         if (m_hasEnteredGame || m_lifetime.IsCancellationRequested)
             return;
-        // 首次启动先进入独立引导；资源、登录与用户数据仍沿用上面的初始化流程。
+        // 首次启动由 Guide.Show 先准备主页和关卡列表，再显示引导；全部成功后关闭加载页。
         try
         {
             AWindow entry = MPGuideView.ShouldShowOnStartup()

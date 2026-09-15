@@ -84,8 +84,7 @@ public sealed partial class MPGuideView
             pictureStartScreenPosition = RectTransformUtility.WorldToScreenPoint(camera, m_completedFrame.transform.position),
             hasPictureStartScreenPosition = true
         };
-        // 首次启动没有主页历史；在同一帧建立正常返回路径，不先加载第一关。
-        if (!m_isReplay) EnsureLevelNavigation();
+        // 导航页面已在打开引导前初始化，此处只创建结算页。
         MPGameCompletedView completed = UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
         if (completed == null) return;
         SaveFlag(FINISHED_KEY);
@@ -96,9 +95,15 @@ public sealed partial class MPGuideView
     {
         var history = UIManager.Inst.HistoryList;
         if (!history.Exists(window => window is MPHomeView && !window.IsDestoried))
-            UIManager.Inst.ShowWindow<MPHomeView>();
+        {
+            if (UIManager.Inst.ShowWindow<MPHomeView>() == null)
+                throw new System.InvalidOperationException("Could not prepare the home page before the guide.");
+        }
         if (!history.Exists(window => window is MPMainLevelView && !window.IsDestoried))
-            UIManager.Inst.ShowWindow<MPMainLevelView>();
+        {
+            if (UIManager.Inst.ShowWindow<MPMainLevelView>() == null)
+                throw new System.InvalidOperationException("Could not prepare the level list before the guide.");
+        }
     }
 
 #if UNITY_EDITOR
