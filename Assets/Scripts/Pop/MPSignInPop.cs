@@ -9,12 +9,12 @@ using UnityEngine.UI;
 public sealed class MPSignInPop : AWindow
 {
     [TransformPath("View/Window/Days")] private RectTransform m_days;
-    [TransformPath("View/Window/Status")] private TMP_Text m_status;
+    [TransformPath("View/Window/Desc")] private TMP_Text m_desc;
     [TransformPath("View/Window/CloseBtn")] private Button m_closeBtn;
     [TransformPath("View/Window/ClaimBtn")] private Button m_claimBtn;
     [TransformPath("View/Window/DoubleBtn")] private Button m_doubleBtn;
     private MPSignInConfig m_config;
-    private Vector2 m_statusDefaultPosition;
+    private string m_completedDescription;
     private readonly Dictionary<string, Sprite> m_sprites = new Dictionary<string, Sprite>();
     private bool m_busy;
     private bool m_closing;
@@ -25,7 +25,8 @@ public sealed class MPSignInPop : AWindow
 
     public override void OnCreate()
     {
-        m_statusDefaultPosition = m_status.rectTransform.anchoredPosition;
+        // 保留预制体中“后续版本更新奖励”的文案，不再移动底部节点。
+        m_completedDescription = m_desc.text;
     }
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
@@ -48,7 +49,7 @@ public sealed class MPSignInPop : AWindow
             m_config = null;
             foreach (Transform card in m_days)
                 card.gameObject.SetActive(false);
-            m_status.text = "Rewards are unavailable. Please try again later.";
+            SetFooter(false, "Rewards are unavailable. Please try again later.");
             m_claimBtn.interactable = false;
             m_doubleBtn.interactable = false;
             Debug.LogWarning($"[MPSignInPop] {exception.Message}");
@@ -96,37 +97,52 @@ public sealed class MPSignInPop : AWindow
             if (!visible) continue;
             MPSignInRewardEntry reward = m_config.Entries[entryIndex];
             card.Find("Day").GetComponent<TMP_Text>().text = "Day " + (entryIndex + 1);
-            card.Find("Reward").GetComponent<TMP_Text>().text =
+            card.Find("Number").GetComponent<TMP_Text>().text =
                 MPRewardPresentation.Name(reward.type) + " x" + reward.amount;
             bool claimed = status.claimedEntryIds.Contains(reward.id);
             bool today = entryIndex == status.dayIndex && status.CanClaim;
-            card.Find("State").GetComponent<TMP_Text>().text =
-                claimed ? "Claimed" : today ? "Today" : "Locked";
-            Image background = card.GetComponent<Image>();
-            LoadSprite(background, claimed ? "popup_sign_in_claimed"
-                : today ? "popup_sign_in_current" : "popup_sign_in_locked", true);
-            LoadSprite(card.Find("Icon").GetComponent<Image>(), reward.icon, false);
+            // 第七天的宽卡片也使用自身预制的图片，仅切换节点，不覆盖其图片与尺寸。
+            SetDayState(card.Find("FrameStatus"), claimed, today);
+            SetDayState(card.Find("ImgStatus"), claimed, today);
+            LoadSprite(card.Find("Icon").GetComponent<Image>(), reward.icon);
         }
         bool awaitingNewRewards = status.dayIndex < 0;
-        // 全部领完仍允许手动查看；底部领取区改为版本更新提示，不再保留无效按钮。
-        m_claimBtn.gameObject.SetActive(!awaitingNewRewards);
-        m_doubleBtn.gameObject.SetActive(!awaitingNewRewards && MPReleaseFeatures.Ads);
-        m_status.rectTransform.anchoredPosition = awaitingNewRewards
-            ? new Vector2(m_statusDefaultPosition.x, ((RectTransform)m_claimBtn.transform).anchoredPosition.y)
-            : m_statusDefaultPosition;
-        m_status.text = message ?? (!status.hasConfiguredRewards
-            ? (m_config.HasIncompleteRound
-                ? "The next 7-day sign-in round is not ready yet.\nNew rewards will be added in future updates."
-                : "No sign-in rewards available yet.\nNew rewards will be added in future updates.")
-            : awaitingNewRewards
-            ? "All available sign-in rewards collected!\nNew rewards will be added in future updates."
+        // 当天已领也提供退出入口；否则隐藏 CloseBtn 会使再次打开的玩家无法退出。
+        string description = !status.hasConfiguredRewards || awaitingNewRewards
+            ? m_completedDescription
             : !status.clockIsValid
             ? "Please correct your device time to claim."
             : status.claimedToday ? "Claimed! Come back tomorrow."
-            : "One reward each day - resets at 00:00 (UTC+8).");
+            : string.Empty;
+        SetFooter(status.CanClaim, description);
         m_closeBtn.interactable = !m_busy && !m_closing;
         m_claimBtn.interactable = status.CanClaim && !m_busy && !m_closing;
         m_doubleBtn.interactable = status.CanClaim && !m_busy && !m_closing;
+        // 新界面没有 Status 节点，领取/视频异常通过现有 Toast 反馈。
+        if (!string.IsNullOrEmpty(message))
+            UnityToast.Instance.ShowToast(message);
+    }
+
+    private static void SetDayState(Transform root, bool claimed, bool current)
+    {
+        if (root == null) return;
+        root.gameObject.SetActive(true);
+        Transform complete = root.Find("Complete");
+        Transform unlock = root.Find("Unlock");
+        Transform locked = root.Find("Lock");
+        if (complete != null) complete.gameObject.SetActive(claimed);
+        if (unlock != null) unlock.gameObject.SetActive(!claimed && current);
+        if (locked != null) locked.gameObject.SetActive(!claimed && !current);
+        // ImgStatus 没有 Unlock 子节点：可领取时隐藏锁和完成遮罩即可。
+    }
+
+    private void SetFooter(bool canClaim, string description)
+    {
+        m_closeBtn.gameObject.SetActive(!canClaim);
+        m_desc.gameObject.SetActive(!canClaim);
+        m_desc.text = description;
+        m_claimBtn.gameObject.SetActive(canClaim);
+        m_doubleBtn.gameObject.SetActive(canClaim && MPReleaseFeatures.Ads);
     }
 
     private void OnClaim()
@@ -148,7 +164,6 @@ public sealed class MPSignInPop : AWindow
         string owner = MPUser.instance.GetRewardProgressOwner();
         int claimVersion = ++m_claimVersion;
         SetBusy(true);
-        m_status.text = "Waiting for rewarded video...";
         try
         {
             AOAds.CheckAndShowRewardedVideo("sign_in_double", (ready, success) =>
@@ -222,7 +237,7 @@ public sealed class MPSignInPop : AWindow
         }
     }
 
-    private void LoadSprite(Image target, string location, bool panel)
+    private void LoadSprite(Image target, string location)
     {
         if (target == null || string.IsNullOrEmpty(location)) return;
         if (!m_sprites.TryGetValue(location, out Sprite sprite))
@@ -237,11 +252,9 @@ public sealed class MPSignInPop : AWindow
             }
             m_sprites.Add(location, sprite);
         }
-        if (sprite == null) return;
         target.sprite = sprite;
-        target.color = Color.white;
-        target.preserveAspect = !panel;
-        if (panel) target.type = Image.Type.Sliced;
+        target.enabled = sprite != null;
+        target.preserveAspect = true;
     }
 
     public override void OnRelease()

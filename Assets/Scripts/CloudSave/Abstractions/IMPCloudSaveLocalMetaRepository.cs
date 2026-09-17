@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 /// </summary>
 public interface IMPCloudSaveLocalMetaRepository
 {
+    void RemoveDeletedAccount(string playerId);
     /// <summary>
     /// 读取指定玩家的云同步元数据。
     /// </summary>

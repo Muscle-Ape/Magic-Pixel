@@ -15,7 +15,7 @@ namespace MagicPixelCustomLevelPublish;
 /// MagicPixel 自定义关卡公开发布 Cloud Code C# Module。
 /// 所有会影响公共数据的操作都在服务端完成，客户端只负责发起请求和展示结果。
 /// </summary>
-public class CustomLevelPublishModule
+public partial class CustomLevelPublishModule
 {
     private const int SchemaVersion = 1;
     private const int StatusPublished = 0;

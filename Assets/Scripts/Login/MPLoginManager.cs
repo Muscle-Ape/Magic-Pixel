@@ -8,7 +8,7 @@ using UnityEngine;
 /// 登录模块对外 Facade。外部 UI、启动流程和业务代码优先只依赖这个类。
 /// 内部具体登录流程由 MPLoginManagerCore、Strategy、Adapter 和 AuthApi 分层处理。
 /// </summary>
-public class MPLoginManager
+public partial class MPLoginManager
 {
     /// <summary>
     /// 游客登录使用的 Unity Authentication Profile 名称。
@@ -221,6 +221,7 @@ public class MPLoginManager
     /// </summary>
     public async Task<MPLoginResult> LoginAsync(MPLoginType loginType, MPLoginRequest request, CancellationToken cancellationToken = default)
     {
+        ThrowIfDeletingAccount();
         MPLoginResult result = await m_inner.LoginAsync(loginType, request, cancellationToken);
         await SaveLoginResultAsync(result, loginType, false, cancellationToken);
         return result;
@@ -231,6 +232,7 @@ public class MPLoginManager
     /// </summary>
     public async Task<MPLoginResult> AutoLoginAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfDeletingAccount();
         MPLocalLoginProfile profile = await m_localLoginRepository.LoadAsync(cancellationToken);
         PrepareProfileForSessionRestore(profile);
 
@@ -244,6 +246,7 @@ public class MPLoginManager
     /// </summary>
     public async Task<MPLoginResult> LinkAsync(MPLoginType loginType, MPLoginRequest request, CancellationToken cancellationToken = default)
     {
+        ThrowIfDeletingAccount();
         MPLoginResult result = await m_inner.LinkAsync(loginType, request, cancellationToken);
         await SaveLoginResultAsync(result, loginType, true, cancellationToken);
         return result;
@@ -317,7 +320,7 @@ public class MPLoginManager
         Func<CancellationToken, Task<MPLoginStartupResult>> operation, bool switchingAccount, CancellationToken cancellationToken,
         string reauthenticatePlayerId = null)
     {
-        if (m_loginFlowRunning)
+        if (m_loginFlowRunning || IsDeletingAccount || m_deletedAccountPendingCleanup != null)
             return MPLoginStartupResult.Failed(MPLoginError.Create(MPLoginErrorCodes.LoginInProgress, "登录正在进行，请稍候。"));
         m_loginFlowRunning = true;
         IDisposable switchGuard = null;
@@ -347,6 +350,7 @@ public class MPLoginManager
     /// </summary>
     public Task<MPLoginResult> BindProviderAsync(MPLoginType loginType, MPThirdPartyLoginRequest request, CancellationToken cancellationToken = default)
     {
+        ThrowIfDeletingAccount();
         return m_flowController.BindProviderAsync(loginType, request, cancellationToken);
     }
 
@@ -441,11 +445,12 @@ public class MPLoginManager
     }
 
     /// <summary>
-    /// 使用 Apple Identity Token 登录。
+    /// 使用外部 Apple 授权结果登录；同时传入 authorizationCode 才能保存服务端删除凭证。
     /// </summary>
-    public Task<MPLoginResult> LoginWithAppleAsync(string idToken, bool createAccount = true)
+    public Task<MPLoginResult> LoginWithAppleAsync(string idToken, bool createAccount = true, string authorizationCode = null)
     {
-        return LoginWithThirdPartyAsync(MPLoginType.Apple, identityToken: idToken, createAccount: createAccount);
+        return LoginWithThirdPartyAsync(MPLoginType.Apple, authorizationCode: authorizationCode,
+            identityToken: idToken, createAccount: createAccount);
     }
 
     /// <summary>
@@ -473,11 +478,12 @@ public class MPLoginManager
     }
 
     /// <summary>
-    /// 给当前账号绑定 Apple 登录方式。
+    /// 给当前账号绑定 Apple 登录方式；外部授权同时传入 authorizationCode 用于保存删除凭证。
     /// </summary>
-    public Task<MPLoginResult> LinkAppleAsync(string idToken, bool forceLink = false)
+    public Task<MPLoginResult> LinkAppleAsync(string idToken, bool forceLink = false, string authorizationCode = null)
     {
-        return LinkThirdPartyAsync(MPLoginType.Apple, identityToken: idToken, forceLink: forceLink);
+        return LinkThirdPartyAsync(MPLoginType.Apple, authorizationCode: authorizationCode,
+            identityToken: idToken, forceLink: forceLink);
     }
 
     /// <summary>
@@ -522,6 +528,7 @@ public class MPLoginManager
     /// </summary>
     public async Task LogoutAsync(bool clearCredentials = false, CancellationToken cancellationToken = default)
     {
+        ThrowIfDeletingAccount();
         await m_inner.LogoutAsync(clearCredentials, cancellationToken);
         if (clearCredentials)
             await m_localLoginRepository.ClearActiveSessionAsync(keepRecoveryData: true, cancellationToken);
@@ -534,11 +541,13 @@ public class MPLoginManager
 
     public bool SwitchProfile(string profile)
     {
+        ThrowIfDeletingAccount();
         return m_inner.SwitchProfile(profile);
     }
 
     public bool ClearSessionToken()
     {
+        ThrowIfDeletingAccount();
         return m_inner.ClearSessionToken();
     }
 
@@ -550,12 +559,15 @@ public class MPLoginManager
     {
         try
         {
-            if (!IsLoggedIn)
+            if (!IsLoggedIn || IsDeletingAccount)
             {
                 return;
             }
 
+            string revokedPlayerId = PlayerId;
             MPLocalLoginProfile profile = await m_localLoginRepository.LoadAsync();
+            // 主动撤销会触发同一个系统通知，删除流程仍需要当前 UGS 会话清理远端数据。
+            if (IsDeletingAccount || !IsLoggedIn || PlayerId != revokedPlayerId) return;
             bool isAppleSession = CurrentSession != null && CurrentSession.loginType == MPLoginType.Apple;
             bool restoredFromApple = profile != null && profile.lastLoginProvider == MPLoginProvider.Apple;
             if (!isAppleSession && !restoredFromApple)

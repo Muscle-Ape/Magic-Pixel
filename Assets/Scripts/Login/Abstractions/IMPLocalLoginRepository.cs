@@ -27,6 +27,9 @@ public interface IMPLocalLoginRepository
     /// </summary>
     Task ClearActiveSessionAsync(bool keepRecoveryData, CancellationToken cancellationToken = default);
 
+    /// <summary>仅清除指定已删除账号的恢复资料，保留其他独立游客。</summary>
+    Task RemoveDeletedAccountAsync(string playerId);
+
     /// <summary>
     /// 获取或创建当前安装实例 Id。
     /// </summary>

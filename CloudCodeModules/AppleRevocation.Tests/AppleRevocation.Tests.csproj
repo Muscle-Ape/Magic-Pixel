@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MagicPixelCustomLevelPublish/MagicPixelCustomLevelPublish/MagicPixelCustomLevelPublish.csproj" />
+    <Compile Include="../../Assets/Scripts/Login/MPLoginManager.AccountDeletion.cs" Link="Client/AccountDeletion.cs" />
+    <Compile Include="../../Assets/Scripts/Login/MPLoginManager.AppleRevocation.cs" Link="Client/AppleRevocation.cs" />
+    <Compile Include="../../Assets/Scripts/Login/Models/MPThirdPartyAuthResult.cs" Link="Client/AuthResult.cs" />
+  </ItemGroup>
+</Project>

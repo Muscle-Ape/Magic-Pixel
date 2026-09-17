@@ -111,6 +111,29 @@ public class MPCustomLevelPublishManager
     /// </summary>
     public event Action<string> PublishOperationChanged;
 
+    /// <summary>删除账号前不得与仍在提交的发布/点赞操作交错。</summary>
+    public bool HasPendingAccountWrites
+    {
+        get
+        {
+            if (MPCommunityModeration.IsSubmitting) return true;
+            lock (m_publishOperationsLock)
+                if (m_publishOperations.Count > 0) return true;
+            lock (m_likeOperationsLock)
+                return m_likeOperations.Count > 0 || (m_localStatsSyncTask != null && !m_localStatsSyncTask.IsCompleted);
+        }
+    }
+
+    public void ClearDeletedAccountCache(string playerId)
+    {
+        MPCommunityModeration.ClearDeletedAccount(playerId);
+        ES3.DeleteKey(GetLocalStateKey(playerId));
+        m_localState = null;
+        m_communityCachePlayerId = null;
+        m_communityRecordCache.Clear();
+        m_communityPageCache.Clear();
+    }
+
     /// <summary>
     /// 社区关卡点赞状态发生变化。
     /// isFinal 为 false 表示乐观更新，为 true 表示服务端确认或失败回滚完成。
@@ -271,7 +294,7 @@ public class MPCustomLevelPublishManager
     /// </summary>
     public Task RefreshPublishedLocalLevelStatsCacheAsync()
     {
-        if (MPLoginManager.Instance == null ||
+        if (MPLoginManager.Instance == null || MPLoginManager.Instance.IsDeletingAccount ||
             !MPLoginManager.Instance.IsLoggedIn ||
             string.IsNullOrEmpty(MPLoginManager.Instance.PlayerId))
         {
@@ -1116,6 +1139,8 @@ public class MPCustomLevelPublishManager
     /// </summary>
     private static void EnsureLoggedIn()
     {
+        if (MPLoginManager.Instance.IsDeletingAccount)
+            throw new InvalidOperationException("Account deletion is in progress.");
         if (MPLoginManager.Instance == null || !MPLoginManager.Instance.IsLoggedIn || string.IsNullOrEmpty(MPLoginManager.Instance.PlayerId))
         {
             throw new InvalidOperationException("请先登录后再使用公开关卡云发布功能。");

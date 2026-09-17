@@ -151,6 +151,7 @@ public class MPAccountBindPop : AWindow
                 if (auth?.success != true) return CreateThirdPartyAuthFailure(MPLoginType.Apple, auth);
                 // 令牌只用于本次绑定和紧接着的登录，不写存档、不输出日志。
                 request.identityToken = auth.identityToken;
+                request.authorizationCode = auth.authorizationCode;
                 request.platformUserId = auth.platformUserId;
                 if (!m_appleSignInPending)
                 {
@@ -193,6 +194,7 @@ public class MPAccountBindPop : AWindow
         finally
         {
             request.identityToken = null;
+            request.authorizationCode = null;
             request.platformUserId = null;
         }
     }

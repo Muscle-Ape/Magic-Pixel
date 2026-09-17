@@ -19,6 +19,14 @@ public class MPEasySaveCloudSaveLocalMetaRepository : IMPCloudSaveLocalMetaRepos
     /// </summary>
     private const string META_KEY_PREFIX = "MPCloudSave.LocalMeta.";
 
+    public void RemoveDeletedAccount(string playerId)
+    {
+        if (string.IsNullOrEmpty(playerId)) throw new ArgumentException(nameof(playerId));
+        ES3.DeleteKey(GetMetaKey(playerId));
+        if (LoadActivePlayerId() == playerId)
+            ES3.DeleteKey(ACTIVE_PLAYER_ID_KEY);
+    }
+
     /// <inheritdoc />
     public Task<MPCloudSaveLocalMeta> LoadAsync(string playerId, CancellationToken cancellationToken = default)
     {

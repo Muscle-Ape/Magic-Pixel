@@ -927,6 +927,15 @@ public abstract partial class MPGameViewBase : AWindow
     }
 
     /// <summary>页面释放时保存进度、清理 Tween 和当前页面持有的资源。</summary>
+    private bool m_discardProgressOnClose;
+
+    /// <summary>账号已删除时，旧游戏页销毁不能重新写入已清空的关卡缓存。</summary>
+    public void DiscardProgressOnAccountDeletion()
+    {
+        m_discardProgressOnClose = true;
+        m_hasCompleted = true;
+    }
+
     public override void OnRelease()
     {
         MPNoNetworkPop.DismissLevelEntry(this);
@@ -935,7 +944,8 @@ public abstract partial class MPGameViewBase : AWindow
         if (m_failPop != null && !m_failPop.IsDestoried)
             m_failPop.DestroyWindow();
         m_failPop = null;
-        SaveProgressCache();
+        if (!m_discardProgressOnClose)
+            SaveProgressCache();
         m_modeSwitchTween?.Kill();
         ResetCompletedFrame();
         UnregisterCommonUI();

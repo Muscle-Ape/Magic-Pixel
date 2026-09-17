@@ -30,6 +30,8 @@ public class MPSettingPop : AWindow
     /// 非游戏场景隐藏 Game 节点后，设置窗口使用的高度。
     /// </summary>
     private const float NON_GAME_WINDOW_HEIGHT = 1520f;
+    private const float FULL_ACCOUNT_WINDOW_HEIGHT = 2111f;
+    private const float DELETE_ACCOUNT_ROW_HEIGHT = 149f;
 
     private const string LEGAL_DOCUMENT_URL = "http://yunovagames.com:19100/";
 
@@ -107,6 +109,9 @@ public class MPSettingPop : AWindow
     [TransformPath("View/Window/Account/LogOut")]
     private Button m_logOutBtn;
 
+    [TransformPath("View/Window/Account/Delete")]
+    private Button m_deleteBtn;
+
     [TransformPath("View/Window/Game/ReplayBtn")]
     private Button m_replayBtn;
 
@@ -168,15 +173,14 @@ public class MPSettingPop : AWindow
     private bool m_isLoginActionRunning;
     private bool m_logoutCommitted;
     private MPLocalLoginProfile m_logoutProfile;
-    private float m_gameWindowHeight;
+    private string m_deletePlayerId;
+    private bool m_deleteCommitted;
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
         m_gameData = uiMsg as MPSettingPopUIMsgData;
         m_isClosing = false;
-        if (m_window != null && m_gameWindowHeight <= 0f)
-            m_gameWindowHeight = m_window.sizeDelta.y;
 
         RegisterUI();
         RefreshGameOptions();
@@ -236,6 +240,12 @@ public class MPSettingPop : AWindow
         {
             m_logOutBtn.onClick.RemoveListener(OnLogOutClick);
             m_logOutBtn.onClick.AddListener(OnLogOutClick);
+        }
+
+        if (m_deleteBtn != null)
+        {
+            m_deleteBtn.onClick.RemoveListener(OnDeleteAccountClick);
+            m_deleteBtn.onClick.AddListener(OnDeleteAccountClick);
         }
 
         if (m_replayBtn != null)
@@ -302,6 +312,8 @@ public class MPSettingPop : AWindow
         {
             m_logOutBtn.onClick.RemoveListener(OnLogOutClick);
         }
+        if (m_deleteBtn != null)
+            m_deleteBtn.onClick.RemoveListener(OnDeleteAccountClick);
         if (m_replayBtn != null)
             m_replayBtn.onClick.RemoveListener(OnReplayClick);
         if (m_guideBtn != null)
@@ -438,6 +450,65 @@ public class MPSettingPop : AWindow
             OnActionPromptCancelled,
             "Stay Signed In",
             OnLogoutConfirmed);
+    }
+
+    private void OnDeleteAccountClick()
+    {
+        string pendingCleanup = MPLoginManager.Instance.DeletedAccountPendingCleanup;
+        if (m_isLoginActionRunning || m_isActionPromptShowing || m_isClosing ||
+            (!MPLoginManager.Instance.IsLoggedIn && string.IsNullOrEmpty(pendingCleanup)))
+            return;
+        m_deletePlayerId = pendingCleanup ?? MPLoginManager.Instance.PlayerId;
+        m_deleteCommitted = false;
+        m_isActionPromptShowing = true;
+        MPSecondConfirmationPop.Show("Delete Account?",
+            "Permanently delete this game account, including its progress, rewards and uploaded levels? " +
+            "This cannot be undone. Deletion requires an internet connection. " +
+            "If linked to Apple, authorize the same Apple account to revoke access first. " +
+            "If interrupted, some data may already be deleted; please retry to finish.",
+            "Delete Account", ConfirmDeleteAccountAsync, OnActionPromptCancelled,
+            "Cancel", OnDeleteAccountConfirmed);
+    }
+
+    private async Task<bool> ConfirmDeleteAccountAsync(CancellationToken token)
+    {
+        if (this == null || IsDestoried || m_isLoginActionRunning) return false;
+        m_isLoginActionRunning = true;
+        SetLoginButtonsInteractable(false);
+        try
+        {
+            await MPLoginManager.Instance.DeleteCurrentAccountAsync(m_deletePlayerId, token);
+            m_deleteCommitted = true;
+            return true;
+        }
+        finally
+        {
+            if (this != null && !IsDestoried && !m_deleteCommitted)
+            {
+                m_isLoginActionRunning = false;
+                RefreshLoginButtons();
+            }
+        }
+    }
+
+    private void OnDeleteAccountConfirmed()
+    {
+        if (this == null || IsDestoried || m_isClosing || !m_deleteCommitted) return;
+        CloseSettingPop(() =>
+        {
+            // 先让登录页占据焦点，再清理旧账号的所有页面，避免返回旧游戏继续操作。
+            var oldWindows = new List<AWindow>(UIManager.Inst.HistoryList);
+            var result = MPLoginStartupResult.ShowLoginSelection(null, MPLoginProvider.Unknown,
+                "Account deleted. Please select a login method.");
+            UIManager.Inst.ShowWindow<MPLoadingView>(new MPLoadingViewUIMsgData(result,
+                _ => UIManager.Inst.ShowWindow<MPHomeView>()), false, UILayer.Top);
+            foreach (AWindow window in oldWindows)
+            {
+                if (window == null || window.IsDestoried) continue;
+                if (window is MPGameViewBase game) game.DiscardProgressOnAccountDeletion();
+                window.DestroyWindow();
+            }
+        });
     }
 
     private async Task<bool> ConfirmLogoutAsync(CancellationToken confirmationToken)
@@ -582,6 +653,10 @@ public class MPSettingPop : AWindow
         bool showLogOut = ShouldShowLogOut(profile);
         SetButtonVisible(m_logInBtn, !showLogOut);
         SetButtonVisible(m_logOutBtn, showLogOut);
+        // 匿名账号同样是真实账号，也允许删除；只有完全未登录时隐藏。
+        SetButtonVisible(m_deleteBtn, MPLoginManager.Instance.IsLoggedIn ||
+            !string.IsNullOrEmpty(MPLoginManager.Instance.DeletedAccountPendingCleanup));
+        RefreshWindowHeight(m_gameData != null && m_gameData.isInGame);
     }
 
     /// <summary>
@@ -718,6 +793,7 @@ public class MPSettingPop : AWindow
     {
         SetButtonInteractable(m_logInBtn, interactable);
         SetButtonInteractable(m_logOutBtn, interactable);
+        SetButtonInteractable(m_deleteBtn, interactable);
         SetButtonInteractable(m_closeBtn, !m_isLoginActionRunning && !m_isClosing);
         SetButtonInteractable(m_replayBtn, !m_isLoginActionRunning && !m_isClosing);
         SetButtonInteractable(m_guideBtn, !m_isLoginActionRunning && !m_isClosing);
@@ -759,7 +835,7 @@ public class MPSettingPop : AWindow
     }
 
     /// <summary>
-    /// 游戏内保留预制体原始高度；其他页面隐藏 Game 后收起窗口底部空间。
+    /// 新增删除按钮占用 149 高度；游戏区隐藏时仍按旧规则收起 442 高度。
     /// </summary>
     private void RefreshWindowHeight(bool inGame)
     {
@@ -767,9 +843,11 @@ public class MPSettingPop : AWindow
             return;
 
         Vector2 sizeDelta = m_window.sizeDelta;
-        sizeDelta.y = inGame && m_gameWindowHeight > 0f
-            ? m_gameWindowHeight
-            : NON_GAME_WINDOW_HEIGHT;
+        bool showDelete = MPLoginManager.Instance.IsLoggedIn ||
+            !string.IsNullOrEmpty(MPLoginManager.Instance.DeletedAccountPendingCleanup);
+        sizeDelta.y = inGame
+            ? FULL_ACCOUNT_WINDOW_HEIGHT - (showDelete ? 0f : DELETE_ACCOUNT_ROW_HEIGHT)
+            : NON_GAME_WINDOW_HEIGHT + (showDelete ? DELETE_ACCOUNT_ROW_HEIGHT : 0f);
         m_window.sizeDelta = sizeDelta;
     }
 

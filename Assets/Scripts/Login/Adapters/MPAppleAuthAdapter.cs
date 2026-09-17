@@ -14,7 +14,7 @@ using AppleAuth.Interfaces;
 public sealed class MPAppleAuthAdapter : IMPThirdPartyAuthAdapter
 {
     /// <summary>同一时间只允许一个系统 Apple 授权请求。</summary>
-    private readonly SemaphoreSlim m_authorizationGate = new SemaphoreSlim(1, 1);
+    private static readonly SemaphoreSlim m_authorizationGate = new SemaphoreSlim(1, 1);
 
     public MPLoginType LoginType => MPLoginType.Apple;
 
@@ -93,7 +93,8 @@ public sealed class MPAppleAuthAdapter : IMPThirdPartyAuthAdapter
 
         try
         {
-            // 当前登录系统只需要 Identity Token，不额外申请只会在首次授权返回的邮箱和姓名。
+            // Identity Token 用于 Unity 登录，AuthorizationCode 交由服务端保存撤销凭证。
+            // 不额外申请只会在首次授权返回的邮箱和姓名。
             AppleAuthLoginArgs loginArgs = new AppleAuthLoginArgs(LoginOptions.None);
             authManager.LoginWithAppleId(
                 loginArgs,

@@ -83,6 +83,8 @@ public interface IMPLoginManager
     /// </summary>
     Task LogoutAsync(bool clearCredentials = false, CancellationToken cancellationToken = default);
 
+    Task DeleteAccountAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 切换 Unity Authentication Profile。
     /// </summary>

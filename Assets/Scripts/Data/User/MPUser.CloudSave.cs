@@ -5,6 +5,29 @@ using UnityEngine;
 
 public partial class MPUser
 {
+    /// <summary>账号远端删除成功后清空活动存档，防止下一位玩家继承已删除账号的进度。</summary>
+    public void ClearDeletedAccountData(string playerId)
+    {
+        if (string.IsNullOrEmpty(playerId)) throw new ArgumentException(nameof(playerId));
+        foreach (MPCustomLevelInfo level in new List<MPCustomLevelInfo>(GetCustomLevels()))
+            if (level != null) DeleteCustomLevel(level.ID);
+        foreach (string key in ES3.GetKeys())
+        {
+            if (key.StartsWith(m_key_mainlevel_progress_cache_prefix, StringComparison.Ordinal) ||
+                key.StartsWith(m_key_largeimagelevel_progress_cache_prefix, StringComparison.Ordinal))
+                ES3.DeleteKey(key);
+        }
+        ApplyCloudSnapshot(MPUserCloudSnapshot.CreateDefault(string.Empty, string.Empty, string.Empty, false));
+        ApplyCustomLevelCloudSnapshot(new MPCustomLevelCloudSnapshot());
+        ES3.DeleteKey(PROFILE_KEY_PREFIX + playerId);
+        ES3.DeleteKey(LAST_PLAYED_MAIN_LEVEL_KEY_PREFIX + playerId);
+        ES3.DeleteKey(REWARD_PROGRESS_KEY_PREFIX + playerId);
+        if (ES3.Load<string>(REWARD_PROGRESS_OWNER_KEY, defaultValue: string.Empty) == playerId)
+            ES3.DeleteKey(REWARD_PROGRESS_OWNER_KEY);
+        m_playerProfile = null;
+        m_profileOwner = null;
+    }
+
     /// <summary>
     /// 当前是否正在从本地 ES3 初始化用户数据。
     /// 初始化期间产生的默认补齐保存不应触发云端 dirty。

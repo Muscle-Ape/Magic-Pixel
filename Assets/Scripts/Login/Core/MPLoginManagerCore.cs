@@ -340,8 +340,17 @@ public class MPLoginManagerCore : IMPLoginManager
     }
 
     /// <summary>
-    /// 登出并清理本地 Session。即使远端登出失败，也会保证本地状态被清理。
+    /// 远端删除成功后才清理本地会话；失败时仍允许用户重试。
     /// </summary>
+    public async Task DeleteAccountAsync(CancellationToken cancellationToken = default)
+    {
+        await m_authApi.DeleteAccountAsync(cancellationToken);
+        m_sessionService.Clear();
+        ChangeState(MPLoginState.LoggedOut);
+        LoggedOut?.Invoke();
+    }
+
+    /// <summary>登出时即使远端失败，也会清理本地 Session。</summary>
     public async Task LogoutAsync(bool clearCredentials = false, CancellationToken cancellationToken = default)
     {
         ChangeState(MPLoginState.LoggingOut);

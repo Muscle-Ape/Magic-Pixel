@@ -78,6 +78,9 @@ public interface IMPAuthApi
     /// </summary>
     Task SignOutAsync(bool clearCredentials = false, CancellationToken cancellationToken = default);
 
+    /// <summary>永久删除当前认证账号；成功后 SDK 清除当前凭证。</summary>
+    Task DeleteAccountAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 切换底层认证 Profile。
     /// </summary>

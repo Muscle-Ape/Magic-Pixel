@@ -91,6 +91,16 @@ public class MPEasySaveLocalLoginRepository : IMPLocalLoginRepository
         return guest;
     }
 
+    public async Task RemoveDeletedAccountAsync(string playerId)
+    {
+        if (string.IsNullOrEmpty(playerId)) throw new ArgumentException(nameof(playerId));
+        MPLocalLoginProfile guest = LoadGuestProfileUnsafe();
+        if (guest?.playerId == playerId)
+            DeleteKeyIfExists(GUEST_PROFILE_KEY);
+        if (LoadProfileUnsafe()?.playerId == playerId)
+            await ClearActiveSessionAsync(keepRecoveryData: false);
+    }
+
     public Task ClearActiveSessionAsync(bool keepRecoveryData, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

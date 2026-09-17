@@ -383,7 +383,7 @@ public class MPCommunityView : AWindow
         CommunityTab requestTab)
     {
         CancellationToken cancellationToken = cancellation.Token;
-        bool requestAnotherLikedPage = false;
+        bool requestAnotherFilteredPage = false;
         try
         {
             string sortType = requestTab == CommunityTab.Liked
@@ -405,18 +405,20 @@ public class MPCommunityView : AWindow
                     : $"公开关卡列表加载失败：{result.message}");
             }
 
+            string nextCursor = result.nextCursor ?? string.Empty;
+            if (!string.IsNullOrEmpty(nextCursor) && nextCursor == m_nextCursor)
+                throw new InvalidOperationException("Community list cursor did not advance.");
             int previousCount = m_levelRecords.Count;
             AppendPage(result.items, requestTab);
-            m_nextCursor = result.nextCursor ?? string.Empty;
+            m_nextCursor = nextCursor;
             m_hasMore = !string.IsNullOrEmpty(m_nextCursor);
             m_initialRequestCompleted = true;
 
             m_levelGrid.SetListItemCount(m_levelRecords.Count, false);
             m_levelGrid.RefreshAllShownItem();
 
-            // 兼容尚未部署 Liked 服务端筛选的环境：本页没有喜欢项时继续按游标查找。
-            requestAnotherLikedPage = requestTab == CommunityTab.Liked &&
-                                      m_levelRecords.Count == previousCount &&
+            // 本页被全部屏蔽或过滤时继续翻页，不能把过滤后的空页当成列表结束。
+            requestAnotherFilteredPage = m_levelRecords.Count == previousCount &&
                                       m_hasMore;
         }
         catch (OperationCanceledException)
@@ -439,8 +441,13 @@ public class MPCommunityView : AWindow
             {
                 m_isLoading = false;
                 RefreshLoadState();
-                if (requestAnotherLikedPage)
-                    RequestNextPage();
+                if (requestAnotherFilteredPage)
+                {
+                    // 缓存命中可能同步完成；让出一帧，避免连续空缓存页导致递归堆栈增长。
+                    await Task.Yield();
+                    if (m_listCancellation == cancellation && m_selectedTab == requestTab)
+                        RequestNextPage();
+                }
             }
         }
     }
@@ -454,6 +461,8 @@ public class MPCommunityView : AWindow
         {
             MPCustomLevelPublicRecord record = records[i];
             if (record == null || !record.IsPublished || string.IsNullOrEmpty(record.publicLevelId))
+                continue;
+            if (MPCommunityModeration.IsBlocked(record.publicLevelId))
                 continue;
             if (requestTab == CommunityTab.Liked && !record.likedByCurrentPlayer)
                 continue;
@@ -657,12 +666,15 @@ public class MPCommunityView : AWindow
 
     private void RegisterCommunityEvents()
     {
+        MPCommunityModeration.LevelBlocked -= OnLevelBlocked;
+        MPCommunityModeration.LevelBlocked += OnLevelBlocked;
         MPCustomLevelPublishManager.Instance.CommunityLikeStateChanged -= OnCommunityLikeStateChanged;
         MPCustomLevelPublishManager.Instance.CommunityLikeStateChanged += OnCommunityLikeStateChanged;
     }
 
     private void UnregisterCommunityEvents()
     {
+        MPCommunityModeration.LevelBlocked -= OnLevelBlocked;
         MPCustomLevelPublishManager.Instance.CommunityLikeStateChanged -= OnCommunityLikeStateChanged;
     }
 
@@ -676,7 +688,7 @@ public class MPCommunityView : AWindow
         if (!isFinal ||
             !m_initialized ||
             m_selectedTab != CommunityTab.Liked ||
-            record == null)
+            record == null || MPCommunityModeration.IsBlocked(record.publicLevelId))
         {
             return;
         }
@@ -719,5 +731,20 @@ public class MPCommunityView : AWindow
         m_listCancellation.Dispose();
         m_listCancellation = null;
         m_isLoading = false;
+    }
+
+    private void OnLevelBlocked(string id)
+    {
+        if (!m_initialized) return;
+        m_levelRecords.RemoveAll(record => record.publicLevelId == id);
+        m_loadedLevelIds.Remove(id);
+        if (m_listInitialized)
+        {
+            m_levelGrid.SetListItemCount(m_levelRecords.Count, false);
+            m_levelGrid.RefreshAllShownItem();
+            ScheduleLevelItemAlphaRefresh();
+        }
+        RefreshLoadState();
+        if (m_levelRecords.Count < PAGE_SIZE && m_hasMore) RequestNextPage();
     }
 }

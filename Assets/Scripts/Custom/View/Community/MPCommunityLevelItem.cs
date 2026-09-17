@@ -4,12 +4,13 @@ using System;
 using System.Threading;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
 /// 社区公开自定义关卡列表项。
 /// </summary>
-public class MPCommunityLevelItem : MonoBehaviour
+public class MPCommunityLevelItem : MonoBehaviour, IPointerClickHandler
 {
     private const float LOVE_SCALE_DURATION = 0.28f;
     private const float FADE_START_ANCHORED_Y = 500f;
@@ -67,6 +68,12 @@ public class MPCommunityLevelItem : MonoBehaviour
     private RectTransform m_loveOpen;
     private Button m_loveBtn;
     private Button m_playBtn;
+    private Button m_tagBtn;
+    private Button m_shieldBtn;
+    private Button m_reportBtn;
+    private CanvasGroup m_tagMask;
+    private Tween m_tagTween;
+    private static MPCommunityLevelItem s_openTagItem;
 
     private MPCustomLevelPublicRecord m_record;
     private bool m_isOperationRunning;
@@ -103,6 +110,15 @@ public class MPCommunityLevelItem : MonoBehaviour
         m_loveOpen = transform.Find("Node/LoveBtn/Love/Open") as RectTransform;
         m_loveBtn = transform.Find("Node/LoveBtn")?.GetComponent<Button>();
         m_playBtn = transform.Find("Node/PlayBtn")?.GetComponent<Button>();
+        Transform tag = transform.Find("Node/Tag") ?? transform.Find("Tag");
+        m_tagBtn = (tag?.Find("TagBtn") ?? tag?.Find("TabBtn"))?.GetComponent<Button>();
+        m_tagMask = tag?.Find("Mask")?.GetComponent<CanvasGroup>();
+        m_shieldBtn = tag?.Find("Mask/Shield")?.GetComponent<Button>();
+        m_reportBtn = tag?.Find("Mask/Report")?.GetComponent<Button>();
+        m_tagBtn?.onClick.AddListener(OnTagClick);
+        m_shieldBtn?.onClick.AddListener(OnShieldClick);
+        m_reportBtn?.onClick.AddListener(OnReportClick);
+        CloseTag();
         if (m_loveOpen != null)
             m_loveOpenScale = m_loveOpen.localScale;
 
@@ -127,6 +143,7 @@ public class MPCommunityLevelItem : MonoBehaviour
 
         CancelOperation();
         m_bindingVersion++;
+        CloseTag();
         m_record = record;
         m_isOperationRunning = false;
         SetNodeAlpha(1f);
@@ -258,6 +275,7 @@ public class MPCommunityLevelItem : MonoBehaviour
 
     private void OnLoveClick()
     {
+        CloseTag();
         if (!CanStartOperation())
             return;
 
@@ -279,8 +297,65 @@ public class MPCommunityLevelItem : MonoBehaviour
         }
     }
 
+    private void OnTagClick()
+    {
+        if (!CanStartOperation() || m_tagMask == null) return;
+        if (s_openTagItem == this) { CloseTag(); return; }
+        if (s_openTagItem != null) s_openTagItem.CloseTag();
+        s_openTagItem = this;
+        m_tagTween?.Kill();
+        m_tagMask.gameObject.SetActive(true);
+        m_tagMask.interactable = true;
+        m_tagMask.blocksRaycasts = true;
+        m_tagTween = m_tagMask.DOFade(1f, 0.18f).SetUpdate(true);
+    }
+
+    public void CloseTag()
+    {
+        m_tagTween?.Kill();
+        m_tagTween = null;
+        if (s_openTagItem == this) s_openTagItem = null;
+        if (m_tagMask == null) return;
+        m_tagMask.alpha = 0f;
+        m_tagMask.interactable = false;
+        m_tagMask.blocksRaycasts = false;
+    }
+
+    /// <summary>
+    /// 图片、文字、卡片背景和菜单空白处的点击沿层级传到 Item。
+    /// 子 Button 会截获点击，不会向父级冒泡，因此按钮在自身回调中关闭菜单。
+    /// 不接管按下或拖拽事件，保留 LoopGridView 的正常滚动。
+    /// </summary>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Left)
+            CloseTag();
+    }
+
+    private void OnShieldClick()
+    {
+        CloseTag();
+        if (!CanStartOperation()) return;
+        string id = m_record.publicLevelId;
+        try { MPCommunityModeration.Block(id); }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPCommunityLevelItem] 屏蔽失败：{exception.GetType().Name}");
+            UnityToast.Instance.ShowToast("Unable to hide this level. Please try again.");
+        }
+    }
+
+    private void OnReportClick()
+    {
+        CloseTag();
+        if (!CanStartOperation()) return;
+        string id = m_record.publicLevelId;
+        MPReportPop.Show(id);
+    }
+
     private async void OnPlayClick()
     {
+        CloseTag();
         if (!CanStartOperation())
             return;
 
@@ -412,6 +487,8 @@ public class MPCommunityLevelItem : MonoBehaviour
             m_loveBtn.interactable = hasRecord && !m_isOperationRunning;
         if (m_playBtn != null)
             m_playBtn.interactable = hasRecord && !m_isOperationRunning;
+        if (m_tagBtn != null)
+            m_tagBtn.interactable = hasRecord && !m_isOperationRunning;
     }
 
     private void CancelOperation()
@@ -449,6 +526,7 @@ public class MPCommunityLevelItem : MonoBehaviour
 
     private void OnDisable()
     {
+        CloseTag();
         MPCustomLevelPublishManager.Instance.CommunityLikeStateChanged -= OnCommunityLikeStateChanged;
         // LoopGridView 回收 Item 时立即取消操作，避免不可见 Item 完成异步回写或打开页面。
         CancelOperation();
@@ -458,6 +536,10 @@ public class MPCommunityLevelItem : MonoBehaviour
 
     private void OnDestroy()
     {
+        CloseTag();
+        m_tagBtn?.onClick.RemoveListener(OnTagClick);
+        m_shieldBtn?.onClick.RemoveListener(OnShieldClick);
+        m_reportBtn?.onClick.RemoveListener(OnReportClick);
         MPCustomLevelPublishManager.Instance.CommunityLikeStateChanged -= OnCommunityLikeStateChanged;
         if (m_loveBtn != null)
             m_loveBtn.onClick.RemoveListener(OnLoveClick);

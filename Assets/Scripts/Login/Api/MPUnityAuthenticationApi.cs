@@ -195,14 +195,14 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// <summary>
     /// 第三方登录。不同平台需要的凭证类型不同：Google/Apple 用 IdentityToken，Google Play Games 用 AuthCode，Facebook 用 AccessToken。
     /// </summary>
-    public Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default, string expectedPlayerId = null)
+    public async Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default, string expectedPlayerId = null)
     {
         // 同时拦住直接 Token 登录，避免绕过页面和 Adapter 的首发开关。
         if (loginType == MPLoginType.Facebook && !MPReleaseFeatures.Facebook)
-            return Task.FromException<MPUserSession>(new System.InvalidOperationException("Facebook is unavailable in this version."));
+            throw new System.InvalidOperationException("Facebook is unavailable in this version.");
         SignInOptions options = new SignInOptions { CreateAccount = createAccount };
         // 第三方登录不能覆盖游客槽的 SessionToken；绑定接口则继续使用当前槽。
-        return SignInOnProfileAsync("login_" + loginType.ToString().ToLowerInvariant(), loginType, async () =>
+        MPUserSession session = await SignInOnProfileAsync("login_" + loginType.ToString().ToLowerInvariant(), loginType, async () =>
         {
             switch (loginType)
             {
@@ -222,6 +222,8 @@ public class MPUnityAuthenticationApi : IMPAuthApi
                     throw new System.NotSupportedException($"Third party login is not supported: {loginType}");
             }
         }, cancellationToken, expectedPlayerId);
+        await SaveAppleCredentialAfterAuthenticationAsync(loginType, authResult, session.userId);
+        return session;
     }
 
     /// <summary>
@@ -262,7 +264,40 @@ public class MPUnityAuthenticationApi : IMPAuthApi
                 throw new System.NotSupportedException($"Third party link is not supported: {loginType}");
         }
 
-        return await GetCurrentSessionAsync(loginType, cancellationToken);
+        MPUserSession session = await GetCurrentSessionAsync(loginType, cancellationToken);
+        await SaveAppleCredentialAfterAuthenticationAsync(loginType, authResult, session.userId);
+        return session;
+    }
+
+    /// <summary>
+    /// 仅在 Unity 登录/绑定及账号校验成功后提交一次性 code。等待请求结束，避免切账号后写入其他玩家。
+    /// refresh_token 始终由 Cloud Code 保管；存储失败不回滚已成功的认证，也不自动重放一次性 code。
+    /// </summary>
+    private static async Task SaveAppleCredentialAfterAuthenticationAsync(
+        MPLoginType loginType, MPThirdPartyAuthResult result, string expectedPlayerId)
+    {
+        if (loginType != MPLoginType.Apple || result == null) return;
+        string code = result.authorizationCode;
+        result.authorizationCode = null;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            Debug.LogWarning("[MPLogin] Apple 登录缺少授权码，删除账号时将需要补充 Apple 授权。");
+            return;
+        }
+        try
+        {
+            if (!AuthenticationService.Instance.IsAuthorized ||
+                AuthenticationService.Instance.PlayerId != expectedPlayerId) return;
+            bool saved = await Unity.Services.CloudCode.CloudCodeService.Instance.CallModuleEndpointAsync<bool>(
+                MPCustomLevelPublishConstants.MODULE_NAME, "StoreAppleAuthorization",
+                new System.Collections.Generic.Dictionary<string, object> { { "authorizationCode", code } });
+            if (!saved) Debug.LogWarning("[MPLogin] Apple 删除凭证未保存，删除账号时将尝试补充 Apple 授权。");
+        }
+        catch
+        {
+            // 不输出异常正文：第三方服务异常可能包含授权请求数据。
+            Debug.LogWarning("[MPLogin] Apple 删除凭证保存失败；登录仍然成功，删除账号时将尝试补充 Apple 授权。");
+        }
     }
 
     /// <summary>
@@ -314,8 +349,16 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     }
 
     /// <summary>
-    /// 登出 Unity Authentication；clearCredentials 为 true 时会清理本地凭证。
+    /// 永久删除当前 Unity Authentication 账号。
     /// </summary>
+    public async Task DeleteAccountAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        // 请求发出后不能用 UI 取消令牌中断等待，否则无法确认远端是否已经删除。
+        await AuthenticationService.Instance.DeleteAccountAsync();
+    }
+
+    /// <summary>登出 Unity Authentication；clearCredentials 为 true 时清理本地凭证。</summary>
     public async Task SignOutAsync(bool clearCredentials = false, CancellationToken cancellationToken = default)
     {
         await InitializeAsync(cancellationToken);
