@@ -1,9 +1,9 @@
 [
-  { "id": "sign_in_001", "type": "coin", "amount": 100, "icon": "top_icon_coin" },
+  { "id": "sign_in_001", "type": "fluorite", "amount": 100, "icon": "pop_signin_award_fluorite" },
   { "id": "sign_in_002", "type": "hint", "amount": 1, "icon": "pop_signin_award_hint" },
-  { "id": "sign_in_003", "type": "coin", "amount": 200, "icon": "top_icon_coin" },
-  { "id": "sign_in_004", "type": "fluorite", "amount": 10, "icon": "pop_signin_award_fluorite" },
+  { "id": "sign_in_003", "type": "fluorite", "amount": 200, "icon": "pop_signin_award_fluorite" },
+  { "id": "sign_in_004", "type": "coin", "amount": 10, "icon": "top_icon_coin" },
   { "id": "sign_in_005", "type": "life", "amount": 1, "icon": "pop_signin_award_life" },
-  { "id": "sign_in_006", "type": "coin", "amount": 300, "icon": "top_icon_coin" },
-  { "id": "sign_in_007", "type": "fluorite", "amount": 30, "icon": "pop_signin_award_fluorite" }
+  { "id": "sign_in_006", "type": "fluorite", "amount": 300, "icon": "pop_signin_award_fluorite" },
+  { "id": "sign_in_007", "type": "coin", "amount": 30, "icon": "top_icon_coin" }
 ]

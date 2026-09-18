@@ -54,7 +54,7 @@ public partial class MPUser
     /// <summary>主页定时奖励下一次可领取的 UTC ticks。</summary>
     private long m_homeRewardReadyAtUtcTicks;
 
-    public const int HOME_REWARD_COIN_AMOUNT = 300;
+    public const int HOME_REWARD_FLUORITE_AMOUNT = 300;
     private const long HOME_REWARD_INTERVAL_TICKS = TimeSpan.TicksPerHour * 3;
 
 
@@ -103,7 +103,7 @@ public partial class MPUser
     }
 
     /// <summary>
-    /// 到期后领取 300 金币，并立即开始下一轮三小时倒计时。
+    /// 到期后领取 300 萤石，并立即开始下一轮三小时倒计时。
     /// </summary>
     public bool TryClaimHomeReward()
     {
@@ -124,7 +124,7 @@ public partial class MPUser
             sourceId = "home_timed_reward",
             sourceName = "Timed reward",
             transactionId = "home_reward:" + m_homeRewardReadyAtUtcTicks,
-            rewards = new List<MPRewardItem> { new MPRewardItem("coin", HOME_REWARD_COIN_AMOUNT) }
+            rewards = new List<MPRewardItem> { new MPRewardItem("fluorite", HOME_REWARD_FLUORITE_AMOUNT) }
         };
         if (!TryCommitReward(result, null,
             file => file.Save(m_key_home_reward_ready_at_utc_ticks, nextReadyAt),

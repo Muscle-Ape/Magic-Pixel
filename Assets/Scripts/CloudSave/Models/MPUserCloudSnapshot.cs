@@ -104,8 +104,8 @@ public class MPUserCloudSnapshot
             totalExperience = 0,
             assets = new MPUserAssetsSnapshot
             {
-                coins = 200,
-                fluorite = 0,
+                coins = 0,
+                fluorite = 200,
                 hintProps = 0,
                 loveRecoverProps = 0,
                 homeRewardReadyAtUtcTicks = DateTime.UtcNow.AddHours(3).Ticks
