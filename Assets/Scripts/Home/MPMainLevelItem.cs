@@ -305,6 +305,26 @@ public class MPMainLevelItem : MonoBehaviour
         int stars = m_isPass ? MPUser.instance.GetMainLevelStars(m_data.ID) : 0;
         RefreshStars(m_isUnlock, stars);
         RefreshBox(index);
+
+#if UNITY_EDITOR
+        // 编辑器下显示关卡ID
+        GameObject obj = transform.Find("editor_id")?.gameObject;
+        if (obj == null)
+        {
+            obj = new GameObject("editor_id");
+            RectTransform rectTransform = obj.AddComponent<RectTransform>();
+            TMP_Text text = obj.AddComponent<TextMeshProUGUI>();
+            text.font = m_levelIndexText.font;
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 48;
+            rectTransform.SetParent(transform);
+            rectTransform.localScale = Vector3.one;
+            rectTransform.sizeDelta = new Vector2(400, 100);
+            rectTransform.localPosition = Vector3.zero;
+            rectTransform.anchoredPosition = new Vector3(0, -200, 0);
+        }
+        obj.GetComponent<TMP_Text>().text = m_data.ID;
+#endif
     }
 
     /// <summary>

@@ -40,14 +40,14 @@
   },
   {
     "id": "level_main_19",
-    "box_award": null
-  },
-  {
-    "id": "level_main_114",
     "box_award": {
       "type": "life",
       "count": 1
     }
+  },
+  {
+    "id": "level_main_114",
+    "box_award": null
   },
   {
     "id": "level_main_115",
@@ -63,14 +63,14 @@
   },
   {
     "id": "level_main_29",
-    "box_award": null
-  },
-  {
-    "id": "level_main_118",
     "box_award": {
       "type": "fluorite",
       "count": 100
     }
+  },
+  {
+    "id": "level_main_118",
+    "box_award": null
   },
   {
     "id": "level_main_119",
@@ -86,14 +86,14 @@
   },
   {
     "id": "level_main_31",
-    "box_award": null
-  },
-  {
-    "id": "level_main_122",
     "box_award": {
       "type": "pet_red_panda",
       "count": 1
     }
+  },
+  {
+    "id": "level_main_122",
+    "box_award": null
   },
   {
     "id": "level_main_123",
@@ -109,7 +109,10 @@
   },
   {
     "id": "level_main_39",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_126",
@@ -125,11 +128,17 @@
   },
   {
     "id": "level_main_40",
-    "box_award": null
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
   },
   {
     "id": "level_main_42",
-    "box_award": null
+    "box_award": {
+      "type": "life",
+      "count": 2
+    }
   },
   {
     "id": "level_main_129",
@@ -144,12 +153,18 @@
     "box_award": null
   },
   {
-    "id": "level_main_43",
-    "box_award": null
+    "id": "level_main_141",
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_48",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_132",
@@ -165,11 +180,17 @@
   },
   {
     "id": "level_main_50",
-    "box_award": null
+    "box_award": {
+      "type": "life",
+      "count": 1
+    }
   },
   {
     "id": "level_main_51",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_135",
@@ -181,11 +202,17 @@
   },
   {
     "id": "level_main_52",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_53",
-    "box_award": null
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
   },
   {
     "id": "level_main_137",
@@ -205,7 +232,10 @@
   },
   {
     "id": "level_main_55",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_56",
@@ -217,7 +247,10 @@
   },
   {
     "id": "level_main_58",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_60",
@@ -229,7 +262,10 @@
   },
   {
     "id": "level_main_63",
-    "box_award": null
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
   },
   {
     "id": "level_main_64",
@@ -241,7 +277,10 @@
   },
   {
     "id": "level_main_69",
-    "box_award": null
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
   },
   {
     "id": "level_main_71",
@@ -253,7 +292,10 @@
   },
   {
     "id": "level_main_78",
-    "box_award": null
+    "box_award": {
+      "type": "life",
+      "count": 1
+    }
   },
   {
     "id": "level_main_85",
@@ -265,7 +307,10 @@
   },
   {
     "id": "level_main_92",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_93",
@@ -277,7 +322,10 @@
   },
   {
     "id": "level_main_99",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_100",
@@ -289,7 +337,10 @@
   },
   {
     "id": "level_main_103",
-    "box_award": null
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
   },
   {
     "id": "level_main_108",
@@ -300,8 +351,11 @@
     "box_award": null
   },
   {
-    "id": "level_main_141",
-    "box_award": null
+    "id": "level_main_43",
+    "box_award": {
+      "type": "fluorite",
+      "count": 200
+    }
   },
   {
     "id": "level_main_142",
@@ -313,7 +367,10 @@
   },
   {
     "id": "level_main_144",
-    "box_award": null
+    "box_award": {
+      "type": "life",
+      "count": 1
+    }
   },
   {
     "id": "level_main_145",
@@ -325,7 +382,10 @@
   },
   {
     "id": "level_main_147",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_148",
@@ -337,7 +397,10 @@
   },
   {
     "id": "level_main_150",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   },
   {
     "id": "level_main_151",
@@ -349,7 +412,10 @@
   },
   {
     "id": "level_main_153",
-    "box_award": null
+    "box_award": {
+      "type": "life",
+      "count": 1
+    }
   },
   {
     "id": "level_main_154",
@@ -361,7 +427,10 @@
   },
   {
     "id": "level_main_156",
-    "box_award": null
+    "box_award": {
+      "type": "hint",
+      "count": 1
+    }
   },
   {
     "id": "level_main_157",
@@ -373,6 +442,9 @@
   },
   {
     "id": "level_main_159",
-    "box_award": null
+    "box_award": {
+      "type": "fluorite",
+      "count": 100
+    }
   }
 ]
