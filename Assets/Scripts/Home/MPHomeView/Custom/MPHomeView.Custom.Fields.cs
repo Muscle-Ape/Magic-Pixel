@@ -151,6 +151,8 @@ public partial class MPHomeView
     private sealed class CustomQuickColorBinding
     {
         public Button Button;
+        public Transform Select;
+        public int ColorIndex;
         public UnityEngine.Events.UnityAction Callback;
     }
 

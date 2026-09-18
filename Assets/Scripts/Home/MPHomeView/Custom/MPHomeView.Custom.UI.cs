@@ -115,6 +115,9 @@ public partial class MPHomeView
         for (int i = 0; i < count; i++)
         {
             Transform colorNode = colorsRoot.GetChild(i);
+            Transform select = colorNode.Find("Select");
+            if (select != null)
+                select.gameObject.SetActive(false);
             Button button = colorNode.GetComponent<Button>();
             if (button == null
                 || !ColorUtility.TryParseHtmlString(CUSTOM_QUICK_COLOR_HEXES[i], out Color color))
@@ -132,6 +135,8 @@ public partial class MPHomeView
             m_customQuickColorBindings.Add(new CustomQuickColorBinding
             {
                 Button = button,
+                Select = select,
+                ColorIndex = colorIndex,
                 Callback = callback
             });
         }
@@ -142,9 +147,20 @@ public partial class MPHomeView
 
     private void SetCustomColor(Color color)
     {
+        // 调色板的拖动、输入和取色都清除预设标记，不按颜色值反向匹配。
+        RefreshCustomQuickColorSelection(-1);
         m_customCurrentColor = color;
         if (m_customCurrentColorImage != null)
             m_customCurrentColorImage.color = color;
+    }
+
+    private void RefreshCustomQuickColorSelection(int selectedIndex)
+    {
+        foreach (CustomQuickColorBinding binding in m_customQuickColorBindings)
+        {
+            if (binding.Select != null)
+                binding.Select.gameObject.SetActive(binding.ColorIndex == selectedIndex);
+        }
     }
 
     private void OnCustomQuickColorClick(int colorIndex)
@@ -159,6 +175,8 @@ public partial class MPHomeView
         else
             SetCustomColor(color);
 
+        // SetPaletteColor 会同步触发调色回调，完成后再标记本次点击的预设色。
+        RefreshCustomQuickColorSelection(colorIndex);
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
     }
 
