@@ -94,6 +94,41 @@ public partial class MPUser
         return m_coins;
     }
 
+    /// <summary>
+    /// 以指定比例将金币转换为萤石。两种资产通过同一个 ES3File 一次提交，
+    /// 避免只扣除金币或只增加萤石的中间状态。
+    /// </summary>
+    public bool TryExchangeCoinsForFluorite(int coinAmount, int fluoritePerCoin,
+        out int fluoriteAmount)
+    {
+        fluoriteAmount = 0;
+        if (coinAmount <= 0 || fluoritePerCoin <= 0 || coinAmount > m_coins)
+            return false;
+
+        try
+        {
+            int converted = checked(coinAmount * fluoritePerCoin);
+            int remainingCoins = checked(m_coins - coinAmount);
+            int totalFluorite = checked(m_fluorite + converted);
+
+            var file = new ES3File();
+            file.Save(m_key_coins, remainingCoins);
+            file.Save(m_key_fluorite, totalFluorite);
+            file.Sync();
+
+            m_coins = remainingCoins;
+            m_fluorite = totalFluorite;
+            fluoriteAmount = converted;
+            NotifyCloudSaveDirty(MPCloudSaveDirtyReason.Assets);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPUser] 货币转换失败：{exception.Message}");
+            return false;
+        }
+    }
+
     /// <summary>获取主页定时奖励的剩余时间。</summary>
     public TimeSpan GetHomeRewardRemainingTime()
     {

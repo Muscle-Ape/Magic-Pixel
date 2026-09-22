@@ -33,7 +33,7 @@ public sealed class MPHead : MonoBehaviour
 
     /// <summary>
     /// 初始化并刷新。BackBtn 或结算页 HomeBtn 均使用 onBack，头像与昵称共用 onProfile。
-    /// 金币和萤石未传自定义回调时默认进入商店；可重复调用并安全替换监听。
+    /// 金币未传自定义回调时默认进入商店，萤石默认打开货币转换弹窗；可重复调用并安全替换监听。
     /// </summary>
     public void Init(UnityAction onBack, UnityAction onSetting, UnityAction onProfile = null,
         UnityAction onCoin = null, UnityAction onFluorite = null)
@@ -43,7 +43,7 @@ public sealed class MPHead : MonoBehaviour
         m_onSetting = onSetting;
         m_onProfile = onProfile;
         m_onCoin = onCoin ?? OpenShop;
-        m_onFluorite = onFluorite ?? OpenShop;
+        m_onFluorite = onFluorite ?? OpenCurrencyExchange;
         m_initialized = true;
         MPReleaseFeatures.ApplyHead(transform);
         SetInteractable(true);
@@ -126,7 +126,7 @@ public sealed class MPHead : MonoBehaviour
         SetButtonInteractable(m_backButton, interactable);
         SetButtonInteractable(m_settingButton, interactable);
         SetButtonInteractable(m_coinButton, interactable && MPReleaseFeatures.Shop && MPReleaseFeatures.InAppPurchases);
-        SetButtonInteractable(m_fluoriteButton, interactable && MPReleaseFeatures.Shop && MPReleaseFeatures.InAppPurchases);
+        SetButtonInteractable(m_fluoriteButton, interactable);
         if (m_openButtons != null)
             foreach (Button button in m_openButtons)
                 SetButtonInteractable(button, interactable);
@@ -141,6 +141,16 @@ public sealed class MPHead : MonoBehaviour
     private static void OpenShop()
     {
         MPShopView.Show();
+    }
+
+    private void OpenCurrencyExchange()
+    {
+        MPCurrencyExchangePop.Show((_, _) =>
+        {
+            // 兑换弹窗位于顶部层；兑换完成后立即同步当前页面顶部栏。
+            if (this != null && m_initialized)
+                Refresh();
+        });
     }
 
     private void SetListeners(bool subscribe)

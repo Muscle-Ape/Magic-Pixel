@@ -33,7 +33,7 @@ public partial class MPHomeView
     private Button m_coinShopBtn;
 
     [TransformPath("View/Head/Fluorite")]
-    private Button m_fluoriteShopBtn;
+    private Button m_fluoriteExchangeBtn;
 
     [TransformPath("View/Down/Tab/LargeImage")]
     private Button m_largerTabBtn;
@@ -105,7 +105,7 @@ public partial class MPHomeView
         m_homeTabBtn.onClick.AddListener(OnHomeTabClick);
         m_customTabBtn.onClick.AddListener(OnCustomTabClick);
         m_coinShopBtn.onClick.AddListener(OnShopClick);
-        m_fluoriteShopBtn.onClick.AddListener(OnShopClick);
+        m_fluoriteExchangeBtn.onClick.AddListener(OnFluoriteExchangeClick);
         RegisterHomeListeners();
     }
 
@@ -121,8 +121,8 @@ public partial class MPHomeView
             m_customTabBtn.onClick.RemoveListener(OnCustomTabClick);
         if (m_coinShopBtn != null)
             m_coinShopBtn.onClick.RemoveListener(OnShopClick);
-        if (m_fluoriteShopBtn != null)
-            m_fluoriteShopBtn.onClick.RemoveListener(OnShopClick);
+        if (m_fluoriteExchangeBtn != null)
+            m_fluoriteExchangeBtn.onClick.RemoveListener(OnFluoriteExchangeClick);
         UnregisterHomeListeners();
     }
 
@@ -295,5 +295,15 @@ public partial class MPHomeView
     private void OnSettingClick()
     {
         UIManager.Inst.ShowWindow<MPSettingPop>(null, true, UILayer.Top);
+    }
+
+    private void OnFluoriteExchangeClick()
+    {
+        MPCurrencyExchangePop.Show((_, _) =>
+        {
+            if (this == null || IsDestoried)
+                return;
+            RefreshCurrency();
+        });
     }
 }
