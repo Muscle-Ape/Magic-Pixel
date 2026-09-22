@@ -1,0 +1,15 @@
+{
+    "name": "com.huge.unity.hqcommon",
+    "displayName": "HQCommon",
+    "version": "0.0.1",
+    "unity": "2019.4",
+    "description": "公司共用库，会被其他库引用",
+    "repository": {
+        "type": "git",
+        "url": "git@codeup.aliyun.com:joyinngames/Framework2/HQCommon.git"
+    },
+    "dependencies": {
+        "com.cysharp.unitask": "2.5.10",
+        "com.tuyoogame.yooasset": "2.3.19"
+    }
+}

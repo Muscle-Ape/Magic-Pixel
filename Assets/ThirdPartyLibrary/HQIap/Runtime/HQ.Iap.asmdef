@@ -1,0 +1,27 @@
+{
+    "name": "HQ.Iap",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Services.Core",
+        "Unity.Services.Core.Environments",
+        "UnityEngine.Purchasing",
+        "UnityEngine.Purchasing.Stores",
+        "UnityEngine.Purchasing.SecurityStub",
+        "Purchasing.Common",
+        "ThinkingAnalytics",
+        "AppsFlyer",
+        "HQ.Logger",
+        "HQ.Debugging",
+        "AdjustSdk.Scripts",
+        "HQ.Unity.Common"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

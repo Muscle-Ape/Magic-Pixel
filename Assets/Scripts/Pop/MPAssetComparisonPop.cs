@@ -177,7 +177,7 @@ public class MPAssetComparisonPop : AWindow
             ComparisonItemData.Number("Hints", localAssets.hintProps, cloudAssets.hintProps),
             ComparisonItemData.Number("Life Refills", localAssets.loveRecoverProps, cloudAssets.loveRecoverProps)
         };
-        // 未开放的付费权益不参与首发版本的资产对比展示。
+        // 未开放的付费权益不参与资产对比展示。
         if (MPReleaseFeatures.Vip && MPReleaseFeatures.InAppPurchases)
             items.Add(ComparisonItemData.Boolean("VIP", m_data?.localVipOwned ?? false, m_data?.cloudVipOwned ?? false));
         if (MPReleaseFeatures.Ads && MPReleaseFeatures.InAppPurchases)

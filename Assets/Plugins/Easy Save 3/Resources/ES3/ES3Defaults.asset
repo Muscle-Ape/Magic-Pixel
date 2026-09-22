@@ -40,7 +40,9 @@ MonoBehaviour:
     - com.Brogrammist.JSAM.Editor
     - Google.Play.Games
     - Google.Play.Games.Editor
+    - HQ.Iap
     - HQ.UIManager
+    - HQ.Unity.Common
     - joy.unity.editor.ads
     - Lofelt.NiceVibrations
     - Lofelt.NiceVibrations.Editor
@@ -49,9 +51,16 @@ MonoBehaviour:
     - MaxSdk.Scripts
     - MaxSdk.Scripts.IntegrationManager.Editor
     - PsdPlugin
+    - Purchasing.Common
     - spine-csharp
     - spine-unity
     - spine-unity-editor
+    - UniTask
+    - UniTask.Addressables
+    - UniTask.DOTween
+    - UniTask.Editor
+    - UniTask.Linq
+    - UniTask.TextMeshPro
     - unity-websocket-sharp
     - YooAsset
     - YooAsset.Editor

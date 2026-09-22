@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.cysharp.unitask": "2.5.10",
     "com.google.external-dependency-manager": "1.2.187",
     "com.google.play.games": "file:com.google.play.games",
     "com.lupidan.apple-signin-unity": "1.5.0",
@@ -9,6 +10,7 @@
     "com.unity.ide.rider": "3.0.36",
     "com.unity.ide.visualstudio": "2.0.27",
     "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.unity.purchasing": "4.9.3",
     "com.unity.services.authentication": "3.6.1",
     "com.unity.services.cloud-diagnostics": "1.0.12",
     "com.unity.services.cloudcode": "2.10.4",
@@ -56,6 +58,7 @@
       "name": "package.openupm.com",
       "url": "https://package.openupm.com",
       "scopes": [
+        "com.cysharp.unitask",
         "com.tuyoogame.yooasset",
         "com.google.external-dependency-manager",
         "com.google.play.games",

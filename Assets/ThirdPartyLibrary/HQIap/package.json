@@ -1,0 +1,18 @@
+{
+  "name": "com.hq.unity.iap",
+  "displayName": "HQIap",
+  "version": "2.0.1",
+  "unity": "2019.4",
+  "description": "IAP",
+  "samples": [
+    {
+      "displayName": "Example Sample",
+      "description": "暂时没有例子",
+      "path": "Samples~/Example"
+    }
+  ],
+  "dependencies": {
+    "com.unity.services.core": "1.4.0",
+    "com.unity.purchasing": "4.9.3"
+  }
+}

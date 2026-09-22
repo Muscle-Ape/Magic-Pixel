@@ -726,7 +726,7 @@ PlayerSettings:
     WebGL: DOTWEEN;UNITY_VISUAL_SCRIPTING
     Windows Store Apps: DOTWEEN;UNITY_VISUAL_SCRIPTING
     XboxOne: DOTWEEN;UNITY_VISUAL_SCRIPTING
-    iPhone: DOTWEEN;UNITY_VISUAL_SCRIPTING;yoo_asset;ao_ads;ao_ads_max
+    iPhone: DOTWEEN;UNITY_VISUAL_SCRIPTING;yoo_asset;ao_ads;ao_ads_max;hq_iap_v2
     tvOS: DOTWEEN;UNITY_VISUAL_SCRIPTING
   additionalCompilerArguments:
     Standalone: []
@@ -816,7 +816,8 @@ PlayerSettings:
   XboxOneOverrideIdentityName: 
   XboxOneOverrideIdentityPublisher: 
   vrEditorSettings: {}
-  cloudServicesEnabled: {}
+  cloudServicesEnabled:
+    Purchasing: 0
   luminIcon:
     m_Name: 
     m_ModelFolderPath: 

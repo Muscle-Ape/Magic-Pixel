@@ -171,6 +171,10 @@ public class MPLauncher : MonoBehaviour
             yield break;
         }
 
+        // 玩家本地数据与云端快照就绪后再初始化 IAP，避免恢复订单先发货又被云存档覆盖。
+        // 发布开关只控制功能入口；IAP 服务始终初始化，以便处理商店补单和恢复订单。
+        MPIapManager.Instance.Initialize();
+
         MPVibrationManager.Instance.Initialize();
         m_loadingView.CompleteLoading(EnterGame);
     }

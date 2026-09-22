@@ -197,7 +197,7 @@ public class MPUnityAuthenticationApi : IMPAuthApi
     /// </summary>
     public async Task<MPUserSession> SignInWithThirdPartyAsync(MPLoginType loginType, MPThirdPartyAuthResult authResult, bool createAccount, CancellationToken cancellationToken = default, string expectedPlayerId = null)
     {
-        // 同时拦住直接 Token 登录，避免绕过页面和 Adapter 的首发开关。
+        // 同时拦住直接 Token 登录，避免绕过页面和 Adapter 的统一功能开关。
         if (loginType == MPLoginType.Facebook && !MPReleaseFeatures.Facebook)
             throw new System.InvalidOperationException("Facebook is unavailable in this version.");
         SignInOptions options = new SignInOptions { CreateAccount = createAccount };

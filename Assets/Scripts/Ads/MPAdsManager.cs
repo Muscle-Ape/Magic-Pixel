@@ -149,7 +149,7 @@ public sealed class MPAdsManager : IDisposable
         string userId = null,
         Action onInitialized = null)
     {
-        // 首发不创建 AOAds 单例，避免触发其 Start 中的 SDK 初始化。
+        // 保留统一功能开关；关闭广告时不创建 AOAds 单例，避免触发 SDK 初始化。
         if (!MPReleaseFeatures.Ads) return;
         // 间隔策略和广告位策略统一由管理器创建，外部无需持有或注入实例。
         m_adIntervalController = new MPAdsAdIntervalController(

@@ -30,6 +30,7 @@ MonoBehaviour:
     m_Name: package.openupm.com
     m_Url: https://package.openupm.com
     m_Scopes:
+    - com.cysharp.unitask
     - com.tuyoogame.yooasset
     - com.google.external-dependency-manager
     - com.google.play.games

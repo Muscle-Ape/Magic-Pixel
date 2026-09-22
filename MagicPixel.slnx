@@ -3,10 +3,12 @@
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="spine-unity.csproj" />
   <Project Path="AO.Ads.csproj" />
+  <Project Path="HQ.Iap.csproj" />
   <Project Path="spine-unity-editor.csproj" />
   <Project Path="com.Brogrammist.JSAM.csproj" />
   <Project Path="Google.Play.Games.csproj" />
   <Project Path="MaxSdk.Scripts.csproj" />
+  <Project Path="HQ.Unity.Common.csproj" />
   <Project Path="spine-csharp.csproj" />
   <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="com.Brogrammist.JSAM.Editor.csproj" />

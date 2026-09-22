@@ -2,20 +2,20 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 首发临时关闭的功能。保留业务实现和预制体，接入完成后在这里逐项恢复。
-/// 开关只控制功能和入口，不删除 SDK，也不修改玩家已有存档。
+/// 发布功能统一开关。开关只控制功能和入口，不删除 SDK，也不修改玩家已有存档。
+/// 之前为首发包临时关闭的功能现已全部恢复。
 /// </summary>
 public static class MPReleaseFeatures
 {
-    public static bool Ads => false;
-    public static bool Facebook => false;
-    public static bool Vip => false;
-    public static bool InAppPurchases => false;
-    public static bool Shop => false;
-    public static bool SignIn => false;
-    public static bool ShopPets => false;
-    public static bool ThreeD => false;
-    public static bool HomeReward => false;
+    public static bool Ads => true;
+    public static bool Facebook => true;
+    public static bool Vip => true;
+    public static bool InAppPurchases => true;
+    public static bool Shop => true;
+    public static bool SignIn => true;
+    public static bool ShopPets => true;
+    public static bool ThreeD => true;
+    public static bool HomeReward => true;
 
     /// <summary>按稳定 ID 过滤购买宠物，避免解锁排序或配置顺序变化后隐藏错误的宠物。</summary>
     public static bool IsHomePetVisible(string petId)

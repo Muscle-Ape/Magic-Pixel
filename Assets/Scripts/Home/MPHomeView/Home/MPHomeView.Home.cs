@@ -564,7 +564,7 @@ public partial class MPHomeView
 
     private void OnSignInClick()
     {
-        // 首发暂不开放签到，保留原流程供后续恢复。
+        // 保留统一功能开关，便于后续按发布环境控制签到入口。
         if (!MPReleaseFeatures.SignIn) return;
         // 主动查看不受可领取条件限制；空配置、今日已领、全部领完都允许打开。
         // 记录本次已查看，关闭后不会立刻被首页的自动提示再次打断。
