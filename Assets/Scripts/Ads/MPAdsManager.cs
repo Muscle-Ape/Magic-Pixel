@@ -157,7 +157,7 @@ public sealed class MPAdsManager : IDisposable
             INTERSTITIAL_INTERVAL_REDUCTION,
             MINIMUM_INTERSTITIAL_INTERVAL,
             INTERSTITIAL_VIEWS_PER_REDUCTION);
-        m_adSceneController = new AOAdsBaseAdSceneController();
+        m_adSceneController = new MPAdsAdSceneController();
 
         // 在 AOAds 启动广告 SDK 前完成策略注入。
         AOAds ads = AOAds.Instance;

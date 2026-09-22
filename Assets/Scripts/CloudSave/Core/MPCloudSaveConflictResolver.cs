@@ -94,6 +94,10 @@ public class MPCloudSaveConflictResolver
         return new MPRewardProgressSnapshot
         {
             transactionIds = UnionList(local.transactionIds, cloud.transactionIds),
+            purchasedProductTransactions = UnionList(
+                local.purchasedProductTransactions,
+                cloud.purchasedProductTransactions),
+            ownedEntitlementIds = UnionList(local.ownedEntitlementIds, cloud.ownedEntitlementIds),
             unlockedPetIds = UnionList(local.unlockedPetIds, cloud.unlockedPetIds),
             claimedPetIds = UnionList(local.claimedPetIds, cloud.claimedPetIds),
             notifiedPetIds = UnionList(local.notifiedPetIds, cloud.notifiedPetIds),
@@ -102,8 +106,24 @@ public class MPCloudSaveConflictResolver
             signInLatestObservedUtcTicks = Math.Max(local.signInLatestObservedUtcTicks, cloud.signInLatestObservedUtcTicks),
             signInClaimedEntryIds = UnionList(local.signInClaimedEntryIds, cloud.signInClaimedEntryIds),
             signInLegacyClaimedDays = Math.Max(LegacySignInClaimedDays(local), LegacySignInClaimedDays(cloud)),
-            signInLegacyMappedDays = Math.Max(local.signInLegacyMappedDays, cloud.signInLegacyMappedDays)
+            signInLegacyMappedDays = Math.Max(local.signInLegacyMappedDays, cloud.signInLegacyMappedDays),
+            shopFreeCoinClaimDay = Math.Max(local.shopFreeCoinClaimDay, cloud.shopFreeCoinClaimDay),
+            shopFreeCoinClaimCount = MergeShopFreeCoinCount(local, cloud),
+            shopFreeCoinLatestObservedUtcTicks = Math.Max(
+                local.shopFreeCoinLatestObservedUtcTicks,
+                cloud.shopFreeCoinLatestObservedUtcTicks)
         };
+    }
+
+    private static int MergeShopFreeCoinCount(
+        MPRewardProgressSnapshot local,
+        MPRewardProgressSnapshot cloud)
+    {
+        if (local.shopFreeCoinClaimDay == cloud.shopFreeCoinClaimDay)
+            return Math.Max(local.shopFreeCoinClaimCount, cloud.shopFreeCoinClaimCount);
+        return local.shopFreeCoinClaimDay > cloud.shopFreeCoinClaimDay
+            ? local.shopFreeCoinClaimCount
+            : cloud.shopFreeCoinClaimCount;
     }
 
     private static int LegacySignInClaimedDays(MPRewardProgressSnapshot value)

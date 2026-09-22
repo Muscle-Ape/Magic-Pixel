@@ -34,6 +34,13 @@ public sealed class MPRewardItem
 public sealed class MPRewardProgressSnapshot
 {
     public List<string> transactionIds = new List<string>();
+    // 每条记录由 productId 与 transactionId 组成。用事务并集统计库存，跨设备合并不会重复或漏算。
+    public List<string> purchasedProductTransactions = new List<string>();
+    // 已购买的永久型非数值权益。目前用于去广告；订阅有效性必须由商店票据判断。
+    public List<string> ownedEntitlementIds = new List<string>();
+    public long shopFreeCoinClaimDay;
+    public int shopFreeCoinClaimCount;
+    public long shopFreeCoinLatestObservedUtcTicks;
     public long signInLastClaimDay;
     public int signInClaimedDays;
     public long signInLatestObservedUtcTicks;
@@ -51,6 +58,7 @@ public partial class MPUser
 {
     private const string REWARD_PROGRESS_KEY_PREFIX = "key_reward_progress_v1_";
     private const string REWARD_PROGRESS_OWNER_KEY = "key_reward_progress_owner_v1";
+    private const char SHOP_PRODUCT_TRANSACTION_SEPARATOR = '\u001F';
 
     /// <summary>离线沿用最近本地账号，已登录账号各自隔离，避免切号串签到记录。</summary>
     public string GetRewardProgressOwner()
@@ -96,6 +104,9 @@ public partial class MPUser
     private static void NormalizeRewardProgress(MPRewardProgressSnapshot state)
     {
         state.transactionIds = state.transactionIds ?? new List<string>();
+        state.purchasedProductTransactions = state.purchasedProductTransactions
+            ?? new List<string>();
+        state.ownedEntitlementIds = state.ownedEntitlementIds ?? new List<string>();
         state.unlockedPetIds = state.unlockedPetIds ?? new List<string>();
         state.notifiedPetIds = state.notifiedPetIds ?? new List<string>();
         state.claimedPetIds = state.claimedPetIds ?? new List<string>();
@@ -114,6 +125,16 @@ public partial class MPUser
         state.signInLastClaimDay = Math.Max(0L, state.signInLastClaimDay);
         state.signInLatestObservedUtcTicks = Math.Max(0L,
             Math.Min(DateTime.MaxValue.Ticks, state.signInLatestObservedUtcTicks));
+        var entitlementIds = new HashSet<string>(StringComparer.Ordinal);
+        state.ownedEntitlementIds.RemoveAll(id =>
+            string.IsNullOrWhiteSpace(id) || !entitlementIds.Add(id));
+        state.shopFreeCoinClaimDay = Math.Max(0L, state.shopFreeCoinClaimDay);
+        state.shopFreeCoinClaimCount = Math.Max(0, state.shopFreeCoinClaimCount);
+        state.shopFreeCoinLatestObservedUtcTicks = Math.Max(0L,
+            Math.Min(DateTime.MaxValue.Ticks, state.shopFreeCoinLatestObservedUtcTicks));
+        var productTransactions = new HashSet<string>(StringComparer.Ordinal);
+        state.purchasedProductTransactions.RemoveAll(value =>
+            string.IsNullOrWhiteSpace(value) || !productTransactions.Add(value));
     }
 
     public bool RewardTransactionIsCommitted(string transactionId)
@@ -149,6 +170,15 @@ public partial class MPUser
                 string type = MPRewardPresentation.NormalizeType(reward.type);
                 if (string.IsNullOrEmpty(type))
                 {
+                    string entitlementId = reward.type?.Trim();
+                    if (IsShopEntitlement(entitlementId))
+                    {
+                        if (entitlementId == "remove_ads"
+                            && !state.ownedEntitlementIds.Contains(entitlementId))
+                            state.ownedEntitlementIds.Add(entitlementId);
+                        totals[entitlementId] = new MPRewardItem(entitlementId, 1, reward.icon);
+                        continue;
+                    }
                     // 非资产类型只有匹配到真实宠物 ID 才允许发放。
                     MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
                         item => item != null && item.ID == reward.type?.Trim());
@@ -170,6 +200,11 @@ public partial class MPUser
             int fluorite = checked(m_fluorite + RewardAmount(totals, "fluorite"));
             int hints = checked(m_hintProps + RewardAmount(totals, "hint"));
             int lives = checked(m_loveRecoverProps + RewardAmount(totals, "life"));
+            if (TryGetIapProductId(receipt.sourceId, out string purchasedProductId))
+            {
+                state.purchasedProductTransactions.Add(
+                    CreateProductTransactionKey(purchasedProductId, receipt.transactionId));
+            }
             state.transactionIds.Add(receipt.transactionId);
 
             // ES3File 将资产、业务领取标记、幂等凭据合成一次文件提交。
@@ -203,6 +238,65 @@ public partial class MPUser
     private static int RewardAmount(Dictionary<string, MPRewardItem> rewards, string type)
     {
         return rewards.TryGetValue(type, out MPRewardItem item) ? item.amount : 0;
+    }
+
+    public int GetShopProductPurchasedCount(string productId)
+    {
+        if (string.IsNullOrWhiteSpace(productId))
+            return 0;
+        MPRewardProgressSnapshot state = CreateRewardProgressSnapshot();
+        string prefix = productId.Trim() + SHOP_PRODUCT_TRANSACTION_SEPARATOR;
+        int count = 0;
+        foreach (string value in state.purchasedProductTransactions)
+            if (value.StartsWith(prefix, StringComparison.Ordinal))
+                count++;
+        return count;
+    }
+
+    /// <summary>-1 表示无限库存；其余值为当前账号的实际剩余购买次数。</summary>
+    public int GetShopProductRemainingInventory(HQIapProduct product)
+    {
+        if (product == null)
+            return 0;
+        if (product.Inventory == -1)
+            return -1;
+        if (product.Inventory <= 0)
+            return 0;
+        return Math.Max(0, product.Inventory - GetShopProductPurchasedCount(product.ID));
+    }
+
+    public bool ShopProductIsAvailable(HQIapProduct product)
+    {
+        return product != null && GetShopProductRemainingInventory(product) != 0;
+    }
+
+    private static bool TryGetIapProductId(string sourceId, out string productId)
+    {
+        const string prefix = "iap:";
+        productId = null;
+        if (string.IsNullOrWhiteSpace(sourceId)
+            || !sourceId.StartsWith(prefix, StringComparison.Ordinal)
+            || sourceId.Length <= prefix.Length)
+            return false;
+        productId = sourceId.Substring(prefix.Length).Trim();
+        return productId.Length > 0;
+    }
+
+    private static string CreateProductTransactionKey(string productId, string transactionId)
+    {
+        return productId + SHOP_PRODUCT_TRANSACTION_SEPARATOR + transactionId;
+    }
+
+    public bool OwnsShopEntitlement(string entitlementId)
+    {
+        return string.Equals(entitlementId, "remove_ads", StringComparison.Ordinal)
+            && CreateRewardProgressSnapshot().ownedEntitlementIds.Contains(entitlementId);
+    }
+
+    private static bool IsShopEntitlement(string entitlementId)
+    {
+        return string.Equals(entitlementId, "remove_ads", StringComparison.Ordinal)
+            || string.Equals(entitlementId, "yun_vip_annual", StringComparison.Ordinal);
     }
 }
 

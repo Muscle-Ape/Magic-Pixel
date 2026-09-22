@@ -1,39 +1,19 @@
 [
   {
-    "ID": "yun_vip_weekly",
-    "DevDescribe": "",
-    "ProductType": 2,
-    "AppStoreID": "yun_vip_weekly",
-    "GooglePlayID": "yun_vip_weekly",
-    "DisplayName": "Small Coin Pack",
-    "DisplayPrice": "9.99",
-    "Inventory": 1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
-    "Payouts": [
-      {
-        "AssetID": "remove_ads",
-        "Type": "Other",
-        "Quantity": 1
-      }
-    ],
-    "ImageUrl": ""
-  },
-  {
     "ID": "yun_vip_annual",
     "DevDescribe": "",
     "ProductType": 2,
     "AppStoreID": "yun_vip_annual",
     "GooglePlayID": "yun_vip_annual",
-    "DisplayName": "Small Coin Pack",
-    "DisplayPrice": "9.99",
+    "DisplayName": "VIP PASS",
+    "DisplayPrice": "39.99",
     "Inventory": 1,
-    "Describe": "Contains 1000 coins.",
+    "Describe": "",
     "Sort": 1,
     "Payouts": [
       {
-        "AssetID": "remove_ads",
-        "Type": "Other",
+        "AssetID": "yun_vip_annual",
+        "Type": 3,
         "Quantity": 1
       }
     ],
@@ -45,7 +25,7 @@
     "ProductType": 1,
     "AppStoreID": "remove_ads",
     "GooglePlayID": "remove_ads",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "Remove Forced Ads",
     "DisplayPrice": "9.99",
     "Inventory": 1,
     "Describe": "Contains 1000 coins.",
@@ -53,7 +33,7 @@
     "Payouts": [
       {
         "AssetID": "remove_ads",
-        "Type": "Other",
+        "Type": 3,
         "Quantity": 1
       }
     ],
@@ -65,19 +45,19 @@
     "ProductType": 0,
     "AppStoreID": "coin_1",
     "GooglePlayID": "coin_1",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "",
     "DisplayPrice": "1.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "",
+    "Sort": 0,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
+        "Type": 1,
         "Quantity": 1000
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_coin_1"
   },
   {
     "ID": "coin_2",
@@ -85,19 +65,19 @@
     "ProductType": 0,
     "AppStoreID": "coin_2",
     "GooglePlayID": "coin_2",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "",
     "DisplayPrice": "2.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
+    "Describe": "",
     "Sort": 1,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
+        "Type": 1,
         "Quantity": 1600
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_coin_2"
   },
   {
     "ID": "coin_3",
@@ -105,19 +85,19 @@
     "ProductType": 0,
     "AppStoreID": "coin_3",
     "GooglePlayID": "coin_3",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "",
     "DisplayPrice": "4.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "",
+    "Sort": 2,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
+        "Type": 1,
         "Quantity": 3000
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_coin_3"
   },
   {
     "ID": "coin_4",
@@ -125,19 +105,19 @@
     "ProductType": 0,
     "AppStoreID": "coin_4",
     "GooglePlayID": "coin_4",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "",
     "DisplayPrice": "9.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "",
+    "Sort": 3,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
+        "Type": 1,
         "Quantity": 6000
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_coin_4"
   },
   {
     "ID": "coin_5",
@@ -145,19 +125,19 @@
     "ProductType": 0,
     "AppStoreID": "coin_5",
     "GooglePlayID": "coin_5",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "",
     "DisplayPrice": "19.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "",
+    "Sort": 4,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
+        "Type": 1,
         "Quantity": 12000
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_coin_5"
   },
   {
     "ID": "bundle_1",
@@ -165,19 +145,29 @@
     "ProductType": 0,
     "AppStoreID": "bundle_1",
     "GooglePlayID": "bundle_1",
-    "DisplayName": "Small Coin Pack",
+    "DisplayName": "Beginner's Bundle",
     "DisplayPrice": "0.99",
     "Inventory": 1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "Only Once",
+    "Sort": 0,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
-        "Quantity": 500
+        "Type": 1,
+        "Quantity": 700
+      },
+      {
+        "AssetID": "hint",
+        "Type": 2,
+        "Quantity": 2
+      },
+      {
+        "AssetID": "life",
+        "Type": 2,
+        "Quantity": 2
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_bundle_1"
   },
   {
     "ID": "bundle_2",
@@ -185,19 +175,29 @@
     "ProductType": 0,
     "AppStoreID": "bundle_2",
     "GooglePlayID": "bundle_2",
-    "DisplayName": "Small Coin Pack",
-    "DisplayPrice": "0.99",
+    "DisplayName": "Super Bundle",
+    "DisplayPrice": "5.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
+    "Describe": "Hot",
     "Sort": 1,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
-        "Quantity": 500
+        "Type": 1,
+        "Quantity": 4000
+      },
+      {
+        "AssetID": "hint",
+        "Type": 2,
+        "Quantity": 5
+      },
+      {
+        "AssetID": "life",
+        "Type": 2,
+        "Quantity": 5
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_bundle_2"
   },
   {
     "ID": "bundle_3",
@@ -205,19 +205,29 @@
     "ProductType": 0,
     "AppStoreID": "bundle_3",
     "GooglePlayID": "bundle_3",
-    "DisplayName": "Small Coin Pack",
-    "DisplayPrice": "0.99",
+    "DisplayName": "Mega Bundle",
+    "DisplayPrice": "10.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "Best Value",
+    "Sort": 2,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
-        "Quantity": 500
+        "Type": 1,
+        "Quantity": 12000
+      },
+      {
+        "AssetID": "hint",
+        "Type": 2,
+        "Quantity": 12
+      },
+      {
+        "AssetID": "life",
+        "Type": 2,
+        "Quantity": 12
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_bundle_3"
   },
   {
     "ID": "bundle_4",
@@ -225,18 +235,33 @@
     "ProductType": 0,
     "AppStoreID": "bundle_4",
     "GooglePlayID": "bundle_4",
-    "DisplayName": "Small Coin Pack",
-    "DisplayPrice": "0.99",
+    "DisplayName": "Giant Bundle",
+    "DisplayPrice": "29.99",
     "Inventory": -1,
-    "Describe": "Contains 1000 coins.",
-    "Sort": 1,
+    "Describe": "No Ads",
+    "Sort": 3,
     "Payouts": [
       {
         "AssetID": "coin",
-        "Type": "Currency",
-        "Quantity": 500
+        "Type": 1,
+        "Quantity": 35000
+      },
+      {
+        "AssetID": "hint",
+        "Type": 2,
+        "Quantity": 25
+      },
+      {
+        "AssetID": "life",
+        "Type": 2,
+        "Quantity": 25
+      },
+      {
+        "AssetID": "remove_ads",
+        "Type": 3,
+        "Quantity": 1
       }
     ],
-    "ImageUrl": ""
+    "ImageUrl": "shop_bundle_4"
   }
 ]

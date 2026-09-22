@@ -28,6 +28,15 @@ public partial class MPHomeView
     [TransformPath("View/Center/Home/Widgets/RewardBtn")]
     private Button m_rewardBtn;
 
+    [TransformPath("View/Center/Home/Widgets/ShopBtn")]
+    private Button m_shopBtn;
+
+    [TransformPath("View/Center/Home/Widgets/VIPBtn")]
+    private Button m_vipShopBtn;
+
+    [TransformPath("View/Center/Home/Widgets/NoAdsBtn")]
+    private Button m_noAdsShopBtn;
+
     [TransformPath("View/Center/Home/Widgets/RewardBtn/Countdown")]
     private TMP_Text m_rewardCountdownText;
 
@@ -106,6 +115,9 @@ public partial class MPHomeView
         m_newGameBtn.onClick.AddListener(OnNewGameClick);
         m_threeDBtn.onClick.AddListener(OnThreeDClick);
         m_rewardBtn.onClick.AddListener(OnHomeRewardClick);
+        m_shopBtn.onClick.AddListener(OnShopClick);
+        m_vipShopBtn.onClick.AddListener(OnShopClick);
+        m_noAdsShopBtn.onClick.AddListener(OnShopClick);
         m_signInBtn = transform.Find("View/Center/Home/Widgets/SignInBtn")?.GetComponent<Button>();
         if (m_signInBtn != null)
             m_signInBtn.onClick.AddListener(OnSignInClick);
@@ -120,6 +132,12 @@ public partial class MPHomeView
             m_threeDBtn.onClick.RemoveListener(OnThreeDClick);
         if (m_rewardBtn != null)
             m_rewardBtn.onClick.RemoveListener(OnHomeRewardClick);
+        if (m_shopBtn != null)
+            m_shopBtn.onClick.RemoveListener(OnShopClick);
+        if (m_vipShopBtn != null)
+            m_vipShopBtn.onClick.RemoveListener(OnShopClick);
+        if (m_noAdsShopBtn != null)
+            m_noAdsShopBtn.onClick.RemoveListener(OnShopClick);
         if (m_signInBtn != null)
             m_signInBtn.onClick.RemoveListener(OnSignInClick);
         UnregisterPetScrollBeginDrag();
@@ -624,6 +642,11 @@ public partial class MPHomeView
     private void OnThreeDClick()
     {
         MPThreeDIntegration.Open();
+    }
+
+    private void OnShopClick()
+    {
+        MPShopView.Show();
     }
 
     public class Configs

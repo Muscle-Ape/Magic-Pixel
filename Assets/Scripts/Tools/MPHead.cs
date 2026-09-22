@@ -33,7 +33,7 @@ public sealed class MPHead : MonoBehaviour
 
     /// <summary>
     /// 初始化并刷新。BackBtn 或结算页 HomeBtn 均使用 onBack，头像与昵称共用 onProfile。
-    /// 可重复调用，替换回调前会解绑旧监听；未传回调的按钮不执行业务操作。
+    /// 金币和萤石未传自定义回调时默认进入商店；可重复调用并安全替换监听。
     /// </summary>
     public void Init(UnityAction onBack, UnityAction onSetting, UnityAction onProfile = null,
         UnityAction onCoin = null, UnityAction onFluorite = null)
@@ -42,8 +42,8 @@ public sealed class MPHead : MonoBehaviour
         m_onBack = onBack;
         m_onSetting = onSetting;
         m_onProfile = onProfile;
-        m_onCoin = onCoin;
-        m_onFluorite = onFluorite;
+        m_onCoin = onCoin ?? OpenShop;
+        m_onFluorite = onFluorite ?? OpenShop;
         m_initialized = true;
         MPReleaseFeatures.ApplyHead(transform);
         SetInteractable(true);
@@ -136,6 +136,11 @@ public sealed class MPHead : MonoBehaviour
     {
         if (button != null)
             button.interactable = interactable;
+    }
+
+    private static void OpenShop()
+    {
+        MPShopView.Show();
     }
 
     private void SetListeners(bool subscribe)

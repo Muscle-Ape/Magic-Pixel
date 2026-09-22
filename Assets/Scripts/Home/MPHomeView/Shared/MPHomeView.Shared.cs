@@ -29,6 +29,12 @@ public partial class MPHomeView
     [TransformPath("View/Head/Fluorite/Count")]
     private TMP_Text m_fluoriteText;
 
+    [TransformPath("View/Head/Coin")]
+    private Button m_coinShopBtn;
+
+    [TransformPath("View/Head/Fluorite")]
+    private Button m_fluoriteShopBtn;
+
     [TransformPath("View/Down/Tab/LargeImage")]
     private Button m_largerTabBtn;
 
@@ -98,6 +104,8 @@ public partial class MPHomeView
         m_largerTabBtn.onClick.AddListener(OnLargerTabClick);
         m_homeTabBtn.onClick.AddListener(OnHomeTabClick);
         m_customTabBtn.onClick.AddListener(OnCustomTabClick);
+        m_coinShopBtn.onClick.AddListener(OnShopClick);
+        m_fluoriteShopBtn.onClick.AddListener(OnShopClick);
         RegisterHomeListeners();
     }
 
@@ -111,6 +119,10 @@ public partial class MPHomeView
             m_homeTabBtn.onClick.RemoveListener(OnHomeTabClick);
         if (m_customTabBtn != null)
             m_customTabBtn.onClick.RemoveListener(OnCustomTabClick);
+        if (m_coinShopBtn != null)
+            m_coinShopBtn.onClick.RemoveListener(OnShopClick);
+        if (m_fluoriteShopBtn != null)
+            m_fluoriteShopBtn.onClick.RemoveListener(OnShopClick);
         UnregisterHomeListeners();
     }
 

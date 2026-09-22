@@ -164,7 +164,9 @@ public class MPCustomLevelView : AWindow
         }
 
         // 初始化为幂等操作；复用时更新回调，不重复注册按钮事件。
-        System.Action<MPCustomLevelInfo> edit = m_editAction == null ? null : OnEditLevel;
+        System.Action<MPCustomLevelInfo> edit = m_editAction == null
+            ? (System.Action<MPCustomLevelInfo>)null
+            : OnEditLevel;
         level.Initialize(RefreshLevels, edit);
         item.IsInitHandlerCalled = true;
 
