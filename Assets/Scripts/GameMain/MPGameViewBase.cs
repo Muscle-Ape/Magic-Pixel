@@ -196,6 +196,9 @@ public abstract partial class MPGameViewBase : AWindow
     /// </summary>
     protected virtual bool UsesProps => UsesLives;
 
+    /// <summary>当前模式是否展示并允许使用宠物技能。</summary>
+    protected virtual bool UsesPetSkill => true;
+
     /// <summary>当前模式实际展示的网格边长；大图模式固定展示 10×10。</summary>
     protected virtual int VisibleGridSize => m_size;
 
@@ -514,7 +517,8 @@ public abstract partial class MPGameViewBase : AWindow
         if (m_petSkillBtn == null)
             return;
 
-        bool hasSkill = m_activePetConfig != null
+        bool hasSkill = UsesPetSkill
+            && m_activePetConfig != null
             && !string.IsNullOrEmpty(m_activePetConfig.Option)
             && m_activePetConfig.SkillUseCount > 0;
         m_petSkillBtn.gameObject.SetActive(hasSkill);

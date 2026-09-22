@@ -165,6 +165,10 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private Action m_refreshAction;
 
+    /// <summary>通关时已经入账、需要在入场动画结束后展示的奖励。</summary>
+    private MPRewardReceipt m_completionRewardReceipt;
+    private bool m_rewardPopupHandled;
+
     /// <summary>
     /// 图片节点在结算页中的目标位置，也就是预制体内配置的初始位置。
     /// </summary>
@@ -272,6 +276,8 @@ public class MPGameCompletedView : AWindow
         m_largeImageVisibleSize = data.largeImageVisibleSize;
         m_pictureStartPosition = ResolvePictureStartPosition(data);
         m_refreshAction = data.refresh;
+        m_completionRewardReceipt = data.rewardReceipt;
+        m_rewardPopupHandled = false;
 
         RefreshCustomModeLayout();
         CacheOriginalState();
@@ -514,7 +520,7 @@ public class MPGameCompletedView : AWindow
         if (focus)
         {
             m_head?.Refresh();
-            TryShowLargeImageRewardPetNotification();
+            TryShowCompletionPopups();
         }
     }
 
@@ -771,6 +777,8 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void PrepareAnimationState()
     {
+        SetCompletionButtonsInteractable(false);
+
         if (m_pictureNode != null)
         {
             m_pictureNode.anchoredPosition = m_pictureStartPosition;
@@ -870,10 +878,43 @@ public class MPGameCompletedView : AWindow
         m_enterSequence.OnComplete(() =>
         {
             m_enterAnimationFinished = true;
-            TryShowLargeImageRewardPetNotification();
+            SetCompletionButtonsInteractable(true);
+            TryShowCompletionPopups();
         });
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
+    }
+
+    /// <summary>
+    /// 结算页入场动画完整结束后再打开奖励弹窗。
+    /// 普通奖励弹窗关闭后页面会重新获得焦点，再继续展示大图宠物奖励，避免弹窗叠加。
+    /// </summary>
+    private void TryShowCompletionPopups()
+    {
+        if (!m_enterAnimationFinished || !IsFocus || IsDestoried)
+            return;
+
+        if (!m_rewardPopupHandled)
+        {
+            m_rewardPopupHandled = true;
+            MPRewardsClaimPop.Show(m_completionRewardReceipt);
+            if (!IsFocus)
+                return;
+        }
+
+        TryShowLargeImageRewardPetNotification();
+    }
+
+    /// <summary>动画期间同时锁定 Head 与底部按钮，不仅依赖缩放为 0 阻止点击。</summary>
+    private void SetCompletionButtonsInteractable(bool interactable)
+    {
+        m_head?.SetInteractable(interactable);
+        if (m_backBtn != null)
+            m_backBtn.interactable = interactable;
+        if (m_replayBtn != null)
+            m_replayBtn.interactable = interactable;
+        if (m_nextBtn != null)
+            m_nextBtn.interactable = interactable;
     }
 
     private void TryShowLargeImageRewardPetNotification()
@@ -1091,7 +1132,7 @@ public class MPGameCompletedView : AWindow
         }
 
         MPMainBlockInfo nextLevel = levels[nextIndex];
-        if (nextLevel == null || !MPUser.instance.MainLevelIsUnlock(nextLevel.ID))
+        if (nextLevel == null || !MPUser.instance.CanEnterMainLevel(nextLevel.ID))
         {
             ReturnHome();
             return;
@@ -1115,7 +1156,7 @@ public class MPGameCompletedView : AWindow
         }
 
         MPLargeImageBlockInfo nextLevel = levels[nextIndex];
-        if (nextLevel == null || !MPUser.instance.LargeImageLevelIsUnlock(nextLevel.ID))
+        if (nextLevel == null || !MPUser.instance.CanEnterLargeImageLevel(nextLevel.ID))
         {
             ReturnHome();
             return;
@@ -1258,6 +1299,9 @@ public class MPGameCompletedViewUIMsgData : UIMsgData
     /// 当前完成的主线关卡配置。
     /// </summary>
     public MPMainBlockInfo blockInfo;
+
+    /// <summary>通关时已入账的奖励，由结算页等入场动画完成后展示。</summary>
+    public MPRewardReceipt rewardReceipt;
 
     /// <summary>
     /// 当前完成的大图关卡配置。

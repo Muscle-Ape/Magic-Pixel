@@ -7,7 +7,7 @@
     "GooglePlayID": "yun_vip_annual",
     "DisplayName": "VIP PASS",
     "DisplayPrice": "39.99",
-    "Inventory": 1,
+    "Inventory": -1,
     "Describe": "",
     "Sort": 1,
     "Payouts": [

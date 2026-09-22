@@ -565,7 +565,7 @@ public class MPMainLevelItem : MonoBehaviour
     {
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
 
-        if (m_isUnlock)
+        if (m_isUnlock || MPUser.instance.TryUnlockMainLevelWithVip(m_data.ID))
         {
             MPGameViewUIMsgData data = new MPGameViewUIMsgData()
             {

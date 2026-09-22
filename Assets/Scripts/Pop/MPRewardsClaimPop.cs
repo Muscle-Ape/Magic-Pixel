@@ -12,6 +12,7 @@ public sealed class MPRewardsClaimPop : AWindow
 {
     private const float OPEN_DURATION = 0.3f;
     private const float CLOSE_DURATION = 0.2f;
+    [TransformPath("Mask")] private CanvasGroup m_maskGroup;
     [TransformPath("View/Window")] private RectTransform m_window;
     [TransformPath("View/Window")] private CanvasGroup m_windowGroup;
     [TransformPath("View/Window/Rewards")] private RectTransform m_rewards;
@@ -19,6 +20,8 @@ public sealed class MPRewardsClaimPop : AWindow
     [TransformPath("View/Window/CollectBtn")] private Button m_collectBtn;
     private readonly List<RectTransform> m_items = new List<RectTransform>();
     private Vector2 m_windowPosition;
+    private Vector3 m_windowScale;
+    private float m_maskAlpha;
     private Sequence m_animation;
     private bool m_closing;
 
@@ -35,6 +38,10 @@ public sealed class MPRewardsClaimPop : AWindow
     public override void OnCreate()
     {
         m_windowPosition = m_window.anchoredPosition;
+        m_windowScale = m_window.localScale;
+        m_maskAlpha = m_maskGroup == null || Mathf.Approximately(m_maskGroup.alpha, 0f)
+            ? 1f
+            : m_maskGroup.alpha;
         m_items.Add(m_itemTemplate);
         m_itemTemplate.gameObject.SetActive(false);
         m_collectBtn.onClick.AddListener(OnCollect);
@@ -91,17 +98,29 @@ public sealed class MPRewardsClaimPop : AWindow
     {
         KillAnimation();
         m_window.anchoredPosition = m_windowPosition + Vector2.down * 100f;
+        // 本弹窗不使用通用缩放动画，每次播放前都恢复预制体缩放。
+        m_window.localScale = m_windowScale;
         m_windowGroup.alpha = 0f;
         m_windowGroup.interactable = false;
         m_windowGroup.blocksRaycasts = true;
+        if (m_maskGroup != null)
+        {
+            m_maskGroup.alpha = 0f;
+            m_maskGroup.interactable = false;
+            m_maskGroup.blocksRaycasts = true;
+        }
         m_collectBtn.interactable = false;
         m_animation = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
         m_animation.Join(m_window.DOAnchorPos(m_windowPosition, OPEN_DURATION).SetEase(Ease.OutCubic));
         m_animation.Join(m_windowGroup.DOFade(1f, OPEN_DURATION).SetEase(Ease.Linear));
+        if (m_maskGroup != null)
+            m_animation.Join(m_maskGroup.DOFade(m_maskAlpha, OPEN_DURATION).SetEase(Ease.Linear));
         m_animation.OnComplete(() =>
         {
             if (this == null || IsDestoried || m_closing) return;
             m_windowGroup.interactable = true;
+            if (m_maskGroup != null)
+                m_maskGroup.interactable = true;
             m_collectBtn.interactable = true;
         });
     }
@@ -115,7 +134,9 @@ public sealed class MPRewardsClaimPop : AWindow
         m_windowGroup.interactable = false;
         // 保持射线阻挡直到销毁，避免淡出时误点底层页面。
         m_animation = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
-        m_animation.Append(m_windowGroup.DOFade(0f, CLOSE_DURATION).SetEase(Ease.Linear));
+        m_animation.Join(m_windowGroup.DOFade(0f, CLOSE_DURATION).SetEase(Ease.Linear));
+        if (m_maskGroup != null)
+            m_animation.Join(m_maskGroup.DOFade(0f, CLOSE_DURATION).SetEase(Ease.Linear));
         m_animation.OnComplete(() =>
         {
             if (this != null && !IsDestoried) DestroyWindow();
@@ -126,6 +147,9 @@ public sealed class MPRewardsClaimPop : AWindow
     {
         m_animation?.Kill();
         m_animation = null;
+        m_window?.DOKill();
+        m_windowGroup?.DOKill();
+        m_maskGroup?.DOKill();
     }
 
     public override void OnRelease()

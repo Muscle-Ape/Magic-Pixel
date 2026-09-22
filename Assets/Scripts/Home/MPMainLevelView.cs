@@ -274,7 +274,7 @@ public class MPMainLevelView : AWindow
         string lastPlayedId = MPUser.instance.GetLastPlayedMainLevelId();
         int lastPlayedIndex = string.IsNullOrEmpty(lastPlayedId) ? -1
             : m_levelModel.blockInfos.FindIndex(level => level != null && level.ID == lastPlayedId);
-        if (lastPlayedIndex >= 0 && (MPUser.instance.MainLevelIsUnlock(lastPlayedId)
+        if (lastPlayedIndex >= 0 && (MPUser.instance.CanEnterMainLevel(lastPlayedId)
             || MPUser.instance.MainLevelIsPass(lastPlayedId)))
         {
             targetListIndex = lastPlayedIndex + 1;

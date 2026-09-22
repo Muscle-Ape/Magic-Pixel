@@ -85,6 +85,7 @@ public partial class MPHomeView
 
     private void InitializeHomePage()
     {
+        RefreshVipWidgetVisibility();
         InitializeHomePets();
         StartHomeRewardCountdown();
         ScheduleHomePopup();
@@ -92,6 +93,7 @@ public partial class MPHomeView
 
     private void RefreshHomePage()
     {
+        RefreshVipWidgetVisibility();
         RefreshHomePets();
         StartHomeRewardCountdown();
         ScheduleHomePopup();
@@ -118,6 +120,7 @@ public partial class MPHomeView
         m_shopBtn.onClick.AddListener(OnShopClick);
         m_vipShopBtn.onClick.AddListener(OnShopClick);
         m_noAdsShopBtn.onClick.AddListener(OnShopClick);
+        MPIapManager.Instance.InitializationCompleted += OnHomeIapInitialized;
         m_signInBtn = transform.Find("View/Center/Home/Widgets/SignInBtn")?.GetComponent<Button>();
         if (m_signInBtn != null)
             m_signInBtn.onClick.AddListener(OnSignInClick);
@@ -138,9 +141,29 @@ public partial class MPHomeView
             m_vipShopBtn.onClick.RemoveListener(OnShopClick);
         if (m_noAdsShopBtn != null)
             m_noAdsShopBtn.onClick.RemoveListener(OnShopClick);
+        MPIapManager.Instance.InitializationCompleted -= OnHomeIapInitialized;
         if (m_signInBtn != null)
             m_signInBtn.onClick.RemoveListener(OnSignInClick);
         UnregisterPetScrollBeginDrag();
+    }
+
+    private void OnHomeIapInitialized(HQIapStatus status)
+    {
+        if (m_initialized)
+            RefreshVipWidgetVisibility();
+    }
+
+    /// <summary>已拥有有效 VIP 时不再展示主页 VIP 购买挂件。</summary>
+    private void RefreshVipWidgetVisibility()
+    {
+        if (m_vipShopBtn == null)
+            return;
+
+        bool visible = MPReleaseFeatures.Shop
+            && MPReleaseFeatures.InAppPurchases
+            && MPReleaseFeatures.Vip
+            && !MPUser.instance.HasVipAccess();
+        m_vipShopBtn.gameObject.SetActive(visible);
     }
 
     private void RegisterPetScrollBeginDrag()
@@ -619,6 +642,10 @@ public partial class MPHomeView
         m_homePopupCoroutine = null;
         if (!IsFocus || IsDestoried || !m_initialized) yield break;
         if (MPPetClaimPop.ShowMilestoneNotification(MPUser.LEVEL_50_PET_ID, this, RefreshHomePets))
+            yield break;
+        MPPetConfig pendingPet = MPUser.instance.GetPendingPetUnlockNotification();
+        if (pendingPet != null
+            && MPPetClaimPop.ShowMilestoneNotification(pendingPet.ID, this, RefreshHomePets))
             yield break;
         if (!MPReleaseFeatures.SignIn) yield break;
         try

@@ -8,6 +8,7 @@ using UnityEngine;
 /// </summary>
 public sealed class MPIapManager
 {
+    public const string VIP_PRODUCT_ID = "yun_vip_annual";
     private static MPIapManager m_instance;
 
     private readonly List<Action<HQIapStatus>> m_initializationCallbacks =
@@ -177,11 +178,35 @@ public sealed class MPIapManager
         return HQIap.GetProducts() ?? Array.Empty<HQIapProduct>();
     }
 
+    /// <summary>由商店票据实时判断订阅状态，不把 VIP 误保存为永久权益。</summary>
+    public bool HasActiveSubscription(string productId)
+    {
+        if (!IsInitialized || string.IsNullOrWhiteSpace(productId))
+            return false;
+#if UNITY_EDITOR
+        // 编辑器模拟订单没有商店订阅票据，只用于开发环境验证 VIP 权限流程。
+        if (HQIap.EnableSimulatedPurchase)
+            return MPUser.instance.GetShopProductPurchasedCount(productId) > 0;
+#endif
+        try
+        {
+            return HQIap.IsSubscriptionActive(productId);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPIapManager] Subscription status unavailable: {exception.Message}");
+            return false;
+        }
+    }
+
     private void OnInitialized(HQIapStatus status)
     {
         IsInitializing = false;
         IsInitialized = status == HQIapStatus.Succeeded;
         InitializationStatus = status;
+
+        if (IsInitialized && HasActiveSubscription(VIP_PRODUCT_ID))
+            MPUser.instance.GrantVipPetsPermanently();
 
         Action<HQIapStatus>[] callbacks = m_initializationCallbacks.ToArray();
         m_initializationCallbacks.Clear();
@@ -246,6 +271,16 @@ public sealed class MPIapManager
             }
 
             rewards.Add(reward);
+        }
+
+        // VIP 宠物属于购买即永久赠送，与订阅后续是否到期无关，并与订单奖励原子入账。
+        if (string.Equals(product.ID, VIP_PRODUCT_ID, StringComparison.Ordinal))
+        {
+            foreach (MPPetConfig pet in MPUser.instance.GetVipPetConfigs())
+            {
+                if (!rewards.Exists(item => item != null && item.type == pet.ID))
+                    rewards.Add(new MPRewardItem(pet.ID, 1, pet.Icon));
+            }
         }
 
         return new MPRewardReceipt

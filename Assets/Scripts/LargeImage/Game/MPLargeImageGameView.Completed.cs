@@ -191,11 +191,11 @@ public partial class MPLargeImageGameView
             pictureStartScreenPosition = gridTransform == null ? Vector2.zero : RectTransformUtility.WorldToScreenPoint(gridCamera, gridTransform.position),
             hasPictureStartScreenPosition = gridTransform != null,
             refresh = m_refreshAction,
+            rewardReceipt = m_completedRewardReceipt,
         };
 
         UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
         DestroyWindow();
-        MPRewardsClaimPop.Show(m_completedRewardReceipt);
     }
 
     /// <summary>

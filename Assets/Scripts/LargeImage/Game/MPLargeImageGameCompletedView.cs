@@ -471,6 +471,8 @@ public class MPLargeImageGameCompletedView : AWindow
     /// </summary>
     private void PrepareAnimationState()
     {
+        SetCompletionButtonsInteractable(false);
+
         if (m_pictureNode != null)
         {
             m_pictureNode.anchoredPosition = m_pictureStartPosition;
@@ -534,8 +536,24 @@ public class MPLargeImageGameCompletedView : AWindow
         }
 
         m_enterSequence.Append(CreateElementShowTween());
+        m_enterSequence.OnComplete(() =>
+        {
+            SetCompletionButtonsInteractable(true);
+        });
 
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundGameCompleted);
+    }
+
+    private void SetCompletionButtonsInteractable(bool interactable)
+    {
+        if (m_backBtn != null)
+            m_backBtn.interactable = interactable;
+        if (m_settingBtn != null)
+            m_settingBtn.interactable = interactable;
+        if (m_replayBtn != null)
+            m_replayBtn.interactable = interactable;
+        if (m_nextBtn != null)
+            m_nextBtn.interactable = interactable;
     }
 
     /// <summary>
@@ -623,7 +641,7 @@ public class MPLargeImageGameCompletedView : AWindow
         }
 
         MPLargeImageBlockInfo nextLevel = levels[nextIndex];
-        if (nextLevel == null || !MPUser.instance.LargeImageLevelIsUnlock(nextLevel.ID))
+        if (nextLevel == null || !MPUser.instance.CanEnterLargeImageLevel(nextLevel.ID))
         {
             ReturnLevelList();
             return;

@@ -50,6 +50,9 @@ public sealed class MPNewGamePop : AWindow
     {
         if (data == null || data.blockInfo == null || (s_active != null && !s_active.IsDestoried))
             return;
+        // VIP 只在真正进入某个锁定关卡时永久解锁该关，不会一次性解锁全部关卡。
+        if (!MPUser.instance.TryUnlockMainLevelWithVip(data.blockInfo.ID))
+            return;
         if (!MPNoNetworkPop.CheckLevelEntry(sourceWindow, () => EnterMainLevel(data, sourceWindow, closeSource)))
             return;
 
@@ -79,6 +82,8 @@ public sealed class MPNewGamePop : AWindow
     public static void EnterLargeImageLevel(MPLargeImageGameViewUIMsgData data, AWindow sourceWindow = null, bool closeSource = false)
     {
         if (data == null || data.blockInfo == null || (s_active != null && !s_active.IsDestoried))
+            return;
+        if (!MPUser.instance.TryUnlockLargeImageLevelWithVip(data.blockInfo.ID))
             return;
         if (!MPNoNetworkPop.CheckLevelEntry(sourceWindow, () => EnterLargeImageLevel(data, sourceWindow, closeSource)))
             return;

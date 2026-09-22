@@ -276,7 +276,8 @@ public class MPLargeImageLevelItem : MonoBehaviour
         MPAudioManager.Instance.PlaySound(MPSound.MPSoundClickUI, replay: true);
 
         // 点击时重新读取状态，不能使用列表刷新前缓存的解锁结果。
-        if (MPLargeImageLevelModel.GetLevelState(m_data) == MPLargeImageLevelState.Locked)
+        if (MPLargeImageLevelModel.GetLevelState(m_data) == MPLargeImageLevelState.Locked
+            && !MPUser.instance.TryUnlockLargeImageLevelWithVip(m_data.ID))
         {
             UIManager.Inst.ShowWindow<MPLargeImageLevelUnlockPop>(new MPLargeImageLevelUnlockPopUIMsgData
             {

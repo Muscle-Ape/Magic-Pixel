@@ -224,11 +224,11 @@ public partial class MPGameView
             pictureStartScreenPosition = completedFrameTransform == null ? Vector2.zero : RectTransformUtility.WorldToScreenPoint(completedFrameCamera, completedFrameTransform.position),
             hasPictureStartScreenPosition = completedFrameTransform != null,
             refresh = m_refreshAction,
+            rewardReceipt = m_petCompletionRewardReceipt,
         };
 
         UIManager.Inst.ShowWindow<MPGameCompletedView>(data);
         DestroyWindow();
-        MPRewardsClaimPop.Show(m_petCompletionRewardReceipt);
     }
 
     /// <summary>

@@ -153,8 +153,10 @@ public sealed class MPShopView : AWindow
             return;
         }
 
-        bool owned = productId == REMOVE_ADS_PRODUCT_ID
-            && MPUser.instance.OwnsShopEntitlement(REMOVE_ADS_PRODUCT_ID);
+        bool owned = (productId == REMOVE_ADS_PRODUCT_ID
+                && MPUser.instance.OwnsShopEntitlement(REMOVE_ADS_PRODUCT_ID))
+            || (productId == VIP_PRODUCT_ID
+                && MPUser.instance.HasVipAccess());
         bool available = !owned && MPUser.instance.ShopProductIsAvailable(product);
         card.gameObject.SetActive(available);
         if (!available)
@@ -295,17 +297,32 @@ public sealed class MPShopView : AWindow
 
     private void BeginPurchase(string productId, int version)
     {
-        MPIapManager.Instance.Purchase(productId, (id, result) =>
+        MPIapManager.Instance.Purchase(productId, (_, result) =>
         {
             if (!OperationIsCurrent(version))
                 return;
             SetBusy(false);
             RefreshAssets();
+            // 购买回调时订阅票据已更新，再刷新一次可立即隐藏已拥有的 VIP 商品。
+            RefreshProducts(GetBestAvailableProducts());
             if (result == HQIapPurchaseResult.Succeeded)
+            {
                 ShowToast("Purchase completed.");
+                if (string.Equals(productId, VIP_PRODUCT_ID, StringComparison.Ordinal))
+                    ShowVipPetNotification();
+            }
             else
                 ShowToast("Purchase was not completed. Please try again.");
         }, "shop");
+    }
+
+    private void ShowVipPetNotification()
+    {
+        foreach (MPPetConfig pet in MPUser.instance.GetVipPetConfigs())
+        {
+            if (MPPetClaimPop.ShowMilestoneNotification(pet.ID, this))
+                return;
+        }
     }
 
     private void OnFreeCoinClick()
@@ -389,7 +406,8 @@ public sealed class MPShopView : AWindow
         if (m_closeBtn != null) m_closeBtn.interactable = !busy;
         if (m_vipButton != null)
             m_vipButton.interactable = !busy
-                && ProductIsAvailable(VIP_PRODUCT_ID);
+                && ProductIsAvailable(VIP_PRODUCT_ID)
+                && !MPUser.instance.HasVipAccess();
         if (m_removeAdsButton != null)
             m_removeAdsButton.interactable = !busy
                 && ProductIsAvailable(REMOVE_ADS_PRODUCT_ID)

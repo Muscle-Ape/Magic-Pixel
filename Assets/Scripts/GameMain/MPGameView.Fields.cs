@@ -96,6 +96,9 @@ public partial class MPGameView : MPGameViewBase
     /// <summary>普通主线关卡使用生命值，自定义关卡不使用生命值。</summary>
     protected override bool UsesLives => !m_isCustomLevel;
 
+    /// <summary>自定义和社区关卡不展示宠物技能按钮。</summary>
+    protected override bool UsesPetSkill => !m_isCustomLevel;
+
     /// <summary>主游戏当前是否为填充模式。</summary>
     protected override bool IsFillMode => m_isFillMode;
 
