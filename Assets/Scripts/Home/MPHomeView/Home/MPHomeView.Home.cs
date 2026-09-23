@@ -35,7 +35,7 @@ public partial class MPHomeView
     private Button m_vipShopBtn;
 
     [TransformPath("View/Center/Home/Widgets/NoAdsBtn")]
-    private Button m_noAdsShopBtn;
+    private Button m_noAdsBtn;
 
     [TransformPath("View/Center/Home/Widgets/RewardBtn/Countdown")]
     private TMP_Text m_rewardCountdownText;
@@ -85,7 +85,7 @@ public partial class MPHomeView
 
     private void InitializeHomePage()
     {
-        RefreshVipWidgetVisibility();
+        RefreshPurchaseWidgetVisibility();
         InitializeHomePets();
         StartHomeRewardCountdown();
         ScheduleHomePopup();
@@ -93,7 +93,7 @@ public partial class MPHomeView
 
     private void RefreshHomePage()
     {
-        RefreshVipWidgetVisibility();
+        RefreshPurchaseWidgetVisibility();
         RefreshHomePets();
         StartHomeRewardCountdown();
         ScheduleHomePopup();
@@ -119,7 +119,7 @@ public partial class MPHomeView
         m_rewardBtn.onClick.AddListener(OnHomeRewardClick);
         m_shopBtn.onClick.AddListener(OnShopClick);
         m_vipShopBtn.onClick.AddListener(OnShopClick);
-        m_noAdsShopBtn.onClick.AddListener(OnShopClick);
+        m_noAdsBtn.onClick.AddListener(OnRemoveAdsClick);
         MPIapManager.Instance.InitializationCompleted += OnHomeIapInitialized;
         m_signInBtn = transform.Find("View/Center/Home/Widgets/SignInBtn")?.GetComponent<Button>();
         if (m_signInBtn != null)
@@ -139,8 +139,8 @@ public partial class MPHomeView
             m_shopBtn.onClick.RemoveListener(OnShopClick);
         if (m_vipShopBtn != null)
             m_vipShopBtn.onClick.RemoveListener(OnShopClick);
-        if (m_noAdsShopBtn != null)
-            m_noAdsShopBtn.onClick.RemoveListener(OnShopClick);
+        if (m_noAdsBtn != null)
+            m_noAdsBtn.onClick.RemoveListener(OnRemoveAdsClick);
         MPIapManager.Instance.InitializationCompleted -= OnHomeIapInitialized;
         if (m_signInBtn != null)
             m_signInBtn.onClick.RemoveListener(OnSignInClick);
@@ -150,20 +150,28 @@ public partial class MPHomeView
     private void OnHomeIapInitialized(HQIapStatus status)
     {
         if (m_initialized)
-            RefreshVipWidgetVisibility();
+            RefreshPurchaseWidgetVisibility();
     }
 
-    /// <summary>已拥有有效 VIP 时不再展示主页 VIP 购买挂件。</summary>
-    private void RefreshVipWidgetVisibility()
+    /// <summary>已经拥有对应权益时，不再展示主页上的购买挂件。</summary>
+    private void RefreshPurchaseWidgetVisibility()
     {
-        if (m_vipShopBtn == null)
-            return;
+        if (m_vipShopBtn != null)
+        {
+            bool vipVisible = MPReleaseFeatures.Shop
+                && MPReleaseFeatures.InAppPurchases
+                && MPReleaseFeatures.Vip
+                && !MPUser.instance.HasVipAccess();
+            m_vipShopBtn.gameObject.SetActive(vipVisible);
+        }
 
-        bool visible = MPReleaseFeatures.Shop
-            && MPReleaseFeatures.InAppPurchases
-            && MPReleaseFeatures.Vip
-            && !MPUser.instance.HasVipAccess();
-        m_vipShopBtn.gameObject.SetActive(visible);
+        if (m_noAdsBtn != null)
+        {
+            bool noAdsVisible = MPReleaseFeatures.Ads
+                && MPReleaseFeatures.InAppPurchases
+                && !MPUser.instance.OwnsShopEntitlement(MPRemoveAdsPop.PRODUCT_ID);
+            m_noAdsBtn.gameObject.SetActive(noAdsVisible);
+        }
     }
 
     private void RegisterPetScrollBeginDrag()
@@ -674,6 +682,13 @@ public partial class MPHomeView
     private void OnShopClick()
     {
         MPShopView.Show();
+    }
+
+    private void OnRemoveAdsClick()
+    {
+        if (!MPReleaseFeatures.Ads || !MPReleaseFeatures.InAppPurchases)
+            return;
+        MPRemoveAdsPop.Show(RefreshPurchaseWidgetVisibility);
     }
 
     public class Configs
