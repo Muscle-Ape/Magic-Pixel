@@ -2,7 +2,7 @@ using DG.Tweening;
 using HQ.UIManager;
 
 [Component("MPHomeView")]
-public partial class MPHomeView : AWindow
+public partial class MPHomeView : AWindow, IMPTransitionCompletionReceiver
 {
     protected override bool ShouldAdaptToNotchScreen()
     {
@@ -45,6 +45,14 @@ public partial class MPHomeView : AWindow
         ApplyTabState(false);
         // 先恢复页面尺寸与位置，再让虚拟列表计算可见项。
         RefreshLargerPage();
+    }
+
+    /// <summary>过渡页完全移除后，再检查首页需要自动展示的签到或宠物弹窗。</summary>
+    public void OnTransitionCompleted()
+    {
+        if (!m_initialized || IsDestoried || !IsFocus)
+            return;
+        ScheduleHomePopup();
     }
 
     private void OnRectTransformDimensionsChange()

@@ -11,6 +11,8 @@ using UnityEngine.UI;
 [Component("MPTransitionView")]
 public partial class MPTransitionView : AWindow
 {
+    private static MPTransitionView s_activeTransition;
+
     private const float OPEN_SCALE_DURATION = 0.18f;
     private const float CLOSE_SCALE_DURATION = 0.16f;
 
@@ -32,6 +34,12 @@ public partial class MPTransitionView : AWindow
     private bool m_autoClose = true;
     private bool m_closeRequested;
     private TransitionStage m_stage;
+    private AWindow m_revealTarget;
+
+    /// <summary>当前是否仍有过渡页遮挡目标页面。</summary>
+    public static bool IsPlaying => s_activeTransition != null
+        && !s_activeTransition.IsDestoried
+        && s_activeTransition.m_stage != TransitionStage.Finished;
 
     private enum TransitionStage
     {
@@ -81,6 +89,7 @@ public partial class MPTransitionView : AWindow
 
     public override void OnCreate()
     {
+        s_activeTransition = this;
         CacheItems();
         CacheMotionPose();
         ResetMotionPresentation();
@@ -99,6 +108,7 @@ public partial class MPTransitionView : AWindow
         m_stayDuration = data == null ? DEFAULT_STAY_DURATION : Mathf.Max(0f, data.stayDuration);
         m_autoClose = data == null || data.autoClose;
         m_closeRequested = false;
+        m_revealTarget = null;
         m_stage = TransitionStage.Opening;
 
         CacheItems();
@@ -277,6 +287,7 @@ public partial class MPTransitionView : AWindow
         AWindow targetWindow = history[transitionIndex - 1];
         if (targetWindow == null || targetWindow.IsDestoried || targetWindow is MPTransitionView)
             return;
+        m_revealTarget = targetWindow;
 
         // 返回旧页面时没有 ShowWindow 帮它入栈、聚焦，需要提前恢复。
         // 将逻辑顺序调整为「过渡页、目标页」，与打开新页面后的顺序一致。
@@ -308,7 +319,24 @@ public partial class MPTransitionView : AWindow
         m_stage = TransitionStage.Finished;
         Action completedAction = m_completedAction;
         m_completedAction = null;
+        AWindow revealTarget = m_revealTarget;
+        m_revealTarget = null;
         DestroyWindow();
+
+        // 过渡页已从窗口栈移除后再通知目标页。目标页可在此安全启动弹窗、
+        // 入场动画等不能被过渡画面遮挡的逻辑。
+        if (revealTarget != null && !revealTarget.IsDestoried
+            && revealTarget is IMPTransitionCompletionReceiver receiver)
+        {
+            try
+            {
+                receiver.OnTransitionCompleted();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[MPTransitionView] 目标页面过渡完成回调失败：{e}");
+            }
+        }
         completedAction?.Invoke();
     }
 
@@ -343,10 +371,13 @@ public partial class MPTransitionView : AWindow
 
     public override void OnRelease()
     {
+        if (s_activeTransition == this)
+            s_activeTransition = null;
         m_stage = TransitionStage.Finished;
         KillAllTweens();
         m_transitionAction = null;
         m_completedAction = null;
+        m_revealTarget = null;
         m_items.Clear();
         m_playOrder.Clear();
     }
@@ -366,4 +397,10 @@ public class MPTransitionViewUIMsgData : UIMsgData
     public Action completedAction;
     public float stayDuration = 0.9f;
     public bool autoClose = true;
+}
+
+/// <summary>需要在过渡页完全移除后继续处理 UI 的目标页面实现此接口。</summary>
+public interface IMPTransitionCompletionReceiver
+{
+    void OnTransitionCompleted();
 }

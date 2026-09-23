@@ -32,7 +32,7 @@ public partial class MPHomeView
     private Button m_shopBtn;
 
     [TransformPath("View/Center/Home/Widgets/VIPBtn")]
-    private Button m_vipShopBtn;
+    private Button m_vipBtn;
 
     [TransformPath("View/Center/Home/Widgets/NoAdsBtn")]
     private Button m_noAdsBtn;
@@ -118,7 +118,7 @@ public partial class MPHomeView
         m_threeDBtn.onClick.AddListener(OnThreeDClick);
         m_rewardBtn.onClick.AddListener(OnHomeRewardClick);
         m_shopBtn.onClick.AddListener(OnShopClick);
-        m_vipShopBtn.onClick.AddListener(OnShopClick);
+        m_vipBtn.onClick.AddListener(OnVipClick);
         m_noAdsBtn.onClick.AddListener(OnRemoveAdsClick);
         MPIapManager.Instance.InitializationCompleted += OnHomeIapInitialized;
         m_signInBtn = transform.Find("View/Center/Home/Widgets/SignInBtn")?.GetComponent<Button>();
@@ -137,8 +137,8 @@ public partial class MPHomeView
             m_rewardBtn.onClick.RemoveListener(OnHomeRewardClick);
         if (m_shopBtn != null)
             m_shopBtn.onClick.RemoveListener(OnShopClick);
-        if (m_vipShopBtn != null)
-            m_vipShopBtn.onClick.RemoveListener(OnShopClick);
+        if (m_vipBtn != null)
+            m_vipBtn.onClick.RemoveListener(OnVipClick);
         if (m_noAdsBtn != null)
             m_noAdsBtn.onClick.RemoveListener(OnRemoveAdsClick);
         MPIapManager.Instance.InitializationCompleted -= OnHomeIapInitialized;
@@ -156,13 +156,12 @@ public partial class MPHomeView
     /// <summary>已经拥有对应权益时，不再展示主页上的购买挂件。</summary>
     private void RefreshPurchaseWidgetVisibility()
     {
-        if (m_vipShopBtn != null)
+        if (m_vipBtn != null)
         {
-            bool vipVisible = MPReleaseFeatures.Shop
-                && MPReleaseFeatures.InAppPurchases
+            bool vipVisible = MPReleaseFeatures.InAppPurchases
                 && MPReleaseFeatures.Vip
                 && !MPUser.instance.HasVipAccess();
-            m_vipShopBtn.gameObject.SetActive(vipVisible);
+            m_vipBtn.gameObject.SetActive(vipVisible);
         }
 
         if (m_noAdsBtn != null)
@@ -633,6 +632,9 @@ public partial class MPHomeView
     private void ScheduleHomePopup()
     {
         CancelHomePopup();
+        // 过渡页退场前会提前恢复目标页焦点，必须等其完成回调后再启动弹窗。
+        if (MPTransitionView.IsPlaying)
+            return;
         m_homePopupCoroutine = StartCoroutine(ShowHomePopupNextFrame());
     }
 
@@ -648,6 +650,8 @@ public partial class MPHomeView
         // UIManager 必须先完成当前页面的焦点与历史栈更新，不能在 Load 里嵌套开弹窗。
         yield return null;
         m_homePopupCoroutine = null;
+        // 防止排队后、执行前又进入了新的页面过渡；完成回调会重新调度。
+        if (MPTransitionView.IsPlaying) yield break;
         if (!IsFocus || IsDestoried || !m_initialized) yield break;
         if (MPPetClaimPop.ShowMilestoneNotification(MPUser.LEVEL_50_PET_ID, this, RefreshHomePets))
             yield break;
@@ -689,6 +693,13 @@ public partial class MPHomeView
         if (!MPReleaseFeatures.Ads || !MPReleaseFeatures.InAppPurchases)
             return;
         MPRemoveAdsPop.Show(RefreshPurchaseWidgetVisibility);
+    }
+
+    private void OnVipClick()
+    {
+        if (!MPReleaseFeatures.Vip || !MPReleaseFeatures.InAppPurchases)
+            return;
+        MPVipView.Show(RefreshPurchaseWidgetVisibility);
     }
 
     public class Configs
