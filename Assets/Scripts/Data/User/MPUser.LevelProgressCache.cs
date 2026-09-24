@@ -42,7 +42,11 @@ public class MPLevelProgressCacheInfo
     public long SavedAtUtc;
 
     /// <summary>只读校验后的副本，不回写源缓存；损坏、空或已完成缓存不继续恢复。</summary>
-    public MPLevelProgressCacheInfo GetValidIncompleteCopy(int size, bool largeImage, int maxLives = 3)
+    public MPLevelProgressCacheInfo GetValidIncompleteCopy(
+        int size,
+        bool largeImage,
+        int maxLives = 3,
+        ISet<int> initialCompletedBlocks = null)
     {
         if (size <= 0 || size > 4096)
             return null;
@@ -74,9 +78,86 @@ public class MPLevelProgressCacheInfo
             ViewY = Mathf.Clamp(ViewY, 0, maxView),
             SavedAtUtc = SavedAtUtc > 0 && SavedAtUtc <= DateTimeOffset.UtcNow.ToUnixTimeSeconds() ? SavedAtUtc : 0,
         };
-        return copy.CompletedBlocks.Count > 0 || copy.UsedLoves > 0 || usedSkill > 0 || copy.ViewX > 0 || copy.ViewY > 0
+        bool hasUserCompletedBlock = false;
+        for (int i = 0; i < copy.CompletedBlocks.Count; i++)
+        {
+            if (initialCompletedBlocks == null
+                || !initialCompletedBlocks.Contains(copy.CompletedBlocks[i]))
+            {
+                hasUserCompletedBlock = true;
+                break;
+            }
+        }
+
+        return hasUserCompletedBlock || copy.UsedLoves > 0 || usedSkill > 0 || copy.ViewX > 0 || copy.ViewY > 0
             ? copy
             : null;
+    }
+}
+
+/// <summary>
+/// 计算主线关卡新开局时由配置自动完成的格子。
+/// 这些格子属于关卡初始状态，不能作为“继续游戏”缓存的判断依据。
+/// </summary>
+public static class MPMainLevelProgressBaseline
+{
+    public static HashSet<int> GetDefaultCompletedBlocks(MPMainBlockInfo levelInfo, int size)
+    {
+        var result = new HashSet<int>();
+        if (levelInfo == null || size <= 0)
+            return result;
+
+        int total = size * size;
+        var fillBlocks = new HashSet<int>();
+        if (levelInfo.Block != null)
+        {
+            for (int i = 0; i < levelInfo.Block.Count; i++)
+            {
+                int index = levelInfo.Block[i];
+                if (index >= 0 && index < total)
+                    fillBlocks.Add(index);
+            }
+        }
+
+        if (levelInfo.Blank != null)
+        {
+            for (int i = 0; i < levelInfo.Blank.Count; i++)
+            {
+                int index = levelInfo.Blank[i];
+                if (index >= 0 && index < total && !fillBlocks.Contains(index))
+                    result.Add(index);
+            }
+        }
+
+        // 没有配置默认叉时，不会触发初始化阶段的行列自动补叉。
+        if (result.Count == 0)
+            return result;
+
+        var rowHasFill = new bool[size];
+        var columnHasFill = new bool[size];
+        foreach (int index in fillBlocks)
+        {
+            rowHasFill[index / size] = true;
+            columnHasFill[index % size] = true;
+        }
+
+        // RestoreBlocks 会执行行列检查；完全没有目标色块的行列会随默认叉一同自动完成。
+        for (int line = 0; line < size; line++)
+        {
+            if (!rowHasFill[line])
+            {
+                for (int column = 0; column < size; column++)
+                    result.Add(line * size + column);
+            }
+
+            if (!columnHasFill[line])
+            {
+                for (int row = 0; row < size; row++)
+                    result.Add(row * size + line);
+            }
+        }
+
+        return result;
     }
 }
 

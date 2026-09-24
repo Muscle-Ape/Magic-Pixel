@@ -134,7 +134,7 @@ public sealed class MPNewGamePop : AWindow
             {
                 size = texture.Asset == null ? 0 : texture.Asset.height;
             }
-            return cache.GetValidIncompleteCopy(size, largeImage);
+            return cache.GetValidIncompleteCopy(size, largeImage, MAX_LIVES);
         }
         catch (Exception exception)
         {

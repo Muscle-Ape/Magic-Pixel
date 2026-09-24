@@ -286,6 +286,24 @@ public partial class MPUser
     }
 
     /// <summary>
+    /// 获取历史已通关的主线关卡数量。按照稳定关卡 ID 去重，避免配置排序或异常重复数据影响统计。
+    /// </summary>
+    public int GetCompletedMainLevelCount()
+    {
+        if (m_mainlevel_passlist == null || m_mainlevel_passlist.Count == 0)
+            return 0;
+
+        var completedLevelIds = new HashSet<string>();
+        foreach (string levelId in m_mainlevel_passlist)
+        {
+            if (!string.IsNullOrEmpty(levelId))
+                completedLevelIds.Add(levelId);
+        }
+
+        return completedLevelIds.Count;
+    }
+
+    /// <summary>
     /// 获取主线关卡通关星数，未通关或没有记录时返回0。
     /// </summary>
     /// <param name="id">关卡ID。</param>

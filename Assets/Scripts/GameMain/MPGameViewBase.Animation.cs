@@ -79,6 +79,16 @@ public abstract partial class MPGameViewBase
             return;
         }
 
+        MPAdsManager.Instance.TryShowInterstitial(MPInterstitialAdPlace.GameEnter);
+        MPAdsManager.Instance.EnterGameplay();
+        StartGameEnterAnimation();
+    }
+
+    private void StartGameEnterAnimation()
+    {
+        if (!m_gameEnterAnimationPrepared || m_gameEnterSequence != null)
+            return;
+
         m_gameEnterAnimationPrepared = false;
         Sequence sequence = DOTween.Sequence();
         sequence.AppendInterval(GAME_ENTER_TOTAL_DURATION);

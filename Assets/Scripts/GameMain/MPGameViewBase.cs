@@ -919,6 +919,16 @@ public abstract partial class MPGameViewBase : AWindow
         if (m_viewCanvasGroup != null)
             m_viewCanvasGroup.interactable = false;
 
+        MPAdsManager.Instance.LeaveGameplay();
+        MPAdsManager.Instance.TryShowInterstitial(MPInterstitialAdPlace.GameExit);
+        PlayReturnToLevelListTransition();
+    }
+
+    private void PlayReturnToLevelListTransition()
+    {
+        if (this == null || IsDestoried)
+            return;
+
         MPTransitionView.Play(() =>
         {
             if (this == null || IsDestoried)
@@ -942,6 +952,7 @@ public abstract partial class MPGameViewBase : AWindow
 
     public override void OnRelease()
     {
+        MPAdsManager.Instance.LeaveGameplay();
         MPNoNetworkPop.DismissLevelEntry(this);
         StopGameEnterAnimation();
         m_isReturningToLevelList = true;

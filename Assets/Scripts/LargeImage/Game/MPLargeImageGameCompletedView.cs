@@ -209,10 +209,12 @@ public class MPLargeImageGameCompletedView : AWindow
     /// 页面入场动画序列，关闭页面时需要主动清理。
     /// </summary>
     private Sequence m_enterSequence;
+    private bool m_isReturningToLevelList;
 
     public override void LoadUIMsgData(UIMsgData uiMsg)
     {
         MPLoad.ReleaseAll(this);
+        m_isReturningToLevelList = false;
         MPLargeImageGameCompletedViewUIMsgData data = uiMsg as MPLargeImageGameCompletedViewUIMsgData;
         if (data == null)
         {
@@ -686,6 +688,21 @@ public class MPLargeImageGameCompletedView : AWindow
     /// </summary>
     private void ReturnLevelList()
     {
+        if (m_isReturningToLevelList || this == null || IsDestoried)
+            return;
+
+        m_isReturningToLevelList = true;
+        SetCompletionButtonsInteractable(false);
+        MPAdsManager.Instance.LeaveGameplay();
+        MPAdsManager.Instance.TryShowInterstitial(MPInterstitialAdPlace.CompletedExit);
+        PlayReturnLevelListTransition();
+    }
+
+    private void PlayReturnLevelListTransition()
+    {
+        if (this == null || IsDestoried)
+            return;
+
         MPTransitionView.Play(() =>
         {
             DestroyWindow();

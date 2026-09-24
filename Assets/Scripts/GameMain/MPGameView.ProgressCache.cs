@@ -107,6 +107,19 @@ public partial class MPGameView
             }
         }
 
+        HashSet<int> initialCompletedBlocks =
+            MPMainLevelProgressBaseline.GetDefaultCompletedBlocks(m_blockInfo, m_size);
+        if (cacheInfo.GetValidIncompleteCopy(
+                m_size,
+                false,
+                m_loves.Count,
+                initialCompletedBlocks) == null)
+        {
+            // 页面刚创建或退出时若只有配置预置的叉，不应产生“继续游戏”缓存。
+            MPUser.instance.ClearMainLevelProgressCache(m_blockInfo.ID);
+            return;
+        }
+
         MPUser.instance.SaveMainLevelProgressCache(m_blockInfo.ID, cacheInfo);
     }
 

@@ -6,6 +6,9 @@ using UnityEngine;
 /// </summary>
 public sealed class MPAdsAdIntervalController : AOAdsBaseAdIntervalController, IMPAdsCallbackReceiver
 {
+    private const int MINIMUM_COMPLETED_MAIN_LEVEL_COUNT = 10;
+    private const string REMOVE_ADS_ENTITLEMENT_ID = "remove_ads";
+
     /// <summary>
     /// 初始插屏广告间隔，单位为秒。
     /// </summary>
@@ -137,5 +140,28 @@ public sealed class MPAdsAdIntervalController : AOAdsBaseAdIntervalController, I
     /// </summary>
     public void OnAdsDidFailed(string adScene, AOAdsInfo info)
     {
+    }
+
+    public override bool CanAdPlay(string adPlace = null)
+    {
+        try
+        {
+            MPUser user = MPUser.instance;
+            if (user == null
+                || user.HasVipAccess()
+                || user.OwnsShopEntitlement(REMOVE_ADS_ENTITLEMENT_ID)
+                || user.GetCompletedMainLevelCount() < MINIMUM_COMPLETED_MAIN_LEVEL_COUNT)
+            {
+                return false;
+            }
+        }
+        catch (System.Exception exception)
+        {
+            // 玩家存档或内购状态尚未初始化时不播放插屏，避免广告校验影响正常流程。
+            Debug.LogWarning($"[MPAdsAdIntervalController] 插屏广告资格校验失败：{exception.Message}");
+            return false;
+        }
+
+        return base.CanAdPlay(adPlace);
     }
 }

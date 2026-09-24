@@ -1,6 +1,14 @@
 using System;
 using UnityEngine;
 
+/// <summary>项目内统一的插屏广告位名称，便于后台和日志区分触发来源。</summary>
+public static class MPInterstitialAdPlace
+{
+    public const string GameEnter = "game_enter";
+    public const string GameExit = "game_exit";
+    public const string CompletedExit = "game_completed_exit";
+}
+
 /// <summary>
 /// 可选的广告策略回调接口。
 /// 被 MPAdsManager 注入的策略可以实现该接口，以接收 AOAds 的生命周期回调。
@@ -174,6 +182,56 @@ public sealed class MPAdsManager : IDisposable
         else
         {
             ads.Init(userId, () => OnInitialized(onInitialized));
+        }
+    }
+
+    /// <summary>
+    /// 按当前广告位、冷却时间和免广告权益尝试展示插屏。
+    /// 该方法只发起广告展示，不等待广告关闭，也不接管页面动画或跳转流程。
+    /// </summary>
+    public void TryShowInterstitial(string adPlace)
+    {
+        if (!CanAttemptInterstitial())
+            return;
+
+        try
+        {
+            AOAds.CheckAndShowInterstitialAd(adPlace, null);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPAdsManager] 插屏广告调用失败 {adPlace}：{exception.Message}");
+        }
+    }
+
+    /// <summary>进入游戏阶段后开始累计插屏冷却时间。</summary>
+    public void EnterGameplay()
+    {
+        if (!MPReleaseFeatures.Ads || !IsConfigured)
+            return;
+        AOAds.EnterGame();
+    }
+
+    /// <summary>离开游戏阶段时停止累计，已累计时长保留给当前退出广告位判断。</summary>
+    public void LeaveGameplay()
+    {
+        if (!MPReleaseFeatures.Ads || !IsConfigured)
+            return;
+        AOAds.LeaveGame();
+    }
+
+    private bool CanAttemptInterstitial()
+    {
+        if (!MPReleaseFeatures.Ads || !IsConfigured || !IsInitialized)
+            return false;
+        try
+        {
+            return !MPUser.instance.OwnsShopEntitlement("remove_ads");
+        }
+        catch
+        {
+            // 玩家存档尚未可用时不以广告阻塞页面流转，等待后续广告位再尝试。
+            return false;
         }
     }
 

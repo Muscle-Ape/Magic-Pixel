@@ -240,6 +240,7 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private Sequence m_enterSequence;
     private bool m_enterAnimationFinished;
+    private bool m_isReturningHome;
 
     // 无限旋转单独持有，不放入入场 Sequence，避免阻塞后续星星动画。
     private Tween m_lightFadeTween;
@@ -254,6 +255,7 @@ public class MPGameCompletedView : AWindow
     {
         KillAnimations();
         MPLoad.ReleaseAll(this);
+        m_isReturningHome = false;
         MPGameCompletedViewUIMsgData data = uiMsg as MPGameCompletedViewUIMsgData;
         if (data == null)
         {
@@ -1260,6 +1262,21 @@ public class MPGameCompletedView : AWindow
     /// </summary>
     private void ReturnHome()
     {
+        if (m_isReturningHome || this == null || IsDestoried)
+            return;
+
+        m_isReturningHome = true;
+        SetCompletionButtonsInteractable(false);
+        MPAdsManager.Instance.LeaveGameplay();
+        MPAdsManager.Instance.TryShowInterstitial(MPInterstitialAdPlace.CompletedExit);
+        PlayReturnHomeTransition();
+    }
+
+    private void PlayReturnHomeTransition()
+    {
+        if (this == null || IsDestoried)
+            return;
+
         MPTransitionView.Play(() =>
         {
             DestroyWindow();

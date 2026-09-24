@@ -29,8 +29,8 @@ public class MPSettingPop : AWindow
     /// <summary>
     /// 非游戏场景隐藏 Game 节点后，设置窗口使用的高度。
     /// </summary>
-    private const float NON_GAME_WINDOW_HEIGHT = 1520f;
-    private const float FULL_ACCOUNT_WINDOW_HEIGHT = 2111f;
+    private const float NON_GAME_WINDOW_HEIGHT = 1595f;
+    private const float FULL_ACCOUNT_WINDOW_HEIGHT = 2185f;
     private const float DELETE_ACCOUNT_ROW_HEIGHT = 149f;
 
     private const string LEGAL_DOCUMENT_URL = "http://yunovagames.com:19100/";
