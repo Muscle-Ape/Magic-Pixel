@@ -10,6 +10,15 @@ public sealed class MPShopFreeCoinStatus
     public bool CanClaim => clockIsValid && remainingCount > 0;
 }
 
+public enum MPShopPetPurchaseResult
+{
+    Succeeded,
+    AlreadyOwned,
+    InsufficientCoins,
+    InvalidConfig,
+    Failed
+}
+
 public partial class MPUser
 {
     public const int SHOP_FREE_COIN_DAILY_LIMIT = 3;
@@ -80,5 +89,62 @@ public partial class MPUser
             return false;
         receipt = result;
         return true;
+    }
+
+    /// <summary>
+    /// 使用金币购买配置为 coin 的宠物。金币扣除、宠物永久拥有记录和幂等事务
+    /// 通过同一个 ES3File 一次提交，避免出现扣款成功但宠物未到账的中间状态。
+    /// </summary>
+    public MPShopPetPurchaseResult TryPurchaseShopPet(string petId)
+    {
+        MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+            item => item != null && string.Equals(item.ID, petId, StringComparison.Ordinal));
+        if (pet == null
+            || !pet.TryGetUnlockRequirement(out string unlockType, out int price)
+            || !string.Equals(unlockType, "coin", StringComparison.OrdinalIgnoreCase)
+            || price <= 0)
+        {
+            return MPShopPetPurchaseResult.InvalidConfig;
+        }
+
+        if (PetIsUnlock(pet.ID))
+            return MPShopPetPurchaseResult.AlreadyOwned;
+        if (m_coins < price)
+            return MPShopPetPurchaseResult.InsufficientCoins;
+
+        try
+        {
+            int remainingCoins = checked(m_coins - price);
+            MPRewardProgressSnapshot state = CreateRewardProgressSnapshot();
+            string transactionId = "shop_pet_coin_v1:" + pet.ID;
+            if (state.claimedPetIds.Contains(pet.ID)
+                || state.transactionIds.Contains(transactionId))
+            {
+                return MPShopPetPurchaseResult.AlreadyOwned;
+            }
+
+            var receipt = new MPRewardReceipt
+            {
+                sourceId = "shop_pet:" + pet.ID,
+                sourceName = pet.Name,
+                transactionId = transactionId,
+                rewards = new List<MPRewardItem>
+                {
+                    new MPRewardItem(pet.ID, 1, pet.Icon)
+                }
+            };
+            bool committed = TryCommitReward(receipt, state,
+                file => file.Save(m_key_coins, remainingCoins),
+                () => m_coins = remainingCoins,
+                MPCloudSaveDirtyReason.Pets);
+            return committed
+                ? MPShopPetPurchaseResult.Succeeded
+                : MPShopPetPurchaseResult.Failed;
+        }
+        catch (Exception exception)
+        {
+            UnityEngine.Debug.LogWarning($"[MPUser] 商店宠物购买失败：{exception.Message}");
+            return MPShopPetPurchaseResult.Failed;
+        }
     }
 }

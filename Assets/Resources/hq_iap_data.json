@@ -28,7 +28,7 @@
     "DisplayName": "Remove Forced Ads",
     "DisplayPrice": "9.99",
     "Inventory": 1,
-    "Describe": "Contains 1000 coins.",
+    "Describe": "",
     "Sort": 1,
     "Payouts": [
       {
@@ -134,7 +134,7 @@
       {
         "AssetID": "coin",
         "Type": 1,
-        "Quantity": 12000
+        "Quantity": 13000
       }
     ],
     "ImageUrl": "shop_coin_5"

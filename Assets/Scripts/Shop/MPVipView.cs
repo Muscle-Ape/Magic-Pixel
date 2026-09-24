@@ -34,6 +34,8 @@ public sealed class MPVipView : AWindow
     private bool m_busy;
     private bool m_closing;
     private bool m_released;
+    private bool m_activationNotified;
+    private bool m_purchaseRewardsStarted;
     private int m_operationVersion;
 
     protected override bool ShouldAdaptToNotchScreen() => false;
@@ -73,6 +75,8 @@ public sealed class MPVipView : AWindow
         m_data = uiMsg?.GetMsg<MPVipViewUIMsgData>();
         m_busy = false;
         m_closing = false;
+        m_activationNotified = false;
+        m_purchaseRewardsStarted = false;
         RefreshProduct();
         PlayOpenAnimation();
         // 放在消息数据和动画状态就绪后再初始化，兼容编辑器模拟购买同步回调。
@@ -191,7 +195,7 @@ public sealed class MPVipView : AWindow
             }
 
             ShowToast("Subscription activated.");
-            CompleteVipActivation();
+            ShowVipPurchaseRewards();
         }, "vip_subscription");
     }
 
@@ -277,10 +281,44 @@ public sealed class MPVipView : AWindow
     {
         if (m_closing || m_released)
             return;
-        Action onVipActivated = m_data?.OnVipActivated;
-        onVipActivated?.Invoke();
+        NotifyVipActivated();
         if (this != null && !IsDestoried)
             Close();
+    }
+
+    /// <summary>新购买成功后保持订阅页作为弹窗来源，按 VIP 奖励、宠物奖励的顺序展示。</summary>
+    private void ShowVipPurchaseRewards()
+    {
+        if (!IsAvailable() || m_purchaseRewardsStarted)
+            return;
+
+        m_purchaseRewardsStarted = true;
+        NotifyVipActivated();
+        MPVipClaimPop pop = MPVipClaimPop.Show(ShowVipPetNotification);
+        // 资源加载失败时仍继续已有的宠物提示，避免已入账奖励没有反馈。
+        if (pop == null || pop.IsDestoried)
+            ShowVipPetNotification();
+    }
+
+    private void ShowVipPetNotification()
+    {
+        if (!IsAvailable() || !IsFocus)
+            return;
+
+        foreach (MPPetConfig pet in MPUser.instance.GetVipPetConfigs())
+        {
+            if (MPPetClaimPop.ShowMilestoneNotification(pet.ID, this))
+                return;
+        }
+    }
+
+    private void NotifyVipActivated()
+    {
+        if (m_activationNotified)
+            return;
+
+        m_activationNotified = true;
+        m_data?.OnVipActivated?.Invoke();
     }
 
     private void OnPrivacyPolicyClick()

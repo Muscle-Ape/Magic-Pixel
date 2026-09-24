@@ -15,6 +15,7 @@ public sealed class MPShopView : AWindow
 {
     private const string VIP_PRODUCT_ID = "yun_vip_annual";
     private const string REMOVE_ADS_PRODUCT_ID = "remove_ads";
+    private const string SHOP_PET_ID = "pet_poodle_gold";
     private const string FREE_COIN_AD_SCENE = "shop_free_coin";
 
     [TransformPath("View/CloseBtn")] private RectTransform m_closeBtnNode;
@@ -27,6 +28,9 @@ public sealed class MPShopView : AWindow
     [TransformPath("View/Product/Viewport/Content/Vip/Node/PurchaseBtn")] private RectTransform m_vipButtonNode;
     [TransformPath("View/Product/Viewport/Content/RemoveAds")] private RectTransform m_removeAds;
     [TransformPath("View/Product/Viewport/Content/RemoveAds/Node/PurchaseBtn")] private RectTransform m_removeAdsButtonNode;
+    [TransformPath("View/Product/Viewport/Content/Pet")] private RectTransform m_pet;
+    [TransformPath("View/Product/Viewport/Content/Pet/PurchaseBtn")] private RectTransform m_petButtonNode;
+    [TransformPath("View/Product/Viewport/Content/Pet/PurchaseBtn/Price")] private TMP_Text m_petPrice;
     [TransformPath("View/Product/Viewport/Content/Coins/Coins/FreeCoin/Node/PurchaseBtn")] private RectTransform m_freeCoinButtonNode;
     [TransformPath("View/Product/Viewport/Content/Coins/Coins/FreeCoin/Node/Count")] private TMP_Text m_freeCoinCount;
 
@@ -44,6 +48,7 @@ public sealed class MPShopView : AWindow
     private Button m_closeBtn;
     private Button m_vipButton;
     private Button m_removeAdsButton;
+    private Button m_petButton;
     private Button m_freeCoinButton;
 
     protected override bool ShouldAdaptToNotchScreen() => false;
@@ -60,10 +65,12 @@ public sealed class MPShopView : AWindow
         m_closeBtn = MPShopProductUI.EnsureButton(m_closeBtnNode);
         m_vipButton = MPShopProductUI.EnsureButton(m_vipButtonNode);
         m_removeAdsButton = MPShopProductUI.EnsureButton(m_removeAdsButtonNode);
+        m_petButton = MPShopProductUI.EnsureButton(m_petButtonNode);
         m_freeCoinButton = MPShopProductUI.EnsureButton(m_freeCoinButtonNode);
         m_closeBtn?.onClick.AddListener(OnClose);
         m_vipButton?.onClick.AddListener(OnVipPurchase);
         m_removeAdsButton?.onClick.AddListener(OnRemoveAdsPurchase);
+        m_petButton?.onClick.AddListener(OnPetPurchase);
         m_freeCoinButton?.onClick.AddListener(OnFreeCoinClick);
         MPIapManager.Instance.InitializationCompleted += OnIapInitialized;
         MPIapManager.Instance.ProductGranted += OnProductGranted;
@@ -100,6 +107,7 @@ public sealed class MPShopView : AWindow
 
         ApplyFixedProduct(m_vip, m_vipButton, VIP_PRODUCT_ID);
         ApplyFixedProduct(m_removeAds, m_removeAdsButton, REMOVE_ADS_PRODUCT_ID);
+        RefreshPetProduct();
 
         HQIapProduct[] bundleProducts = products.Where(product =>
             product.ID.StartsWith("bundle_", StringComparison.Ordinal)
@@ -258,6 +266,65 @@ public sealed class MPShopView : AWindow
     private void OnVipPurchase() => OnPurchaseRequested(VIP_PRODUCT_ID);
     private void OnRemoveAdsPurchase() => OnPurchaseRequested(REMOVE_ADS_PRODUCT_ID);
 
+    private void OnPetPurchase()
+    {
+        if (m_busy || m_released || !MPReleaseFeatures.ShopPets)
+            return;
+
+        SetBusy(true);
+        MPShopPetPurchaseResult result = MPUser.instance.TryPurchaseShopPet(SHOP_PET_ID);
+        SetBusy(false);
+        RefreshAssets();
+        RefreshPetProduct();
+
+        switch (result)
+        {
+            case MPShopPetPurchaseResult.Succeeded:
+                ShowToast("Pet purchased.");
+                MPPetClaimPop.ShowMilestoneNotification(SHOP_PET_ID, this);
+                break;
+            case MPShopPetPurchaseResult.AlreadyOwned:
+                ShowToast("This pet is already owned.");
+                break;
+            case MPShopPetPurchaseResult.InsufficientCoins:
+                ShowToast("Not enough coins.");
+                break;
+            case MPShopPetPurchaseResult.InvalidConfig:
+                ShowToast("This pet is unavailable.");
+                break;
+            default:
+                ShowToast("Purchase could not be completed. Please try again.");
+                break;
+        }
+    }
+
+    private void RefreshPetProduct()
+    {
+        if (m_pet == null)
+            return;
+
+        MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
+            item => item != null && string.Equals(item.ID, SHOP_PET_ID, StringComparison.Ordinal));
+        string unlockType = string.Empty;
+        int price = 0;
+        bool configured = pet != null
+            && pet.TryGetUnlockRequirement(out unlockType, out price)
+            && string.Equals(unlockType, "coin", StringComparison.OrdinalIgnoreCase)
+            && price > 0;
+        bool visible = MPReleaseFeatures.ShopPets
+            && configured
+            && !MPUser.instance.PetIsUnlock(SHOP_PET_ID);
+        m_pet.gameObject.SetActive(visible);
+        if (!visible)
+            return;
+
+        MPShopProductUI.SetText(m_pet, "Title", pet.Name.ToUpperInvariant());
+        if (m_petPrice != null)
+            m_petPrice.text = price.ToString();
+        if (m_petButton != null)
+            m_petButton.interactable = !m_busy;
+    }
+
     private void OnPurchaseRequested(string productId)
     {
         if (m_busy || m_released || !MPReleaseFeatures.InAppPurchases
@@ -309,15 +376,30 @@ public sealed class MPShopView : AWindow
             {
                 ShowToast("Purchase completed.");
                 if (string.Equals(productId, VIP_PRODUCT_ID, StringComparison.Ordinal))
-                    ShowVipPetNotification();
+                    ShowVipPurchaseRewards();
             }
             else
                 ShowToast("Purchase was not completed. Please try again.");
         }, "shop");
     }
 
+    /// <summary>VIP 权益已入账：先展示 VIP 奖励，再在弹窗完全关闭后展示宠物。</summary>
+    private void ShowVipPurchaseRewards()
+    {
+        if (m_released || this == null || IsDestoried)
+            return;
+
+        MPVipClaimPop pop = MPVipClaimPop.Show(ShowVipPetNotification);
+        // 资源缺失等异常情况下不能吞掉宠物领取提示。
+        if (pop == null || pop.IsDestoried)
+            ShowVipPetNotification();
+    }
+
     private void ShowVipPetNotification()
     {
+        if (m_released || this == null || IsDestoried || !IsFocus)
+            return;
+
         foreach (MPPetConfig pet in MPUser.instance.GetVipPetConfigs())
         {
             if (MPPetClaimPop.ShowMilestoneNotification(pet.ID, this))
@@ -412,6 +494,10 @@ public sealed class MPShopView : AWindow
             m_removeAdsButton.interactable = !busy
                 && ProductIsAvailable(REMOVE_ADS_PRODUCT_ID)
                 && !MPUser.instance.OwnsShopEntitlement(REMOVE_ADS_PRODUCT_ID);
+        if (m_petButton != null)
+            m_petButton.interactable = !busy
+                && m_pet != null
+                && m_pet.gameObject.activeSelf;
         foreach (MPShopBundle item in m_bundleItems) item?.SetInteractable(!busy);
         foreach (MPShopCoin item in m_coinItems) item?.SetInteractable(!busy);
         RefreshFreeCoin();
@@ -444,6 +530,7 @@ public sealed class MPShopView : AWindow
         m_closeBtn?.onClick.RemoveListener(OnClose);
         m_vipButton?.onClick.RemoveListener(OnVipPurchase);
         m_removeAdsButton?.onClick.RemoveListener(OnRemoveAdsPurchase);
+        m_petButton?.onClick.RemoveListener(OnPetPurchase);
         m_freeCoinButton?.onClick.RemoveListener(OnFreeCoinClick);
         MPIapManager.Instance.InitializationCompleted -= OnIapInitialized;
         MPIapManager.Instance.ProductGranted -= OnProductGranted;

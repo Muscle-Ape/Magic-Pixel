@@ -67,7 +67,7 @@
       "type": "fluorite",
       "count": 10
     },
-    "unlock": "coin",
+    "unlock": "coin 9980",
     "unlockText": "This needs to be purchased with gold coins in the store",
     "position": {
       "x": 395,
