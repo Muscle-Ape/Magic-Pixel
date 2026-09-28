@@ -248,6 +248,14 @@ public sealed partial class MPGuidePreview : EditorWindow
         foreach (Image frame in guide.transform.Find("View/Content/Highlights").GetComponentsInChildren<Image>())
             Check(frame.type == Image.Type.Sliced && !frame.fillCenter && frame.transform.childCount == 0 &&
                 frame.sprite.border.x > 0, "高亮必须使用单张九宫格图片");
+        if (guide.PreviewStage == MPGuideLesson.Stage.Welcome || guide.PreviewStage == MPGuideLesson.Stage.Columns)
+        {
+            RectTransform hand = (RectTransform)guide.transform.Find("View/Hand");
+            RectTransform next = (RectTransform)guide.transform.Find("View/Next");
+            Vector2 buttonPoint = hand.parent.InverseTransformPoint(next.position);
+            Check(hand.gameObject.activeSelf && Vector2.Distance(hand.anchoredPosition, buttonPoint) < 0.01f,
+                "两处继续按钮必须显示居中的点击手势");
+        }
     }
 
     private void ExportEntryAndSettlement(string directory)

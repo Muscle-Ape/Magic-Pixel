@@ -126,25 +126,41 @@ public sealed partial class MPGuideView
         StopHandHint();
         if (m_hintDismissed || m_settling || !isActiveAndEnabled) return;
         int target = m_lesson.FirstTarget();
-        if (!m_lesson.CanSwitch && target < 0) return;
+        bool shouldTapNext = m_next != null && m_next.gameObject.activeSelf;
+        if (!shouldTapNext && !m_lesson.CanSwitch && target < 0) return;
         m_hand.gameObject.SetActive(true);
         m_handGroup.alpha = 1f;
         m_hand.localScale = Vector3.one;
-        Vector2 switchPoint = m_hand.parent.InverseTransformPoint(m_switch.transform.position);
-        m_hand.anchoredPosition = m_lesson.CanSwitch ? switchPoint : HandPoint(target);
+        Vector2 buttonPoint = m_hand.parent.InverseTransformPoint(
+            shouldTapNext ? m_next.transform.position : m_switch.transform.position);
+        m_hand.anchoredPosition = shouldTapNext || m_lesson.CanSwitch ? buttonPoint : HandPoint(target);
         if (m_preview) return;
         m_handTween = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
-        switch (m_lesson.Current)
+        if (shouldTapNext)
         {
-            case MPGuideLesson.Stage.FullRow: AppendSwipe(0, 4); break;
-            case MPGuideLesson.Stage.Consecutive: AppendSwipe(6, 8); break;
-            case MPGuideLesson.Stage.Groups: AppendSwipe(10, 11); AppendSwipe(13, 14); break;
-            case MPGuideLesson.Stage.Order: AppendSwipe(15, 15); AppendSwipe(17, 19); break;
-            default:
-                m_handTween.Append(m_hand.DOScale(0.88f, 0.4f)).Append(m_hand.DOScale(1f, 0.4f));
-                break;
+            // 欢迎页和列提示页需要按钮确认，用明显的按下/回弹提示点击。
+            AppendButtonTap();
+        }
+        else
+        {
+            switch (m_lesson.Current)
+            {
+                case MPGuideLesson.Stage.FullRow: AppendSwipe(0, 4); break;
+                case MPGuideLesson.Stage.Consecutive: AppendSwipe(6, 8); break;
+                case MPGuideLesson.Stage.Groups: AppendSwipe(10, 11); AppendSwipe(13, 14); break;
+                case MPGuideLesson.Stage.Order: AppendSwipe(15, 15); AppendSwipe(17, 19); break;
+                default:
+                    m_handTween.Append(m_hand.DOScale(0.88f, 0.4f)).Append(m_hand.DOScale(1f, 0.4f));
+                    break;
+            }
         }
         m_handTween.AppendInterval(0.5f).SetLoops(-1, LoopType.Restart);
+    }
+
+    private void AppendButtonTap()
+    {
+        m_handTween.Append(m_hand.DOScale(0.82f, 0.16f).SetEase(Ease.InQuad));
+        m_handTween.Append(m_hand.DOScale(1f, 0.18f).SetEase(Ease.OutBack));
     }
 
     private void AppendSwipe(int first, int last)
