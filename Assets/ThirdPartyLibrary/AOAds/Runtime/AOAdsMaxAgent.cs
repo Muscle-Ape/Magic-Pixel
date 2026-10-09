@@ -228,6 +228,11 @@ public class AOAdsMaxAgent : MonoBehaviour, AOAdsAgentInterface
 
     public bool IsInterstitialReady(bool withLoad = true)
     {
+        if (string.IsNullOrEmpty(_interstitialAdUnitId))
+        {
+            return false;
+        }
+
         bool isInterstitialReady = MaxSdk.IsInterstitialReady(_interstitialAdUnitId);
 
         if (!isInterstitialReady && withLoad)
@@ -263,6 +268,11 @@ public class AOAdsMaxAgent : MonoBehaviour, AOAdsAgentInterface
     //视频准备完毕
     public bool IsRewardedAdReady(bool withLoad = true)
     {
+        if (string.IsNullOrEmpty(_rewardedAdUnitId))
+        {
+            return false;
+        }
+
         bool isRewardedAdReady = MaxSdk.IsRewardedAdReady(_rewardedAdUnitId);
         if (!isRewardedAdReady && withLoad)
         {

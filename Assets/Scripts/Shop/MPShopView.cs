@@ -21,6 +21,8 @@ public sealed class MPShopView : AWindow
     [TransformPath("View/CloseBtn")] private RectTransform m_closeBtnNode;
     [TransformPath("View/Coin/Count")] private TMP_Text m_coinCount;
     [TransformPath("View/Fluorite/Count")] private TMP_Text m_fluoriteCount;
+    [TransformPath("View/Product")] private ScrollRect m_productScroll;
+    [TransformPath("View/Product/Viewport/Content")] private RectTransform m_productContent;
     [TransformPath("View/Product/Viewport/Content/Bundles")] private RectTransform m_bundles;
     [TransformPath("View/Product/Viewport/Content/Coins/Coins")] private RectTransform m_coins;
 
@@ -45,6 +47,7 @@ public sealed class MPShopView : AWindow
     private int m_operationVersion;
     private string m_bundleSignature;
     private string m_coinSignature;
+    private bool m_productLayoutReady;
     private Button m_closeBtn;
     private Button m_vipButton;
     private Button m_removeAdsButton;
@@ -105,9 +108,9 @@ public sealed class MPShopView : AWindow
         m_products = products.GroupBy(product => product.ID, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
 
-        ApplyFixedProduct(m_vip, m_vipButton, VIP_PRODUCT_ID);
-        ApplyFixedProduct(m_removeAds, m_removeAdsButton, REMOVE_ADS_PRODUCT_ID);
-        RefreshPetProduct();
+        bool layoutChanged = ApplyFixedProduct(m_vip, m_vipButton, VIP_PRODUCT_ID);
+        layoutChanged |= ApplyFixedProduct(m_removeAds, m_removeAdsButton, REMOVE_ADS_PRODUCT_ID);
+        layoutChanged |= RefreshPetProduct();
 
         HQIapProduct[] bundleProducts = products.Where(product =>
             product.ID.StartsWith("bundle_", StringComparison.Ordinal)
@@ -121,6 +124,7 @@ public sealed class MPShopView : AWindow
         {
             m_bundleSignature = bundleSignature;
             RebuildBundleItems(bundleProducts);
+            layoutChanged = true;
         }
         else
         {
@@ -132,6 +136,7 @@ public sealed class MPShopView : AWindow
         {
             m_coinSignature = coinSignature;
             RebuildCoinItems(coinProducts);
+            layoutChanged = true;
         }
         else
         {
@@ -140,25 +145,25 @@ public sealed class MPShopView : AWindow
                     item.RefreshPrice(product);
         }
 
-        Canvas.ForceUpdateCanvases();
-        if (m_coins != null)
-            LayoutRebuilder.ForceRebuildLayoutImmediate(m_coins);
-        if (m_bundles != null)
-            LayoutRebuilder.ForceRebuildLayoutImmediate(m_bundles);
-        RectTransform content = m_bundles?.parent as RectTransform;
-        if (content != null)
-            LayoutRebuilder.ForceRebuildLayoutImmediate(content);
         SetBusy(m_busy);
+
+        // 本地化价格刷新不改变商品尺寸，不能在滚动中强制重建整棵布局，
+        // 否则 ScrollRect 会重新计算边界并校正位置，造成明显的卡顿和闪缩。
+        if (layoutChanged || !m_productLayoutReady)
+            RebuildProductLayout(m_productLayoutReady);
     }
 
-    private void ApplyFixedProduct(RectTransform card, Button button, string productId)
+    /// <returns>商品卡片的显隐状态是否发生变化。</returns>
+    private bool ApplyFixedProduct(RectTransform card, Button button, string productId)
     {
         if (card == null)
-            return;
+            return false;
+
+        bool wasActive = card.gameObject.activeSelf;
         if (!m_products.TryGetValue(productId, out HQIapProduct product))
         {
             card.gameObject.SetActive(false);
-            return;
+            return wasActive;
         }
 
         bool owned = (productId == REMOVE_ADS_PRODUCT_ID
@@ -168,7 +173,7 @@ public sealed class MPShopView : AWindow
         bool available = !owned && MPUser.instance.ShopProductIsAvailable(product);
         card.gameObject.SetActive(available);
         if (!available)
-            return;
+            return wasActive;
 
         Transform node = card.Find("Node") ?? card;
         MPShopProductUI.SetText(node, "Title", MPShopProductUI.ProductTitle(product));
@@ -179,6 +184,42 @@ public sealed class MPShopView : AWindow
         MPShopProductUI.ApplyIcon(node.Find("Icon")?.GetComponent<Image>(), product, this);
         if (button != null)
             button.interactable = !m_busy;
+        return wasActive != available;
+    }
+
+    /// <summary>
+    /// 仅在商品增删或显隐变化时重建布局，并保持用户当前的滚动位置和惯性。
+    /// 子布局需要按从内到外的顺序计算，避免 ContentSizeFitter 在连续帧反复修正高度。
+    /// </summary>
+    private void RebuildProductLayout(bool preserveScrollPosition)
+    {
+        float normalizedPosition = m_productScroll != null
+            ? m_productScroll.verticalNormalizedPosition
+            : 1f;
+        Vector2 velocity = m_productScroll != null
+            ? m_productScroll.velocity
+            : Vector2.zero;
+
+        Canvas.ForceUpdateCanvases();
+        if (m_coins != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(m_coins);
+        if (m_coins != null && m_coins.parent is RectTransform coinsSection)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(coinsSection);
+        if (m_bundles != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(m_bundles);
+        if (m_productContent != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(m_productContent);
+        Canvas.ForceUpdateCanvases();
+
+        if (m_productScroll != null)
+        {
+            m_productScroll.verticalNormalizedPosition = preserveScrollPosition
+                ? Mathf.Clamp01(normalizedPosition)
+                : 1f;
+            if (preserveScrollPosition)
+                m_productScroll.velocity = velocity;
+        }
+        m_productLayoutReady = true;
     }
 
     private void RebuildBundleItems(IEnumerable<HQIapProduct> products)
@@ -275,7 +316,8 @@ public sealed class MPShopView : AWindow
         MPShopPetPurchaseResult result = MPUser.instance.TryPurchaseShopPet(SHOP_PET_ID);
         SetBusy(false);
         RefreshAssets();
-        RefreshPetProduct();
+        if (RefreshPetProduct())
+            RebuildProductLayout(m_productLayoutReady);
 
         switch (result)
         {
@@ -298,10 +340,13 @@ public sealed class MPShopView : AWindow
         }
     }
 
-    private void RefreshPetProduct()
+    /// <returns>宠物商品卡片的显隐状态是否发生变化。</returns>
+    private bool RefreshPetProduct()
     {
         if (m_pet == null)
-            return;
+            return false;
+
+        bool wasActive = m_pet.gameObject.activeSelf;
 
         MPPetConfig pet = MPDataManager.Instance.m_petsModel?.petConfigs?.Find(
             item => item != null && string.Equals(item.ID, SHOP_PET_ID, StringComparison.Ordinal));
@@ -316,13 +361,14 @@ public sealed class MPShopView : AWindow
             && !MPUser.instance.PetIsUnlock(SHOP_PET_ID);
         m_pet.gameObject.SetActive(visible);
         if (!visible)
-            return;
+            return wasActive;
 
         MPShopProductUI.SetText(m_pet, "Title", pet.Name.ToUpperInvariant());
         if (m_petPrice != null)
             m_petPrice.text = price.ToString();
         if (m_petButton != null)
             m_petButton.interactable = !m_busy;
+        return wasActive != visible;
     }
 
     private void OnPurchaseRequested(string productId)

@@ -159,6 +159,7 @@ public sealed class MPAdsManager : IDisposable
     {
         // 保留统一功能开关；关闭广告时不创建 AOAds 单例，避免触发 SDK 初始化。
         if (!MPReleaseFeatures.Ads) return;
+        if (!HasValidPlatformConfiguration()) return;
         // 间隔策略和广告位策略统一由管理器创建，外部无需持有或注入实例。
         m_adIntervalController = new MPAdsAdIntervalController(
             DEFAULT_INTERSTITIAL_INTERVAL,
@@ -226,13 +227,37 @@ public sealed class MPAdsManager : IDisposable
             return false;
         try
         {
-            return !MPUser.instance.OwnsShopEntitlement("remove_ads");
+            MPUser user = MPUser.instance;
+            return user != null
+                && !user.HasVipAccess()
+                && !user.OwnsShopEntitlement("remove_ads")
+                && user.GetCompletedMainLevelCount() >= 10;
         }
         catch
         {
             // 玩家存档尚未可用时不以广告阻塞页面流转，等待后续广告位再尝试。
             return false;
         }
+    }
+
+    /// <summary>在创建原生广告 SDK 前校验当前平台配置，空广告位不能进入 MAX 原生接口。</summary>
+    private static bool HasValidPlatformConfiguration()
+    {
+#if ao_ads_max
+        AOMaxAdsSettings settings = AOMaxAdsSettings.Load();
+        if (settings == null)
+        {
+            Debug.LogError("[MPAdsManager] 广告 SDK 未初始化：MAX 配置资源不存在。");
+            return false;
+        }
+
+        if (!settings.TryValidateCurrentPlatform(out string error))
+        {
+            Debug.LogError($"[MPAdsManager] 广告 SDK 未初始化：{error}");
+            return false;
+        }
+#endif
+        return true;
     }
 
     /// <summary>

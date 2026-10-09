@@ -19,6 +19,11 @@ extern "C" {
     static int _adsRewardNum = 0;
     static NSString  * const kAdInterNumKey = @"__ios_ad_inter_num__";
     static NSString  * const kAdRewardNumKey = @"__ios_ad_reward_num__";
+
+    static NSString *AOSafeAdString(NSString *value)
+    {
+        return value ?: @"";
+    }
     
     void _init()
     {
@@ -72,7 +77,7 @@ extern "C" {
     NSMutableDictionary *eventProperties = [self adToDictionary:ad];
     
     
-    [eventProperties setObject:ad.placement forKey:@"ad_scene"];
+    [eventProperties setObject:AOSafeAdString(ad.placement) forKey:@"ad_scene"];
     [eventProperties setObject:@(_adsInterNum) forKey:@"ad_inter_num"];
     [eventProperties setObject:@(_adsRewardNum) forKey:@"ad_reward_num"];
     
@@ -90,7 +95,7 @@ extern "C" {
     NSLog(@"[LOG] swapperDidHideAd");
     
     NSMutableDictionary *eventProperties = [self adToDictionary:ad];
-    [eventProperties setObject:ad.placement forKey:@"ad_scene"];
+    [eventProperties setObject:AOSafeAdString(ad.placement) forKey:@"ad_scene"];
     [eventProperties setObject:@(_adsEventIsReceivedReward) forKey:@"is_complete"];
     
     
@@ -196,11 +201,11 @@ extern "C" {
     
     NSDictionary *eventProperties = @{
         //广告基础数据
-        @"ad_placement": ad.networkPlacement ,
-        @"ad_channel": ad.networkName ,
+        @"ad_placement": AOSafeAdString(ad.networkPlacement) ,
+        @"ad_channel": AOSafeAdString(ad.networkName) ,
         @"ad_type": ad_type ,
         @"ad_revenue": @(ad.revenue),
-        @"ad_creative_id": ad.creativeIdentifier
+        @"ad_creative_id": AOSafeAdString(ad.creativeIdentifier)
     };
 
     return [NSMutableDictionary dictionaryWithDictionary:eventProperties];

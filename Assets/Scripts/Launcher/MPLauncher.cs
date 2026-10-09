@@ -146,10 +146,6 @@ public class MPLauncher : MonoBehaviour
             }
         }
 
-        // 广告预热仍为非阻塞服务：广告 SDK 未回调不能阻止玩家进入游戏。
-        if (MPReleaseFeatures.Ads && !MPAdsManager.Instance.IsConfigured)
-            MPAdsManager.Instance.Initialize(userId: MPLoginManager.Instance.PlayerId);
-
         yield return null;
         if (!m_dataReady)
         {
@@ -171,10 +167,6 @@ public class MPLauncher : MonoBehaviour
             yield break;
         }
 
-        // 玩家本地数据与云端快照就绪后再初始化 IAP，避免恢复订单先发货又被云存档覆盖。
-        // 发布开关只控制功能入口；IAP 服务始终初始化，以便处理商店补单和恢复订单。
-        MPIapManager.Instance.Initialize();
-
         MPVibrationManager.Instance.Initialize();
         m_loadingView.CompleteLoading(EnterGame);
     }
@@ -194,6 +186,7 @@ public class MPLauncher : MonoBehaviour
             m_hasEnteredGame = true;
             m_loadingView.DestroyWindow();
             m_loadingView = null;
+            StartCoroutine(InitializeOptionalServicesAfterEntry());
         }
         catch (Exception exception)
         {
@@ -204,6 +197,20 @@ public class MPLauncher : MonoBehaviour
                 m_loadingView.ShowInitializationFailure("Could not open the game.");
             }
         }
+    }
+
+    /// <summary>
+    /// 云存档和首页已就绪后再分帧启动原生 SDK，避免广告、商店初始化拉长 Loading 或造成同帧卡顿。
+    /// IAP 仍然保证在云存档应用之后初始化，不会被后续云数据覆盖。
+    /// </summary>
+    private IEnumerator InitializeOptionalServicesAfterEntry()
+    {
+        yield return null;
+        MPIapManager.Instance.Initialize();
+
+        yield return null;
+        if (MPReleaseFeatures.Ads && !MPAdsManager.Instance.IsConfigured)
+            MPAdsManager.Instance.Initialize(userId: MPLoginManager.Instance.PlayerId);
     }
 
     private void OnDestroy()

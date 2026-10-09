@@ -199,19 +199,29 @@ public partial class MPCloudSaveManager
 
             string previousPlayerId = m_metaRepository.LoadActivePlayerId();
             bool accountSwitched = !string.IsNullOrEmpty(previousPlayerId) && previousPlayerId != playerId;
-            MPLocalLoginProfile profile = await LoadLocalLoginProfileSafeAsync(cancellationToken);
+            Task<MPLocalLoginProfile> profileTask = LoadLocalLoginProfileSafeAsync(cancellationToken);
+            Task<MPCloudSaveLoadResult<MPUserCloudSnapshot>> userCloudTask =
+                LoadUserSnapshotSafeAsync(cancellationToken);
+            Task<MPCloudSaveLoadResult<MPCustomLevelCloudSnapshot>> customCloudTask =
+                LoadCustomLevelSnapshotSafeAsync(cancellationToken);
+
+            // 两份云快照互不依赖，并行拉取可将启动等待从两次网络往返降为一次。
+            await Task.WhenAll(profileTask, userCloudTask, customCloudTask);
+            MPLocalLoginProfile profile = profileTask.GetAwaiter().GetResult();
 
             // 读取远端失败时也必须保持选择保护，避免暂停/后台自动上传绕过游客存档选择。
             if (GetGuestSaveChoice(profile) != null)
                 m_assetComparisonNeedsResolution = true;
 
-            MPCloudSaveLoadResult<MPUserCloudSnapshot> userCloudResult = await LoadUserSnapshotSafeAsync(cancellationToken);
+            MPCloudSaveLoadResult<MPUserCloudSnapshot> userCloudResult =
+                userCloudTask.GetAwaiter().GetResult();
             if (userCloudResult == null)
             {
                 return false;
             }
 
-            MPCloudSaveLoadResult<MPCustomLevelCloudSnapshot> customCloudResult = await LoadCustomLevelSnapshotSafeAsync(cancellationToken);
+            MPCloudSaveLoadResult<MPCustomLevelCloudSnapshot> customCloudResult =
+                customCloudTask.GetAwaiter().GetResult();
             if (customCloudResult == null)
             {
                 return false;
