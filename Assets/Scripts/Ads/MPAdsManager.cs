@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using Unity.Services.LevelPlay;
 using UnityEngine;
 
 /// <summary>项目内统一的插屏广告位名称，便于后台和日志区分触发来源。</summary>
@@ -9,222 +11,524 @@ public static class MPInterstitialAdPlace
     public const string CompletedExit = "game_completed_exit";
 }
 
-/// <summary>
-/// 可选的广告策略回调接口。
-/// 被 MPAdsManager 注入的策略可以实现该接口，以接收 AOAds 的生命周期回调。
-/// </summary>
-public interface IMPAdsCallbackReceiver
+public enum MPAdsType
 {
-    /// <summary>
-    /// 广告即将展示时调用，同时返回广告是否已经准备完成。
-    /// </summary>
-    void OnAdsWillDisplay(string adScene, bool ready, AOAdsType adType);
+    Interstitial,
+    RewardedVideo
+}
 
-    /// <summary>
-    /// 广告已经成功展示时调用。
-    /// </summary>
-    void OnAdsDidDisplay(string adScene, AOAdsInfo info);
+/// <summary>广告回调中使用的项目层数据，避免业务代码依赖具体广告 SDK 类型。</summary>
+public sealed class MPAdsInfo
+{
+    public string AdUnitId { get; internal set; }
+    public string PlacementName { get; internal set; }
+    public MPAdsType AdType { get; internal set; }
 
-    /// <summary>
-    /// 广告关闭时调用；激励广告可通过 isReceivedReward 判断是否获得奖励。
-    /// </summary>
-    void OnAdsDidDismissed(string adScene, AOAdsInfo info, bool isReceivedReward);
-
-    /// <summary>
-    /// 广告展示失败时调用。
-    /// </summary>
-    void OnAdsDidFailed(string adScene, AOAdsInfo info);
+    public override string ToString()
+    {
+        return $"AdUnitId:{AdUnitId} Placement:{PlacementName} AdType:{AdType}";
+    }
 }
 
 /// <summary>
-/// 项目广告模块的装配与回调入口。
-/// 负责向 AOAds 注入控制策略、初始化 SDK，并统一接收和转发广告回调。
+/// 项目广告模块入口。底层统一使用 Unity LevelPlay，实际竞价广告源由 LevelPlay 后台配置。
+/// 负责初始化、广告预加载、失败重试、展示回调以及插屏冷却策略。
 /// </summary>
 public sealed class MPAdsManager : IDisposable
 {
-    /// <summary>
-    /// 初始插屏广告间隔，单位为秒。
-    /// </summary>
     private const float DEFAULT_INTERSTITIAL_INTERVAL = 120.0f;
-
-    /// <summary>
-    /// 每次调整时减少的插屏广告间隔，单位为秒。
-    /// </summary>
     private const float INTERSTITIAL_INTERVAL_REDUCTION = 5.0f;
-
-    /// <summary>
-    /// 插屏广告允许降低到的最小间隔，单位为秒。
-    /// </summary>
     private const float MINIMUM_INTERSTITIAL_INTERVAL = 60.0f;
-
-    /// <summary>
-    /// 每成功展示多少次插屏广告后，减少一次间隔。
-    /// </summary>
     private const int INTERSTITIAL_VIEWS_PER_REDUCTION = 3;
+    private const float REWARDED_CLOSE_GRACE_SECONDS = 1.0f;
+    private const float ADAPTER_WARMUP_SECONDS = 1.0f;
 
-    /// <summary>
-    /// 广告管理器单例。
-    /// </summary>
     private static MPAdsManager m_instance;
 
-    /// <summary>
-    /// 当前注入 AOAds 的插屏间隔策略。
-    /// </summary>
     private MPAdsAdIntervalController m_adIntervalController;
-
-    /// <summary>
-    /// 当前注入 AOAds 的广告位启用策略。
-    /// </summary>
-    private AOAdsBaseAdSceneController m_adSceneController;
-
-    /// <summary>
-    /// 是否已经订阅 AOAds 的静态回调，避免重复注册。
-    /// </summary>
-    private bool m_isSubscribed;
+    private MPAdsAdSceneController m_adSceneController;
+    private MPAdsRuntime m_runtime;
+    private MPUnityAdsSettings m_settings;
+    private LevelPlayInterstitialAd m_interstitialAd;
+    private LevelPlayRewardedAd m_rewardedAd;
+    private Action m_pendingInitializedCallback;
+    private Action<bool, bool> m_rewardedCompleted;
+    private string m_interstitialPlacement;
+    private string m_rewardedPlacement;
+    private bool m_rewardReceived;
+    private bool m_rewardedClosed;
+    private bool m_rewardedShowing;
+    private bool m_interstitialLoading;
+    private bool m_rewardedLoading;
+    private bool m_interstitialReloadScheduled;
+    private bool m_rewardedReloadScheduled;
+    private bool m_initializing;
+    private bool m_disposed;
+    private int m_interstitialRetryAttempt;
+    private int m_rewardedRetryAttempt;
+    private int m_rewardedOperationVersion;
 
     private MPAdsManager()
     {
     }
 
-    /// <summary>
-    /// 获取广告管理器单例。
-    /// </summary>
-    public static MPAdsManager Instance
-    {
-        get
-        {
-            if (m_instance == null)
-            {
-                m_instance = new MPAdsManager();
-            }
+    public static MPAdsManager Instance => m_instance ??= new MPAdsManager();
 
-            return m_instance;
-        }
-    }
-
-    /// <summary>
-    /// 当前使用的插屏间隔控制器。
-    /// </summary>
     public MPAdsAdIntervalController AdIntervalController => m_adIntervalController;
-
-    /// <summary>
-    /// 当前使用的广告位控制器。
-    /// </summary>
-    public AOAdsBaseAdSceneController AdSceneController => m_adSceneController;
-
-    /// <summary>
-    /// 广告策略是否已经创建并注入 AOAds。
-    /// </summary>
+    public MPAdsAdSceneController AdSceneController => m_adSceneController;
     public bool IsConfigured { get; private set; }
+    public bool IsInitialized { get; private set; }
+    public bool IsRewardedReady => IsInitialized && m_rewardedAd != null && m_rewardedAd.IsAdReady();
 
-    /// <summary>
-    /// AOAds SDK 是否已经完成初始化。
-    /// </summary>
-    public bool IsInitialized => AOAds.InitComplete;
-
-    /// <summary>
-    /// AOAds 初始化完成事件。
-    /// </summary>
     public event Action Initialized;
+    public event Action<string, bool, MPAdsType> AdsWillDisplay;
+    public event Action<string, MPAdsInfo> AdsDidDisplay;
+    public event Action<string, MPAdsInfo, bool> AdsDidDismissed;
+    public event Action<string, MPAdsInfo> AdsDidFailed;
 
-    /// <summary>
-    /// 广告即将展示事件。
-    /// </summary>
-    public event Action<string, bool, AOAdsType> AdsWillDisplay;
-
-    /// <summary>
-    /// 广告成功展示事件。
-    /// </summary>
-    public event Action<string, AOAdsInfo> AdsDidDisplay;
-
-    /// <summary>
-    /// 广告关闭事件。
-    /// </summary>
-    public event Action<string, AOAdsInfo, bool> AdsDidDismissed;
-
-    /// <summary>
-    /// 广告展示失败事件。
-    /// </summary>
-    public event Action<string, AOAdsInfo> AdsDidFailed;
-
-    /// <summary>
-    /// 创建项目广告策略、注入 AOAds 并完成初始化。
-    /// 首次初始化时应在 AOAds.Start 执行前调用，确保 userId 能传递给广告 SDK。
-    /// </summary>
-    /// <param name="userId">当前玩家 ID，可为空。</param>
-    /// <param name="onInitialized">本次初始化完成后的回调。</param>
-    public void Initialize(
-        string userId = null,
-        Action onInitialized = null)
+    /// <summary>初始化 LevelPlay。广告对象只会在初始化成功后创建。</summary>
+    public void Initialize(string userId = null, Action onInitialized = null)
     {
-        // 保留统一功能开关；关闭广告时不创建 AOAds 单例，避免触发 SDK 初始化。
-        if (!MPReleaseFeatures.Ads) return;
-        if (!HasValidPlatformConfiguration()) return;
-        // 间隔策略和广告位策略统一由管理器创建，外部无需持有或注入实例。
+        if (!MPReleaseFeatures.Ads)
+            return;
+
+        if (IsInitialized)
+        {
+            InvokeSafely(onInitialized, nameof(onInitialized));
+            return;
+        }
+
+        if (onInitialized != null)
+            m_pendingInitializedCallback += onInitialized;
+
+        if (m_initializing)
+            return;
+
+        m_settings = MPUnityAdsSettings.Load();
+        if (m_settings == null)
+        {
+            Debug.LogError("[MPAdsManager] 未找到 Resources/MPUnityAdsSettings 配置资源。");
+            CompleteInitializationFailure();
+            return;
+        }
+
+        if (!m_settings.TryValidateCurrentPlatform(out string error))
+        {
+            Debug.LogError($"[MPAdsManager] Unity Ads 配置无效：{error}");
+            CompleteInitializationFailure();
+            return;
+        }
+
+        m_disposed = false;
         m_adIntervalController = new MPAdsAdIntervalController(
             DEFAULT_INTERSTITIAL_INTERVAL,
             INTERSTITIAL_INTERVAL_REDUCTION,
             MINIMUM_INTERSTITIAL_INTERVAL,
             INTERSTITIAL_VIEWS_PER_REDUCTION);
         m_adSceneController = new MPAdsAdSceneController();
+        m_runtime = MPAdsRuntime.Create();
 
-        // 在 AOAds 启动广告 SDK 前完成策略注入。
-        AOAds ads = AOAds.Instance;
-        ads.AdIntervalController = m_adIntervalController;
-        ads.AdSceneController = m_adSceneController;
+        LevelPlay.OnInitSuccess += OnInitializationSuccess;
+        LevelPlay.OnInitFailed += OnInitializationFailed;
 
-        SubscribeAOAdsCallbacks();
         IsConfigured = true;
+        m_initializing = true;
 
-        if (AOAds.InitComplete)
+#if DEVELOPMENT_BUILD && !UNITY_EDITOR
+        LevelPlay.SetAdaptersDebug(true);
+        if (m_settings.LaunchLevelPlayTestSuiteInDevelopment)
         {
-            OnInitialized(onInitialized);
+            // 测试套件要求在 SDK 初始化前启用，并且启动前不能创建广告对象。
+            LevelPlay.SetMetaData("is_test_suite", "enable");
         }
-        else
-        {
-            ads.Init(userId, () => OnInitialized(onInitialized));
-        }
+#endif
+
+        // 当前项目未使用服务端奖励校验，不把可能含连字符的玩家 ID
+        // 传给 Dynamic User ID，避免违反其仅允许 1-64 位字母数字的约束。
+        Debug.Log("[MPAdsManager] 正在初始化 LevelPlay。");
+        LevelPlay.Init(m_settings.CurrentAppKey);
     }
 
-    /// <summary>
-    /// 按当前广告位、冷却时间和免广告权益尝试展示插屏。
-    /// 该方法只发起广告展示，不等待广告关闭，也不接管页面动画或跳转流程。
-    /// </summary>
+    /// <summary>按免广告权益、关卡数和冷却时间尝试展示插屏。</summary>
     public void TryShowInterstitial(string adPlace)
     {
-        if (!CanAttemptInterstitial())
+        if (!CanAttemptInterstitial(adPlace))
             return;
 
+        bool ready = m_interstitialAd != null && m_interstitialAd.IsAdReady();
+        InvokeSafely(AdsWillDisplay, adPlace, ready, MPAdsType.Interstitial, nameof(AdsWillDisplay));
+
+        if (!ready)
+        {
+            RequestInterstitialLoad();
+            return;
+        }
+
+        m_interstitialPlacement = adPlace;
         try
         {
-            AOAds.CheckAndShowInterstitialAd(adPlace, null);
+            m_interstitialAd.ShowAd(adPlace);
         }
         catch (Exception exception)
         {
             Debug.LogWarning($"[MPAdsManager] 插屏广告调用失败 {adPlace}：{exception.Message}");
+            HandleInterstitialFailure();
         }
     }
 
-    /// <summary>进入游戏阶段后开始累计插屏冷却时间。</summary>
+    /// <summary>
+    /// 展示激励视频。回调参数依次为“调用时是否已准备”和“是否获得奖励”。
+    /// </summary>
+    public void ShowRewardedAd(string adPlace, Action<bool, bool> onCompleted)
+    {
+        bool ready = IsRewardedReady && !m_rewardedShowing;
+        InvokeSafely(AdsWillDisplay, adPlace, ready, MPAdsType.RewardedVideo, nameof(AdsWillDisplay));
+
+        if (!ready)
+        {
+            RequestRewardedLoad();
+            InvokeSafely(onCompleted, false, false, nameof(onCompleted));
+            return;
+        }
+
+        m_rewardedPlacement = adPlace;
+        m_rewardedCompleted = onCompleted;
+        m_rewardedShowing = true;
+        m_rewardReceived = false;
+        m_rewardedClosed = false;
+        m_rewardedOperationVersion++;
+
+        try
+        {
+            m_rewardedAd.ShowAd(adPlace);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[MPAdsManager] 激励广告调用失败 {adPlace}：{exception.Message}");
+            HandleRewardedFailure();
+        }
+    }
+
     public void EnterGameplay()
     {
-        if (!MPReleaseFeatures.Ads || !IsConfigured)
-            return;
-        AOAds.EnterGame();
+        if (MPReleaseFeatures.Ads && IsConfigured)
+            m_adIntervalController?.EnterGameplay();
     }
 
-    /// <summary>离开游戏阶段时停止累计，已累计时长保留给当前退出广告位判断。</summary>
     public void LeaveGameplay()
     {
-        if (!MPReleaseFeatures.Ads || !IsConfigured)
-            return;
-        AOAds.LeaveGame();
+        if (MPReleaseFeatures.Ads && IsConfigured)
+            m_adIntervalController?.LeaveGameplay();
     }
 
-    private bool CanAttemptInterstitial()
+    internal void Tick(float unscaledDeltaTime)
+    {
+        m_adIntervalController?.Tick(unscaledDeltaTime);
+    }
+
+    private void OnInitializationSuccess(LevelPlayConfiguration configuration)
+    {
+        UnsubscribeInitializationEvents();
+        m_initializing = false;
+        IsInitialized = true;
+        Debug.Log("[MPAdsManager] LevelPlay 初始化成功。");
+#if DEVELOPMENT_BUILD && !UNITY_EDITOR
+        if (m_settings.LaunchLevelPlayTestSuiteInDevelopment)
+        {
+            Debug.Log("[MPAdsManager] 正在启动 LevelPlay Integration Test Suite。");
+            LevelPlay.LaunchTestSuite();
+        }
+        else
+#endif
+        {
+#if DEVELOPMENT_BUILD && !UNITY_EDITOR
+            LevelPlay.ValidateIntegration();
+#endif
+            Debug.Log("[MPAdsManager] 准备加载广告。");
+            CreateAdObjects();
+        }
+
+        Action callback = m_pendingInitializedCallback;
+        m_pendingInitializedCallback = null;
+        InvokeSafely(Initialized, nameof(Initialized));
+        InvokeSafely(callback, nameof(m_pendingInitializedCallback));
+    }
+
+    private void OnInitializationFailed(LevelPlayInitError error)
+    {
+        UnsubscribeInitializationEvents();
+        Debug.LogError($"[MPAdsManager] LevelPlay 初始化失败：{error}");
+        CompleteInitializationFailure();
+    }
+
+    private void CompleteInitializationFailure()
+    {
+        m_initializing = false;
+        IsInitialized = false;
+        IsConfigured = false;
+        m_pendingInitializedCallback = null;
+
+        if (m_runtime != null)
+        {
+            UnityEngine.Object.Destroy(m_runtime.gameObject);
+            m_runtime = null;
+        }
+
+        m_adIntervalController = null;
+        m_adSceneController = null;
+    }
+
+    private void UnsubscribeInitializationEvents()
+    {
+        LevelPlay.OnInitSuccess -= OnInitializationSuccess;
+        LevelPlay.OnInitFailed -= OnInitializationFailed;
+    }
+
+    private void CreateAdObjects()
+    {
+        DestroyAdObjects();
+
+        m_interstitialAd = new LevelPlayInterstitialAd(m_settings.CurrentInterstitialAdUnitId);
+        m_interstitialAd.OnAdLoaded += OnInterstitialLoaded;
+        m_interstitialAd.OnAdLoadFailed += OnInterstitialLoadFailed;
+        m_interstitialAd.OnAdDisplayed += OnInterstitialDisplayed;
+        m_interstitialAd.OnAdDisplayFailed += OnInterstitialDisplayFailed;
+        m_interstitialAd.OnAdClosed += OnInterstitialClosed;
+
+        m_rewardedAd = new LevelPlayRewardedAd(m_settings.CurrentRewardedAdUnitId);
+        m_rewardedAd.OnAdLoaded += OnRewardedLoaded;
+        m_rewardedAd.OnAdLoadFailed += OnRewardedLoadFailed;
+        m_rewardedAd.OnAdDisplayed += OnRewardedDisplayed;
+        m_rewardedAd.OnAdDisplayFailed += OnRewardedDisplayFailed;
+        m_rewardedAd.OnAdRewarded += OnRewarded;
+        m_rewardedAd.OnAdClosed += OnRewardedClosed;
+
+        // LevelPlay 初始化成功时，聚合网络 Adapter 仍可能处于原生初始化收尾阶段。
+        // 稍后再发起首次加载，避免 Unity Ads 在 token 尚未可用时收到请求。
+        ScheduleInterstitialLoad(ADAPTER_WARMUP_SECONDS, false);
+        ScheduleRewardedLoad(ADAPTER_WARMUP_SECONDS, false);
+    }
+
+    private void OnInterstitialLoaded(LevelPlayAdInfo adInfo)
+    {
+        m_interstitialLoading = false;
+        m_interstitialReloadScheduled = false;
+        m_interstitialRetryAttempt = 0;
+        Debug.Log("[MPAdsManager] 插屏广告加载成功。");
+    }
+
+    private void OnInterstitialLoadFailed(LevelPlayAdError error)
+    {
+        m_interstitialLoading = false;
+        Debug.LogWarning($"[MPAdsManager] 插屏广告加载失败：{error}");
+        ScheduleInterstitialReload();
+    }
+
+    private void OnInterstitialDisplayed(LevelPlayAdInfo adInfo)
+    {
+        MPAdsInfo info = CreateInfo(MPAdsType.Interstitial, m_interstitialPlacement);
+        m_adIntervalController?.RecordInterstitialDisplayed();
+        InvokeSafely(AdsDidDisplay, m_interstitialPlacement, info, nameof(AdsDidDisplay));
+    }
+
+    private void OnInterstitialDisplayFailed(LevelPlayAdInfo adInfo, LevelPlayAdError error)
+    {
+        Debug.LogWarning($"[MPAdsManager] 插屏广告展示失败：{error}");
+        HandleInterstitialFailure();
+    }
+
+    private void OnInterstitialClosed(LevelPlayAdInfo adInfo)
+    {
+        string placement = m_interstitialPlacement;
+        MPAdsInfo info = CreateInfo(MPAdsType.Interstitial, placement);
+        m_interstitialPlacement = null;
+        InvokeSafely(AdsDidDismissed, placement, info, false, nameof(AdsDidDismissed));
+        RequestInterstitialLoad();
+    }
+
+    private void HandleInterstitialFailure()
+    {
+        string placement = m_interstitialPlacement;
+        MPAdsInfo info = CreateInfo(MPAdsType.Interstitial, placement);
+        m_interstitialPlacement = null;
+        InvokeSafely(AdsDidFailed, placement, info, nameof(AdsDidFailed));
+        InvokeSafely(AdsDidDismissed, placement, info, false, nameof(AdsDidDismissed));
+        ScheduleInterstitialReload();
+    }
+
+    private void OnRewardedLoaded(LevelPlayAdInfo adInfo)
+    {
+        m_rewardedLoading = false;
+        m_rewardedReloadScheduled = false;
+        m_rewardedRetryAttempt = 0;
+        Debug.Log("[MPAdsManager] 激励广告加载成功。");
+    }
+
+    private void OnRewardedLoadFailed(LevelPlayAdError error)
+    {
+        m_rewardedLoading = false;
+        Debug.LogWarning($"[MPAdsManager] 激励广告加载失败：{error}");
+        ScheduleRewardedReload();
+    }
+
+    private void OnRewardedDisplayed(LevelPlayAdInfo adInfo)
+    {
+        MPAdsInfo info = CreateInfo(MPAdsType.RewardedVideo, m_rewardedPlacement);
+        InvokeSafely(AdsDidDisplay, m_rewardedPlacement, info, nameof(AdsDidDisplay));
+    }
+
+    private void OnRewardedDisplayFailed(LevelPlayAdInfo adInfo, LevelPlayAdError error)
+    {
+        Debug.LogWarning($"[MPAdsManager] 激励广告展示失败：{error}");
+        HandleRewardedFailure();
+    }
+
+    private void OnRewarded(LevelPlayAdInfo adInfo, LevelPlayReward reward)
+    {
+        m_rewardReceived = true;
+        if (m_rewardedClosed)
+            CompleteRewarded(true, true);
+    }
+
+    private void OnRewardedClosed(LevelPlayAdInfo adInfo)
+    {
+        string placement = m_rewardedPlacement;
+        MPAdsInfo info = CreateInfo(MPAdsType.RewardedVideo, placement);
+        m_rewardedClosed = true;
+        InvokeSafely(AdsDidDismissed, placement, info, m_rewardReceived, nameof(AdsDidDismissed));
+        RequestRewardedLoad();
+
+        if (m_rewardReceived)
+        {
+            CompleteRewarded(true, true);
+            return;
+        }
+
+        // LevelPlay 明确说明奖励和关闭回调的顺序不固定，短暂等待可避免
+        // “先关闭、后奖励”时错误判定为未完成。
+        int operationVersion = m_rewardedOperationVersion;
+        m_runtime?.RunDelayed(REWARDED_CLOSE_GRACE_SECONDS, () =>
+        {
+            if (operationVersion == m_rewardedOperationVersion && m_rewardedShowing)
+                CompleteRewarded(true, m_rewardReceived);
+        });
+    }
+
+    private void HandleRewardedFailure()
+    {
+        string placement = m_rewardedPlacement;
+        MPAdsInfo info = CreateInfo(MPAdsType.RewardedVideo, placement);
+        InvokeSafely(AdsDidFailed, placement, info, nameof(AdsDidFailed));
+        InvokeSafely(AdsDidDismissed, placement, info, false, nameof(AdsDidDismissed));
+        CompleteRewarded(true, false);
+        ScheduleRewardedReload();
+    }
+
+    private void CompleteRewarded(bool ready, bool success)
+    {
+        Action<bool, bool> callback = m_rewardedCompleted;
+        m_rewardedCompleted = null;
+        m_rewardedPlacement = null;
+        m_rewardedShowing = false;
+        m_rewardReceived = false;
+        m_rewardedClosed = false;
+        m_rewardedOperationVersion++;
+        InvokeSafely(callback, ready, success, nameof(m_rewardedCompleted));
+    }
+
+    private void ScheduleInterstitialReload()
+    {
+        m_interstitialRetryAttempt++;
+        float delay = Mathf.Pow(2.0f, Mathf.Min(6, m_interstitialRetryAttempt));
+        ScheduleInterstitialLoad(delay, true);
+    }
+
+    private void ScheduleRewardedReload()
+    {
+        m_rewardedRetryAttempt++;
+        float delay = Mathf.Pow(2.0f, Mathf.Min(6, m_rewardedRetryAttempt));
+        ScheduleRewardedLoad(delay, true);
+    }
+
+    private void ScheduleInterstitialLoad(float delaySeconds, bool isRetry)
+    {
+        if (m_disposed || !IsInitialized || m_runtime == null || m_interstitialAd == null
+            || m_interstitialLoading || m_interstitialReloadScheduled || m_interstitialAd.IsAdReady())
+            return;
+
+        m_interstitialReloadScheduled = true;
+        if (isRetry)
+            Debug.Log($"[MPAdsManager] 将在 {delaySeconds:0.#} 秒后重试加载插屏广告。");
+        m_runtime.RunDelayed(delaySeconds, () =>
+        {
+            m_interstitialReloadScheduled = false;
+            RequestInterstitialLoad();
+        });
+    }
+
+    private void ScheduleRewardedLoad(float delaySeconds, bool isRetry)
+    {
+        if (m_disposed || !IsInitialized || m_runtime == null || m_rewardedAd == null
+            || m_rewardedLoading || m_rewardedReloadScheduled || m_rewardedAd.IsAdReady())
+            return;
+
+        m_rewardedReloadScheduled = true;
+        if (isRetry)
+            Debug.Log($"[MPAdsManager] 将在 {delaySeconds:0.#} 秒后重试加载激励广告。");
+        m_runtime.RunDelayed(delaySeconds, () =>
+        {
+            m_rewardedReloadScheduled = false;
+            RequestRewardedLoad();
+        });
+    }
+
+    private void RequestInterstitialLoad()
+    {
+        if (m_disposed || !IsInitialized || m_interstitialAd == null
+            || m_interstitialLoading || m_interstitialReloadScheduled || m_interstitialAd.IsAdReady())
+            return;
+
+        m_interstitialLoading = true;
+        try
+        {
+            m_interstitialAd.LoadAd();
+        }
+        catch (Exception exception)
+        {
+            m_interstitialLoading = false;
+            Debug.LogWarning($"[MPAdsManager] 插屏广告加载调用异常：{exception.Message}");
+            ScheduleInterstitialReload();
+        }
+    }
+
+    private void RequestRewardedLoad()
+    {
+        if (m_disposed || !IsInitialized || m_rewardedAd == null || (m_rewardedShowing && !m_rewardedClosed)
+            || m_rewardedLoading || m_rewardedReloadScheduled || m_rewardedAd.IsAdReady())
+            return;
+
+        m_rewardedLoading = true;
+        try
+        {
+            m_rewardedAd.LoadAd();
+        }
+        catch (Exception exception)
+        {
+            m_rewardedLoading = false;
+            Debug.LogWarning($"[MPAdsManager] 激励广告加载调用异常：{exception.Message}");
+            ScheduleRewardedReload();
+        }
+    }
+
+    private bool CanAttemptInterstitial(string adPlace)
     {
         if (!MPReleaseFeatures.Ads || !IsConfigured || !IsInitialized)
             return false;
+        if (m_adSceneController == null || !m_adSceneController.IsEnabled(adPlace))
+            return false;
+        if (m_adIntervalController == null || !m_adIntervalController.CanAdPlay())
+            return false;
+
         try
         {
             MPUser user = MPUser.instance;
@@ -235,224 +539,130 @@ public sealed class MPAdsManager : IDisposable
         }
         catch
         {
-            // 玩家存档尚未可用时不以广告阻塞页面流转，等待后续广告位再尝试。
             return false;
         }
     }
 
-    /// <summary>在创建原生广告 SDK 前校验当前平台配置，空广告位不能进入 MAX 原生接口。</summary>
-    private static bool HasValidPlatformConfiguration()
+    private MPAdsInfo CreateInfo(MPAdsType type, string placement)
     {
-#if ao_ads_max
-        AOMaxAdsSettings settings = AOMaxAdsSettings.Load();
-        if (settings == null)
+        return new MPAdsInfo
         {
-            Debug.LogError("[MPAdsManager] 广告 SDK 未初始化：MAX 配置资源不存在。");
-            return false;
-        }
-
-        if (!settings.TryValidateCurrentPlatform(out string error))
-        {
-            Debug.LogError($"[MPAdsManager] 广告 SDK 未初始化：{error}");
-            return false;
-        }
-#endif
-        return true;
+            AdUnitId = type == MPAdsType.Interstitial
+                ? m_settings?.CurrentInterstitialAdUnitId
+                : m_settings?.CurrentRewardedAdUnitId,
+            PlacementName = placement,
+            AdType = type
+        };
     }
 
-    /// <summary>
-    /// 解除 AOAds 回调并释放当前策略引用。
-    /// </summary>
     public void Dispose()
     {
-        UnsubscribeAOAdsCallbacks();
+        if (m_disposed)
+            return;
+
+        m_disposed = true;
+        UnsubscribeInitializationEvents();
+        DestroyAdObjects();
+
+        if (m_runtime != null)
+        {
+            UnityEngine.Object.Destroy(m_runtime.gameObject);
+            m_runtime = null;
+        }
+
         m_adIntervalController = null;
         m_adSceneController = null;
+        m_pendingInitializedCallback = null;
+        m_rewardedCompleted = null;
+        m_rewardedShowing = false;
+        m_interstitialLoading = false;
+        m_rewardedLoading = false;
+        m_interstitialReloadScheduled = false;
+        m_rewardedReloadScheduled = false;
         IsConfigured = false;
+        IsInitialized = false;
+        m_initializing = false;
     }
 
-    /// <summary>
-    /// 订阅 AOAds 对外回调；重复调用不会产生重复监听。
-    /// </summary>
-    private void SubscribeAOAdsCallbacks()
+    private void DestroyAdObjects()
     {
-        if (m_isSubscribed)
+        m_interstitialLoading = false;
+        m_rewardedLoading = false;
+        m_interstitialReloadScheduled = false;
+        m_rewardedReloadScheduled = false;
+
+        if (m_interstitialAd != null)
         {
-            return;
+            m_interstitialAd.OnAdLoaded -= OnInterstitialLoaded;
+            m_interstitialAd.OnAdLoadFailed -= OnInterstitialLoadFailed;
+            m_interstitialAd.OnAdDisplayed -= OnInterstitialDisplayed;
+            m_interstitialAd.OnAdDisplayFailed -= OnInterstitialDisplayFailed;
+            m_interstitialAd.OnAdClosed -= OnInterstitialClosed;
+            m_interstitialAd.DestroyAd();
+            m_interstitialAd = null;
         }
 
-        AOAds.AdsWillDisplay += OnAdsWillDisplay;
-        AOAds.AdsDidDisplay += OnAdsDidDisplay;
-        AOAds.AdsDidDismissed += OnAdsDidDismissed;
-        AOAds.AdsDidFailed += OnAdsDidFailed;
-        m_isSubscribed = true;
-    }
-
-    /// <summary>
-    /// 解除所有 AOAds 回调监听。
-    /// </summary>
-    private void UnsubscribeAOAdsCallbacks()
-    {
-        if (!m_isSubscribed)
+        if (m_rewardedAd != null)
         {
-            return;
-        }
-
-        AOAds.AdsWillDisplay -= OnAdsWillDisplay;
-        AOAds.AdsDidDisplay -= OnAdsDidDisplay;
-        AOAds.AdsDidDismissed -= OnAdsDidDismissed;
-        AOAds.AdsDidFailed -= OnAdsDidFailed;
-        m_isSubscribed = false;
-    }
-
-    /// <summary>
-    /// 处理 AOAds 初始化完成，并依次通知全局事件和本次调用回调。
-    /// </summary>
-    private void OnInitialized(Action onInitialized)
-    {
-        InvokeSafely(Initialized, nameof(Initialized));
-        InvokeSafely(onInitialized, nameof(onInitialized));
-    }
-
-    /// <summary>
-    /// 接收 AOAds 的广告即将展示回调，并转发给策略和业务监听者。
-    /// </summary>
-    private void OnAdsWillDisplay(string adScene, bool ready, AOAdsType adType)
-    {
-        NotifyStrategy(receiver => receiver.OnAdsWillDisplay(adScene, ready, adType));
-        InvokeSafely(AdsWillDisplay, adScene, ready, adType, nameof(AdsWillDisplay));
-    }
-
-    /// <summary>
-    /// 接收 AOAds 的广告成功展示回调，并转发给策略和业务监听者。
-    /// </summary>
-    private void OnAdsDidDisplay(string adScene, AOAdsInfo info)
-    {
-        NotifyStrategy(receiver => receiver.OnAdsDidDisplay(adScene, info));
-        InvokeSafely(AdsDidDisplay, adScene, info, nameof(AdsDidDisplay));
-    }
-
-    /// <summary>
-    /// 接收 AOAds 的广告关闭回调，并转发给策略和业务监听者。
-    /// </summary>
-    private void OnAdsDidDismissed(string adScene, AOAdsInfo info, bool isReceivedReward)
-    {
-        NotifyStrategy(receiver => receiver.OnAdsDidDismissed(adScene, info, isReceivedReward));
-        InvokeSafely(AdsDidDismissed, adScene, info, isReceivedReward, nameof(AdsDidDismissed));
-    }
-
-    /// <summary>
-    /// 接收 AOAds 的广告展示失败回调，并转发给策略和业务监听者。
-    /// </summary>
-    private void OnAdsDidFailed(string adScene, AOAdsInfo info)
-    {
-        NotifyStrategy(receiver => receiver.OnAdsDidFailed(adScene, info));
-        InvokeSafely(AdsDidFailed, adScene, info, nameof(AdsDidFailed));
-    }
-
-    /// <summary>
-    /// 将 AOAds 回调通知给实现了 IMPAdsCallbackReceiver 的已注入策略。
-    /// </summary>
-    private void NotifyStrategy(Action<IMPAdsCallbackReceiver> callback)
-    {
-        IMPAdsCallbackReceiver intervalReceiver = m_adIntervalController as IMPAdsCallbackReceiver;
-        IMPAdsCallbackReceiver sceneReceiver = m_adSceneController as IMPAdsCallbackReceiver;
-
-        InvokeStrategySafely(intervalReceiver, callback);
-        if (!ReferenceEquals(intervalReceiver, sceneReceiver))
-        {
-            InvokeStrategySafely(sceneReceiver, callback);
+            m_rewardedAd.OnAdLoaded -= OnRewardedLoaded;
+            m_rewardedAd.OnAdLoadFailed -= OnRewardedLoadFailed;
+            m_rewardedAd.OnAdDisplayed -= OnRewardedDisplayed;
+            m_rewardedAd.OnAdDisplayFailed -= OnRewardedDisplayFailed;
+            m_rewardedAd.OnAdRewarded -= OnRewarded;
+            m_rewardedAd.OnAdClosed -= OnRewardedClosed;
+            m_rewardedAd.DestroyAd();
+            m_rewardedAd = null;
         }
     }
 
-    /// <summary>
-    /// 安全执行策略回调，避免单个策略异常中断 AOAds 的回调链。
-    /// </summary>
-    private static void InvokeStrategySafely(
-        IMPAdsCallbackReceiver receiver,
-        Action<IMPAdsCallbackReceiver> callback)
-    {
-        if (receiver == null)
-        {
-            return;
-        }
-
-        try
-        {
-            callback(receiver);
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError($"[MPAdsManager] 广告策略回调异常：{exception}");
-        }
-    }
-
-    /// <summary>
-    /// 安全执行无参数业务回调。
-    /// </summary>
     private static void InvokeSafely(Action callback, string callbackName)
     {
         if (callback == null)
-        {
             return;
-        }
-
-        try
-        {
-            callback.Invoke();
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError($"[MPAdsManager] {callbackName} 回调异常：{exception}");
-        }
+        try { callback.Invoke(); }
+        catch (Exception exception) { Debug.LogError($"[MPAdsManager] {callbackName} 回调异常：{exception}"); }
     }
 
-    /// <summary>
-    /// 安全执行带两个参数的业务回调。
-    /// </summary>
-    private static void InvokeSafely<T1, T2>(
-        Action<T1, T2> callback,
-        T1 arg1,
-        T2 arg2,
-        string callbackName)
+    private static void InvokeSafely<T1, T2>(Action<T1, T2> callback, T1 arg1, T2 arg2, string callbackName)
     {
         if (callback == null)
-        {
             return;
-        }
-
-        try
-        {
-            callback.Invoke(arg1, arg2);
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError($"[MPAdsManager] {callbackName} 回调异常：{exception}");
-        }
+        try { callback.Invoke(arg1, arg2); }
+        catch (Exception exception) { Debug.LogError($"[MPAdsManager] {callbackName} 回调异常：{exception}"); }
     }
 
-    /// <summary>
-    /// 安全执行带三个参数的业务回调。
-    /// </summary>
-    private static void InvokeSafely<T1, T2, T3>(
-        Action<T1, T2, T3> callback,
-        T1 arg1,
-        T2 arg2,
-        T3 arg3,
-        string callbackName)
+    private static void InvokeSafely<T1, T2, T3>(Action<T1, T2, T3> callback, T1 arg1, T2 arg2, T3 arg3, string callbackName)
     {
         if (callback == null)
-        {
             return;
-        }
+        try { callback.Invoke(arg1, arg2, arg3); }
+        catch (Exception exception) { Debug.LogError($"[MPAdsManager] {callbackName} 回调异常：{exception}"); }
+    }
+}
 
-        try
-        {
-            callback.Invoke(arg1, arg2, arg3);
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError($"[MPAdsManager] {callbackName} 回调异常：{exception}");
-        }
+/// <summary>仅负责低频计时和延迟重试，不承载广告业务状态。</summary>
+internal sealed class MPAdsRuntime : MonoBehaviour
+{
+    public static MPAdsRuntime Create()
+    {
+        GameObject gameObject = new GameObject(nameof(MPAdsRuntime));
+        DontDestroyOnLoad(gameObject);
+        return gameObject.AddComponent<MPAdsRuntime>();
+    }
+
+    public void RunDelayed(float delay, Action callback)
+    {
+        StartCoroutine(DelayCoroutine(delay, callback));
+    }
+
+    private IEnumerator DelayCoroutine(float delay, Action callback)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        callback?.Invoke();
+    }
+
+    private void Update()
+    {
+        MPAdsManager.Instance.Tick(Time.unscaledDeltaTime);
     }
 }

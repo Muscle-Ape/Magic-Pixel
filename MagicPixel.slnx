@@ -2,12 +2,11 @@
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="spine-unity.csproj" />
-  <Project Path="AO.Ads.csproj" />
   <Project Path="HQ.Iap.csproj" />
   <Project Path="spine-unity-editor.csproj" />
   <Project Path="com.Brogrammist.JSAM.csproj" />
   <Project Path="Google.Play.Games.csproj" />
-  <Project Path="MaxSdk.Scripts.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="HQ.Unity.Common.csproj" />
   <Project Path="spine-csharp.csproj" />
   <Project Path="Lofelt.NiceVibrations.csproj" />
@@ -19,9 +18,6 @@
   <Project Path="AMSUISoftMask.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
   <Project Path="UnityToast.csproj" />
-  <Project Path="MaxSdk.Scripts.IntegrationManager.Editor.csproj" />
   <Project Path="Google.Play.Games.Editor.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="MagicPixel.ThreeD.csproj" />
-  <Project Path="joy.unity.editor.ads.csproj" />
 </Solution>

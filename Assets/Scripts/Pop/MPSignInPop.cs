@@ -166,7 +166,7 @@ public sealed class MPSignInPop : AWindow
         SetBusy(true);
         try
         {
-            AOAds.CheckAndShowRewardedVideo("sign_in_double", (ready, success) =>
+            MPAdsManager.Instance.ShowRewardedAd("sign_in_double", (ready, success) =>
             {
                 if (this == null || m_released || IsDestoried || m_closing || !m_busy
                     || claimVersion != m_claimVersion) return;

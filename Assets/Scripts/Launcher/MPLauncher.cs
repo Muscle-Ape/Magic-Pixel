@@ -21,6 +21,7 @@ public class MPLauncher : MonoBehaviour
     private bool m_uiReady;
     private bool m_dataReady;
     private bool m_userReady;
+    private bool m_idfaReady;
     private bool m_isLaunching;
     private bool m_hasEnteredGame;
 
@@ -167,6 +168,24 @@ public class MPLauncher : MonoBehaviour
             yield break;
         }
 
+        if (MPReleaseFeatures.Ads)
+        {
+            // ATT 必须在广告 SDK 初始化前完成，避免 SDK 在用户选择前读取广告标识符。
+            if (!m_idfaReady)
+            {
+                MPLaunchIDFA idfa = new MPLaunchIDFA();
+                IEnumerator initialize = idfa.Initialize();
+                while (initialize.MoveNext())
+                    yield return initialize.Current;
+                m_idfaReady = idfa.IsInitialized;
+            }
+
+            // 在首页开放交互前启动广告 SDK，给聚合网络 Adapter 和首个广告充分的预加载时间。
+            // 广告初始化本身是异步的，不阻塞加载页完成。
+            if (!MPAdsManager.Instance.IsConfigured)
+                MPAdsManager.Instance.Initialize(userId: MPLoginManager.Instance.PlayerId);
+        }
+
         MPVibrationManager.Instance.Initialize();
         m_loadingView.CompleteLoading(EnterGame);
     }
@@ -200,17 +219,13 @@ public class MPLauncher : MonoBehaviour
     }
 
     /// <summary>
-    /// 云存档和首页已就绪后再分帧启动原生 SDK，避免广告、商店初始化拉长 Loading 或造成同帧卡顿。
-    /// IAP 仍然保证在云存档应用之后初始化，不会被后续云数据覆盖。
+    /// 首页已就绪后再启动商店；IAP 仍保证在云存档应用之后初始化，
+    /// 不会被后续云数据覆盖。
     /// </summary>
     private IEnumerator InitializeOptionalServicesAfterEntry()
     {
         yield return null;
         MPIapManager.Instance.Initialize();
-
-        yield return null;
-        if (MPReleaseFeatures.Ads && !MPAdsManager.Instance.IsConfigured)
-            MPAdsManager.Instance.Initialize(userId: MPLoginManager.Instance.PlayerId);
     }
 
     private void OnDestroy()

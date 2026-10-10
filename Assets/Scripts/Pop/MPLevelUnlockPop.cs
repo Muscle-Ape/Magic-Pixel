@@ -213,7 +213,7 @@ public class MPLevelUnlockPop : AWindow
         int version = ++m_operationVersion;
         try
         {
-            AOAds.CheckAndShowRewardedVideo("main_level_unlock", (ready, success) =>
+            MPAdsManager.Instance.ShowRewardedAd("main_level_unlock", (ready, success) =>
             {
                 if (this == null || IsDestoried || m_released || m_closing || !m_busy || version != m_operationVersion) return;
                 ++m_operationVersion;

@@ -1,17 +1,17 @@
-/// <summary>项目广告位策略：购买去广告后只关闭强制插屏，不影响用户主动观看的激励广告。</summary>
-public sealed class MPAdsAdSceneController : AOAdsBaseAdSceneController
+/// <summary>项目广告位策略：购买去广告后只关闭强制插屏，不影响主动观看的激励广告。</summary>
+public sealed class MPAdsAdSceneController
 {
-    public override bool IsEnabled(string adPlace)
+    public bool IsEnabled(string adPlace)
     {
         try
         {
-            if (MPUser.instance.OwnsShopEntitlement("remove_ads"))
-                return false;
+            return MPUser.instance == null
+                || !MPUser.instance.OwnsShopEntitlement("remove_ads");
         }
         catch
         {
-            // 存档尚未初始化或读取异常时沿用原广告策略，不能影响启动流程。
+            // 存档尚未初始化或读取异常时不阻塞启动，最终资格仍由 MPAdsManager 再次校验。
+            return true;
         }
-        return base.IsEnabled(adPlace);
     }
 }

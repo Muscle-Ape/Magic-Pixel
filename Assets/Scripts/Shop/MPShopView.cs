@@ -48,6 +48,8 @@ public sealed class MPShopView : AWindow
     private string m_bundleSignature;
     private string m_coinSignature;
     private bool m_productLayoutReady;
+    private LayoutGroup[] m_productLayoutGroups = Array.Empty<LayoutGroup>();
+    private ContentSizeFitter[] m_productSizeFitters = Array.Empty<ContentSizeFitter>();
     private Button m_closeBtn;
     private Button m_vipButton;
     private Button m_removeAdsButton;
@@ -78,6 +80,7 @@ public sealed class MPShopView : AWindow
         MPIapManager.Instance.InitializationCompleted += OnIapInitialized;
         MPIapManager.Instance.ProductGranted += OnProductGranted;
 
+        CacheProductLayoutComponents();
         m_bundlePrefab = MPLoad.Load<GameObject>("MPShopBundle", this);
         m_coinPrefab = MPLoad.Load<GameObject>("MPShopCoin", this);
         RefreshProducts(GetBestAvailableProducts());
@@ -200,6 +203,9 @@ public sealed class MPShopView : AWindow
             ? m_productScroll.velocity
             : Vector2.zero;
 
+        // 布局只在商品结构变化时临时启用。计算完成后冻结 RectTransform，
+        // 避免 ScrollRect 移动 Content 时触发嵌套 LayoutGroup/ContentSizeFitter 的重复计算。
+        SetProductLayoutComponentsEnabled(true);
         Canvas.ForceUpdateCanvases();
         if (m_coins != null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(m_coins);
@@ -219,7 +225,47 @@ public sealed class MPShopView : AWindow
             if (preserveScrollPosition)
                 m_productScroll.velocity = velocity;
         }
+
+        SetProductLayoutComponentsEnabled(false);
+        OptimizeProductRaycastTargets();
         m_productLayoutReady = true;
+    }
+
+    private void CacheProductLayoutComponents()
+    {
+        if (m_productContent == null)
+            return;
+        m_productLayoutGroups = m_productContent.GetComponentsInChildren<LayoutGroup>(true);
+        m_productSizeFitters = m_productContent.GetComponentsInChildren<ContentSizeFitter>(true);
+    }
+
+    private void SetProductLayoutComponentsEnabled(bool enabled)
+    {
+        foreach (LayoutGroup layoutGroup in m_productLayoutGroups)
+        {
+            if (layoutGroup != null)
+                layoutGroup.enabled = enabled;
+        }
+        foreach (ContentSizeFitter sizeFitter in m_productSizeFitters)
+        {
+            if (sizeFitter != null)
+                sizeFitter.enabled = enabled;
+        }
+    }
+
+    /// <summary>
+    /// 商品内部绝大部分图片和文字只是装饰，不需要参与每帧触摸射线检测。
+    /// Viewport 负责接收滚动事件，只有真正挂载 Button 的图形保留 RaycastTarget。
+    /// </summary>
+    private void OptimizeProductRaycastTargets()
+    {
+        if (m_productContent == null)
+            return;
+        foreach (Graphic graphic in m_productContent.GetComponentsInChildren<Graphic>(true))
+        {
+            if (graphic != null)
+                graphic.raycastTarget = graphic.GetComponent<Button>() != null;
+        }
     }
 
     private void RebuildBundleItems(IEnumerable<HQIapProduct> products)
@@ -472,12 +518,18 @@ public sealed class MPShopView : AWindow
         SetBusy(true);
         try
         {
-            AOAds.CheckAndShowRewardedVideo(FREE_COIN_AD_SCENE, (ready, success) =>
+            MPAdsManager.Instance.ShowRewardedAd(FREE_COIN_AD_SCENE, (ready, success) =>
             {
                 if (!OperationIsCurrent(version))
                     return;
                 SetBusy(false);
-                if (!ready || !success || owner != MPUser.instance.GetRewardProgressOwner())
+                if (!ready)
+                {
+                    ShowToast("Video is still loading. Please try again in a moment.");
+                    RefreshFreeCoin();
+                    return;
+                }
+                if (!success || owner != MPUser.instance.GetRewardProgressOwner())
                 {
                     ShowToast("Video not completed. Your free reward is still available.");
                     RefreshFreeCoin();

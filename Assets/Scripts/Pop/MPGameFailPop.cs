@@ -160,7 +160,7 @@ public class MPGameFailPop : AWindow
 
         try
         {
-            AOAds.CheckAndShowRewardedVideo(REWARD_AD_SCENE, (ready, success) =>
+            MPAdsManager.Instance.ShowRewardedAd(REWARD_AD_SCENE, (ready, success) =>
             {
                 if (this == null || m_isReleased || IsDestoried || m_isClosing
                     || !m_isAdRunning || operationVersion != m_adOperationVersion)

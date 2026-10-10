@@ -31,7 +31,6 @@ MonoBehaviour:
     serializationDepthLimit: 64
     assemblyNames:
     - AMSUISoftMask
-    - AO.Ads
     - AppleAuth
     - AppleAuth.Editor
     - Assembly-CSharp
@@ -43,13 +42,10 @@ MonoBehaviour:
     - HQ.Iap
     - HQ.UIManager
     - HQ.Unity.Common
-    - joy.unity.editor.ads
     - Lofelt.NiceVibrations
     - Lofelt.NiceVibrations.Editor
     - MagicPixel.Editor
     - MagicPixel.ThreeD
-    - MaxSdk.Scripts
-    - MaxSdk.Scripts.IntegrationManager.Editor
     - PsdPlugin
     - Purchasing.Common
     - spine-csharp
