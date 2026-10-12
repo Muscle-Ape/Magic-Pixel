@@ -71,7 +71,6 @@ public class MPLargeImageLevelUnlockPop : AWindow
     [TransformPath("View/Window/Award/Info")] private TMP_Text m_rewardText;
     [TransformPath("View/Window/Award/Icon")] private Image m_rewardIcon;
     private string m_rewardIconLocation;
-    private Action m_openSubscription;
     private bool m_busy;
     private bool m_closing;
     private bool m_released;
@@ -96,7 +95,6 @@ public class MPLargeImageLevelUnlockPop : AWindow
         m_popScaleAnimation = GetComponent<MPPopScaleAnimation>();
         m_levelInfo = data.levelInfo;
         m_refreshAction = data.refresh;
-        m_openSubscription = data.openSubscription;
 
         RefreshUI();
     }
@@ -108,7 +106,6 @@ public class MPLargeImageLevelUnlockPop : AWindow
         UnregisterUI();
         ClearRewardIcon();
         m_refreshAction = null;
-        m_openSubscription = null;
     }
 
     /// <summary>
@@ -268,7 +265,17 @@ public class MPLargeImageLevelUnlockPop : AWindow
                 if (this == null || IsDestoried || m_released || m_closing || !m_busy || version != m_operationVersion) return;
                 ++m_operationVersion;
                 SetBusy(false);
-                if (ready && success) CompleteUnlock();
+                if (!ready)
+                {
+                    ShowToast("Video is still loading. Please try again in a moment.");
+                    return;
+                }
+                if (!success)
+                {
+                    ShowToast("Video was not completed. Please try again.");
+                    return;
+                }
+                CompleteUnlock();
             });
         }
         catch (Exception exception)
@@ -276,24 +283,31 @@ public class MPLargeImageLevelUnlockPop : AWindow
             if (this == null || IsDestoried || m_released) return;
             ++m_operationVersion;
             SetBusy(false);
+            ShowToast("Video is unavailable. Please try again later.");
             Debug.LogWarning($"[MPLargeImageLevelUnlockPop] 广告播放失败：{exception.GetType().Name}");
         }
     }
 
-    /// <summary>仅通知调用方打开订阅弹窗，订阅模块负责后续购买与权益处理。</summary>
+    /// <summary>直接打开 VIP 订阅页；订阅成功后永久解锁当前大图关卡。</summary>
     private void OnVipClick()
     {
         if (!MPReleaseFeatures.Vip || !MPReleaseFeatures.InAppPurchases) return;
-        if (m_busy || m_closing || m_released || IsDestoried || m_openSubscription == null) return;
-        SetBusy(true);
-        try
-        {
-            m_openSubscription.Invoke();
-        }
-        finally
-        {
-            if (this != null && !IsDestoried && !m_released && !m_closing) SetBusy(false);
-        }
+        if (m_busy || m_closing || m_released || IsDestoried) return;
+        MPVipView.Show(OnVipActivated);
+    }
+
+    private void OnVipActivated()
+    {
+        if (this == null || IsDestoried || m_released || m_closing || m_levelInfo == null)
+            return;
+        if (MPUser.instance.TryUnlockLargeImageLevelWithVip(m_levelInfo.ID))
+            CompleteUnlock();
+    }
+
+    private static void ShowToast(string message)
+    {
+        if (UnityToast.Instance != null)
+            UnityToast.Instance.ShowToast(message);
     }
 
     private void CompleteUnlock()
@@ -349,6 +363,4 @@ public class MPLargeImageLevelUnlockPopUIMsgData : UIMsgData
     /// </summary>
     public Action refresh;
 
-    /// <summary>打开订阅弹窗的回调；订阅页面制作完成后由调用方传入。</summary>
-    public Action openSubscription;
 }

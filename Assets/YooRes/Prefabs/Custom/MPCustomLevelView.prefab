@@ -886,11 +886,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mItemPrefabDataList:
   - mItemPrefab: {fileID: 7873987765917865422, guid: 391ed7ff3ae949579a21fd02d2174b40, type: 3}
-    mPadding: 0
+    mPadding: 30
     mInitCreateCount: 0
     mStartPosOffset: 0
   - mItemPrefab: {fileID: 910400000000000001, guid: 0d53f59c9c9c4a20966f9495a1320a9b, type: 3}
-    mPadding: 0
+    mPadding: 30
     mInitCreateCount: 0
     mStartPosOffset: 0
   mArrangeType: 0

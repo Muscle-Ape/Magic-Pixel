@@ -5,11 +5,11 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Coin 按 1:10 转换为 Fluorite 的货币转换弹窗。</summary>
+/// <summary>Coin 按 1:1 转换为 Fluorite 的货币转换弹窗。</summary>
 [Component("MPCurrencyExchangePop")]
 public sealed class MPCurrencyExchangePop : AWindow
 {
-    public const int FLUORITE_PER_COIN = 10;
+    public const int FLUORITE_PER_COIN = 1;
     private const float HOLD_THRESHOLD = 0.45f;
     private const float HOLD_REPEAT_INTERVAL = 0.08f;
 

@@ -612,7 +612,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1 Coin = 10 Fluorite
+  m_text: 1 Coin = 1 Fluorite
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f6b1827bd2c914ab2b80c4cbfd2ad507, type: 2}
   m_sharedMaterial: {fileID: 8981788318941613183, guid: f6b1827bd2c914ab2b80c4cbfd2ad507, type: 2}

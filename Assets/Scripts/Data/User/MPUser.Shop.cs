@@ -22,7 +22,7 @@ public enum MPShopPetPurchaseResult
 public partial class MPUser
 {
     public const int SHOP_FREE_COIN_DAILY_LIMIT = 3;
-    public const int SHOP_FREE_COIN_AMOUNT = 300;
+    public const int SHOP_FREE_COIN_AMOUNT = 50;
 
     /// <summary>获取当日广告金币次数。日界线与签到一致，统一使用 UTC+8。</summary>
     public MPShopFreeCoinStatus GetShopFreeCoinStatus()
