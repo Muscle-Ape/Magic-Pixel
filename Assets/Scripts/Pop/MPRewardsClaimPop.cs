@@ -86,6 +86,7 @@ public sealed class MPRewardsClaimPop : AWindow
     {
         switch (MPRewardPresentation.NormalizeType(type))
         {
+            case "coin": return "pop_reward_icon_coin";
             case "fluorite": return "pop_reward_icon_fluorite";
             case "hint": return "pop_reward_icon_hint";
             case "life": return "pop_reward_icon_love";

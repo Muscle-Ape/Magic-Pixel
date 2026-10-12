@@ -5,6 +5,9 @@ using JSAM;
 
 public class MPAudioManager
 {
+    private int m_adAudioPauseCount;
+    private bool m_listenerWasPausedBeforeAd;
+
     #region Singleton
     private static MPAudioManager instance;
     private MPAudioManager() { }
@@ -96,5 +99,30 @@ public class MPAudioManager
     public void StopAllMusic()
     {
         AudioManager.StopAllMusic(true);
+    }
+
+    /// <summary>
+    /// 广告展示前暂停游戏音频。使用 AudioListener 可以保留背景音乐当前播放位置，
+    /// 并且不会改变玩家在设置中的音乐开关。
+    /// </summary>
+    public void PauseAudioForAd()
+    {
+        if (m_adAudioPauseCount == 0)
+        {
+            m_listenerWasPausedBeforeAd = AudioListener.pause;
+            AudioListener.pause = true;
+        }
+        m_adAudioPauseCount++;
+    }
+
+    /// <summary>广告关闭或展示失败后恢复到广告展示前的音频暂停状态。</summary>
+    public void ResumeAudioAfterAd()
+    {
+        if (m_adAudioPauseCount <= 0)
+            return;
+
+        m_adAudioPauseCount--;
+        if (m_adAudioPauseCount == 0)
+            AudioListener.pause = m_listenerWasPausedBeforeAd;
     }
 }

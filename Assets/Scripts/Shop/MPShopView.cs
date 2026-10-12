@@ -80,6 +80,7 @@ public sealed class MPShopView : AWindow
         MPIapManager.Instance.InitializationCompleted += OnIapInitialized;
         MPIapManager.Instance.ProductGranted += OnProductGranted;
 
+        PrepareProductScrollCanvas();
         CacheProductLayoutComponents();
         m_bundlePrefab = MPLoad.Load<GameObject>("MPShopBundle", this);
         m_coinPrefab = MPLoad.Load<GameObject>("MPShopCoin", this);
@@ -237,6 +238,33 @@ public sealed class MPShopView : AWindow
             return;
         m_productLayoutGroups = m_productContent.GetComponentsInChildren<LayoutGroup>(true);
         m_productSizeFitters = m_productContent.GetComponentsInChildren<ContentSizeFitter>(true);
+    }
+
+    /// <summary>
+    /// 将持续移动的商品 Content 隔离到独立 Canvas。
+    /// ScrollRect 拖拽时只移动该 Canvas 的整体变换，避免整张商店页面在移动端每帧重建 UI 批次。
+    /// 子 Canvas 不覆盖排序，因此仍会被父级 Viewport 的 RectMask2D 正确裁剪。
+    /// </summary>
+    private void PrepareProductScrollCanvas()
+    {
+        if (m_productContent == null)
+            return;
+
+        Canvas parentCanvas = m_productContent.GetComponentInParent<Canvas>();
+        Canvas productCanvas = m_productContent.GetComponent<Canvas>();
+        if (productCanvas == null)
+            productCanvas = m_productContent.gameObject.AddComponent<Canvas>();
+
+        productCanvas.overrideSorting = false;
+        productCanvas.pixelPerfect = false;
+        if (parentCanvas != null && parentCanvas != productCanvas)
+            productCanvas.additionalShaderChannels = parentCanvas.additionalShaderChannels;
+
+        GraphicRaycaster productRaycaster = m_productContent.GetComponent<GraphicRaycaster>();
+        if (productRaycaster == null)
+            productRaycaster = m_productContent.gameObject.AddComponent<GraphicRaycaster>();
+        productRaycaster.ignoreReversedGraphics = true;
+        productRaycaster.blockingObjects = GraphicRaycaster.BlockingObjects.None;
     }
 
     private void SetProductLayoutComponentsEnabled(bool enabled)
@@ -535,7 +563,7 @@ public sealed class MPShopView : AWindow
                     RefreshFreeCoin();
                     return;
                 }
-                if (!MPUser.instance.TryClaimShopFreeCoin(status.day, out _))
+                if (!MPUser.instance.TryClaimShopFreeCoin(status.day, out MPRewardReceipt receipt))
                 {
                     ShowToast("Could not claim the reward. Please try again.");
                     RefreshFreeCoin();
@@ -543,7 +571,7 @@ public sealed class MPShopView : AWindow
                 }
                 RefreshAssets();
                 RefreshFreeCoin();
-                ShowToast($"You received {MPUser.SHOP_FREE_COIN_AMOUNT} coins.");
+                MPRewardsClaimPop.Show(receipt);
             });
         }
         catch (Exception exception)

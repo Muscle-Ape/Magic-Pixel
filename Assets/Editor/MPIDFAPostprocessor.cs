@@ -10,8 +10,11 @@ using UnityEditor.iOS.Xcode;
 /// </summary>
 public static class MPIDFAPostprocessor
 {
+    /// <summary>
+    /// 允许跟踪将帮助我们提供更相关的广告，并支持游戏持续更新。
+    /// </summary>
     private const string TRACKING_USAGE_DESCRIPTION =
-        "允许跟踪将帮助我们提供更相关的广告，并支持游戏持续更新。";
+        "Allowing tracking will help us provide more relevant ads and support ongoing game updates.";
 
     [PostProcessBuild(10)]
     public static void OnPostProcessBuild(BuildTarget target, string buildPath)

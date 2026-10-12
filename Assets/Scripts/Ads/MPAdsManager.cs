@@ -62,6 +62,8 @@ public sealed class MPAdsManager : IDisposable
     private bool m_rewardedLoading;
     private bool m_interstitialReloadScheduled;
     private bool m_rewardedReloadScheduled;
+    private bool m_interstitialAudioPaused;
+    private bool m_rewardedAudioPaused;
     private bool m_initializing;
     private bool m_disposed;
     private int m_interstitialRetryAttempt;
@@ -167,6 +169,7 @@ public sealed class MPAdsManager : IDisposable
         m_interstitialPlacement = adPlace;
         try
         {
+            PauseInterstitialAudio();
             m_interstitialAd.ShowAd(adPlace);
         }
         catch (Exception exception)
@@ -200,6 +203,7 @@ public sealed class MPAdsManager : IDisposable
 
         try
         {
+            PauseRewardedAudio();
             m_rewardedAd.ShowAd(adPlace);
         }
         catch (Exception exception)
@@ -326,6 +330,8 @@ public sealed class MPAdsManager : IDisposable
 
     private void OnInterstitialDisplayed(LevelPlayAdInfo adInfo)
     {
+        // 正常路径会在 ShowAd 前暂停；这里作为 SDK 非预期调用顺序的兜底。
+        PauseInterstitialAudio();
         MPAdsInfo info = CreateInfo(MPAdsType.Interstitial, m_interstitialPlacement);
         m_adIntervalController?.RecordInterstitialDisplayed();
         InvokeSafely(AdsDidDisplay, m_interstitialPlacement, info, nameof(AdsDidDisplay));
@@ -339,6 +345,7 @@ public sealed class MPAdsManager : IDisposable
 
     private void OnInterstitialClosed(LevelPlayAdInfo adInfo)
     {
+        ResumeInterstitialAudio();
         string placement = m_interstitialPlacement;
         MPAdsInfo info = CreateInfo(MPAdsType.Interstitial, placement);
         m_interstitialPlacement = null;
@@ -348,6 +355,7 @@ public sealed class MPAdsManager : IDisposable
 
     private void HandleInterstitialFailure()
     {
+        ResumeInterstitialAudio();
         string placement = m_interstitialPlacement;
         MPAdsInfo info = CreateInfo(MPAdsType.Interstitial, placement);
         m_interstitialPlacement = null;
@@ -373,6 +381,8 @@ public sealed class MPAdsManager : IDisposable
 
     private void OnRewardedDisplayed(LevelPlayAdInfo adInfo)
     {
+        // 正常路径会在 ShowAd 前暂停；这里作为 SDK 非预期调用顺序的兜底。
+        PauseRewardedAudio();
         MPAdsInfo info = CreateInfo(MPAdsType.RewardedVideo, m_rewardedPlacement);
         InvokeSafely(AdsDidDisplay, m_rewardedPlacement, info, nameof(AdsDidDisplay));
     }
@@ -392,6 +402,7 @@ public sealed class MPAdsManager : IDisposable
 
     private void OnRewardedClosed(LevelPlayAdInfo adInfo)
     {
+        ResumeRewardedAudio();
         string placement = m_rewardedPlacement;
         MPAdsInfo info = CreateInfo(MPAdsType.RewardedVideo, placement);
         m_rewardedClosed = true;
@@ -416,6 +427,7 @@ public sealed class MPAdsManager : IDisposable
 
     private void HandleRewardedFailure()
     {
+        ResumeRewardedAudio();
         string placement = m_rewardedPlacement;
         MPAdsInfo info = CreateInfo(MPAdsType.RewardedVideo, placement);
         InvokeSafely(AdsDidFailed, placement, info, nameof(AdsDidFailed));
@@ -555,6 +567,44 @@ public sealed class MPAdsManager : IDisposable
         };
     }
 
+    private void PauseInterstitialAudio()
+    {
+        if (m_interstitialAudioPaused)
+            return;
+        m_interstitialAudioPaused = true;
+        MPAudioManager.Instance.PauseAudioForAd();
+    }
+
+    private void ResumeInterstitialAudio()
+    {
+        if (!m_interstitialAudioPaused)
+            return;
+        m_interstitialAudioPaused = false;
+        MPAudioManager.Instance.ResumeAudioAfterAd();
+    }
+
+    private void PauseRewardedAudio()
+    {
+        if (m_rewardedAudioPaused)
+            return;
+        m_rewardedAudioPaused = true;
+        MPAudioManager.Instance.PauseAudioForAd();
+    }
+
+    private void ResumeRewardedAudio()
+    {
+        if (!m_rewardedAudioPaused)
+            return;
+        m_rewardedAudioPaused = false;
+        MPAudioManager.Instance.ResumeAudioAfterAd();
+    }
+
+    private void ResumeAllAdAudio()
+    {
+        ResumeInterstitialAudio();
+        ResumeRewardedAudio();
+    }
+
     public void Dispose()
     {
         if (m_disposed)
@@ -586,6 +636,7 @@ public sealed class MPAdsManager : IDisposable
 
     private void DestroyAdObjects()
     {
+        ResumeAllAdAudio();
         m_interstitialLoading = false;
         m_rewardedLoading = false;
         m_interstitialReloadScheduled = false;
